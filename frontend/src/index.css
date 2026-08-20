@@ -1,0 +1,95 @@
+/**
+ * Reset and document-level rules only.
+ *
+ * Palette variables deliberately live in styles/themes.css scoped to
+ * [data-theme]. Defining them on :root here (or a prefers-color-scheme block)
+ * would fight the guest theme, which is dark by design regardless of the OS
+ * setting.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  font-family: "Schibsted Grotesk", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  background: #f7f4ec;
+}
+
+/* The viewer paints behind the app, so body follows the active theme. These
+   also cover the pre-paint window, before React has mounted. Keep them in
+   sync with each theme's --bg in themes.css, or a cold load flashes. */
+body[data-theme="emerald-noir"] {
+  background: #0b0a08;
+}
+body[data-theme="lumen"] {
+  background: #ffffff;
+}
+body[data-theme="ink-minimal"] {
+  background: #f7f4ec;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+p {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+:focus-visible {
+  outline: 2px solid var(--acc, #14120f);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

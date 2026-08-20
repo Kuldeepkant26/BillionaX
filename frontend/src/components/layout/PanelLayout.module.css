@@ -1,0 +1,210 @@
+.panel {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  min-height: 100svh;
+  background: var(--bg);
+}
+
+/* ---------- rail ---------- */
+.rail {
+  background: var(--rail);
+  color: var(--railfg);
+  padding: 22px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 8px 18px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logo {
+  width: 31px;
+  height: 31px;
+  border-radius: 9px;
+  background: var(--acc2);
+  flex: none;
+  position: relative;
+}
+.logo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: var(--rail);
+}
+
+.brand b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.brand i {
+  font-style: normal;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--raildim);
+  font-weight: 700;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.nv {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 11px;
+  border-radius: 10px;
+  color: var(--raildim);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.16s, color 0.16s;
+}
+.nv svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  flex: none;
+}
+.nv:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--railfg);
+}
+.nvOn {
+  background: var(--railact);
+  color: var(--railacttx);
+  font-weight: 600;
+}
+
+.spacer {
+  flex: 1;
+  min-height: 20px;
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.userAvatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--railfg);
+  display: grid;
+  place-items: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  flex: none;
+}
+.userMeta {
+  min-width: 0;
+}
+.userMeta b {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--railfg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.userMeta i {
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--raildim);
+  text-transform: capitalize;
+}
+
+.signout {
+  margin-top: 10px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--raildim);
+  border-radius: 999px;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.signout:hover {
+  color: var(--railfg);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* ---------- body ---------- */
+.body {
+  padding: 24px 26px 40px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.burger {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+.burger span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: var(--fg);
+  border-radius: 2px;
+}
+
+@media (max-width: 900px) {
+  .panel {
+    grid-template-columns: 1fr;
+  }
+
+  .rail {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 240px;
+    z-index: 120;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
+  }
+  .railOpen {
+    transform: none;
+  }
+
+  .burger {
+    display: flex;
+  }
+
+  .body {
+    padding: 18px 16px 32px;
+  }
+}

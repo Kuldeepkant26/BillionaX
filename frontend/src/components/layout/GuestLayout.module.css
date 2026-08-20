@@ -1,0 +1,125 @@
+/* The guest app is used on a phone at a reception desk, so it is designed
+   mobile-first and simply centres itself on larger screens. */
+
+.shell {
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--bg);
+}
+
+.main {
+  flex: 1;
+  padding: 20px 18px 28px;
+}
+
+.mainWithNav {
+  flex: 1;
+  padding: 20px 18px 96px; /* clears the floating nav */
+}
+
+.nav {
+  position: fixed;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(432px, calc(100vw - 28px));
+  height: 58px;
+  border-radius: 999px;
+  /* Tokenised: the frosted ground has to invert with the theme, or the nav
+     stays a dark slab floating on a light page. */
+  background: var(--nav-bg);
+  border: 1px solid var(--gl);
+  /* The bar is only ~55% opaque so content stays visible through it, which
+     means the blur carries the legibility. Saturate lifts what shows through
+     so it reads as glass rather than a grey wash. */
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 6px;
+  z-index: 60;
+  box-shadow: var(--shadow);
+}
+
+.navItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  /* Tightened from 14px so five tabs fit a 360px phone without wrapping. */
+  padding: 7px 9px;
+  border-radius: 999px;
+  color: var(--dim);
+  transition: color 0.16s, background 0.16s;
+}
+
+.iconWrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.badge {
+  position: absolute;
+  top: -4px;
+  right: -7px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--bad);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.navItem svg {
+  width: 19px;
+  height: 19px;
+  fill: currentColor;
+}
+
+.navItem i {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* :not(.on) so hovering the active tab does not override its own colour. */
+.navItem:not(.on):hover {
+  color: var(--fg);
+}
+
+/*
+ * The active tab is marked by colour and weight alone — no filled pill.
+ *
+ * --acc is the theme's ink (near-black on cream, cream on near-black), so it
+ * lands at full contrast against the nav's frosted ground while the inactive
+ * tabs sit at --dim. Doubled class and restated on the children because the
+ * icon uses fill: currentColor and would otherwise inherit --dim.
+ */
+.navItem.on,
+.navItem.on i,
+.navItem.on svg {
+  color: var(--acc);
+  fill: currentColor;
+}
+
+.navItem.on i {
+  font-weight: 700;
+}
+
+/* Retained as a token hook. Both themes set --nav-glow to none; a glow reads
+   as smudged dirt in monochrome. */
+.on svg {
+  filter: var(--nav-glow);
+}

@@ -1,0 +1,66 @@
+.rowActions {
+  display: flex;
+  gap: 5px;
+  justify-content: flex-end;
+}
+
+.iconBtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--dim);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.iconBtn:hover {
+  color: var(--acc2);
+  border-color: var(--acc2);
+  background: var(--chip);
+}
+
+.alert {
+  background: var(--chip);
+  border-left: 3px solid var(--bad);
+  border-radius: var(--rad-sm);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--bad);
+  margin-bottom: 14px;
+}
+
+.currentBal {
+  font-size: 12.5px;
+  color: var(--dim);
+  margin-bottom: 14px;
+}
+.currentBal b {
+  color: var(--fg);
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: -4px 0 16px;
+}
+
+.chip {
+  background: var(--chip);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--fg);
+  cursor: pointer;
+}
+.chip:hover {
+  border-color: var(--acc2);
+  color: var(--acc2);
+}

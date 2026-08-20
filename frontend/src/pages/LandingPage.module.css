@@ -1,0 +1,85 @@
+.wrap {
+  padding-top: 24px;
+}
+
+.logo {
+  display: block;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: var(--hero);
+  position: relative;
+  margin-bottom: 24px;
+}
+.logo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: var(--acc2);
+}
+
+.title {
+  font-size: 30px;
+  line-height: 1.12;
+}
+.title em {
+  font-style: italic;
+  color: var(--acc);
+}
+
+.sub {
+  color: var(--dim);
+  font-size: 13.5px;
+  line-height: 1.6;
+  margin: 12px 0 26px;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.step b {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--soft);
+  color: var(--acc);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex: none;
+}
+.step span {
+  font-size: 12.5px;
+  color: var(--dim);
+  line-height: 1.45;
+}
+
+.staff {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 22px;
+  font-size: 11.5px;
+  color: var(--dim);
+}
+.staff a {
+  color: var(--dim);
+  text-decoration: underline;
+}
+.staff a:hover {
+  color: var(--fg);
+}

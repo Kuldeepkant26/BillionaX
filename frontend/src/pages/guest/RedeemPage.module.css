@@ -1,0 +1,115 @@
+.title {
+  font-size: 22px;
+}
+
+.sub {
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 8px 0 20px;
+}
+.sub b {
+  color: var(--fg);
+}
+
+.form {
+  margin-top: 4px;
+}
+
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: -4px 0 18px;
+}
+
+.chip {
+  background: var(--chip);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--fg);
+  cursor: pointer;
+}
+.chip:hover {
+  border-color: var(--acc);
+  color: var(--acc);
+}
+
+/* ---------- active code ---------- */
+.codeCard {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--rad);
+  padding: 18px;
+  text-align: center;
+}
+
+.code {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  margin-top: 10px;
+  color: var(--acc2);
+  word-break: break-all;
+}
+
+.timer {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--chip);
+  overflow: hidden;
+  margin-top: 16px;
+}
+.timer i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  /* Flat rather than a gradient: with a monochrome palette the two ends sit
+     too close together to read as a gradient, only as a muddy edge. */
+  background: var(--acc);
+  transition: width 1s linear;
+}
+
+.timerRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--dim);
+  margin-top: 7px;
+}
+.timerRow b {
+  color: var(--acc2);
+  font-variant-numeric: tabular-nums;
+}
+
+.codeMeta {
+  font-size: 11.5px;
+  color: var(--dim);
+  line-height: 1.5;
+  margin-top: 14px;
+  text-align: left;
+}
+.codeMeta b {
+  color: var(--fg);
+}
+
+.actions {
+  display: flex;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+/* An expiry notice is status, so it uses --warn rather than the accent. */
+.expired {
+  background: var(--soft);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--rad-sm);
+  padding: 11px 13px;
+  font-size: 12.5px;
+  color: var(--warn);
+  margin-bottom: 16px;
+}

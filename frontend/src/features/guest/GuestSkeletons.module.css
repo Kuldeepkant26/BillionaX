@@ -1,0 +1,91 @@
+/* Geometry mirrors the real screens, so content lands where the placeholder
+   already reserved room for it. */
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.privGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* Matches the real media row: one line, clipped at the edge. */
+.mediaRow {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.mediaCard {
+  flex: none;
+  width: 152px;
+}
+
+.list {
+  margin-top: 18px;
+}
+
+.listRow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+}
+.listRow:last-child {
+  border-bottom: 0;
+}
+
+.listText {
+  flex: 1;
+  min-width: 0;
+}
+
+.offerGrid {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.offerCard {
+  display: block;
+}
+
+.chips {
+  display: flex;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.profileHead {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.profileText {
+  flex: 1;
+  min-width: 0;
+}

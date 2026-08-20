@@ -1,0 +1,167 @@
+/**
+ * Two themes, one component library.
+ *
+ * Both themes define the SAME variable names, scoped to [data-theme] on a
+ * layout root rather than :root. A shared Button/Card/Table written against
+ * var(--acc) therefore renders correctly in either surface with no conditional
+ * logic — that is the whole point of doing it this way.
+ */
+
+/*
+ * The guest app has TWO themes — lumen (light, the default) and emerald-noir
+ * (dark) — toggled from the You tab. The panels stay on ink-minimal and are
+ * not themeable: they are a staff data surface, not a consumer one.
+ *
+ * The palette is deliberately MONOCHROME: cream, white and black. Colour is
+ * reserved for status meaning — an error must look like an error — and is
+ * never used decoratively. If you are reaching for a hue to make something
+ * look nicer, the answer here is contrast or weight instead.
+ *
+ * The theme names are historical. `emerald-noir` carries no emerald; renaming
+ * it would break the persisted `gw-storage.guestTheme` key and the pre-paint
+ * script in index.html for no user-visible gain.
+ */
+
+/* Guest app, light — cream paper, black ink */
+[data-theme="lumen"] {
+  /* White, not cream: the guest app is a consumer surface and reads cleaner
+     on white. The panels keep the warm cream ground — see ink-minimal. */
+  --bg: #ffffff;
+  /* Cards need to separate from a white page, so the raised surface is now
+     the warm tone rather than the ground. */
+  --bg2: #fbfaf7;
+  --fg: #14120f;
+  --dim: #6e6a62;
+  --line: rgba(20, 18, 15, 0.1);
+  --gl: rgba(20, 18, 15, 0.11);
+  /* A hair warmer than the page so a card still reads as raised — pure white
+     on white leaves only the hairline border doing the work. */
+  --card: #fbfaf7;
+  --panel: #fbfaf7;
+  --chip: #f2efe8;
+  --soft: rgba(20, 18, 15, 0.06);
+
+  /* The accent IS the ink. A primary button is black on white. */
+  --acc: #14120f;
+  --acc-fg: #ffffff;
+  --acc2: #3a352c;
+
+  /* Status only — muted so they read as information, not decoration. */
+  --ok: #2f6b4f;
+  --bad: #a6402c;
+  --warn: #7a6432;
+
+  /* Deliberately low alpha: the blur below does the legibility work, and the
+     content scrolling underneath should stay visible through the bar. */
+  --nav-bg: rgba(255, 255, 255, 0.55);
+  --nav-glow: none;
+  --join-glow: rgba(20, 18, 15, 0.12);
+
+  --hero: linear-gradient(145deg, #2b2721, #14120f 60%, #0a0908);
+  --rad: 18px;
+  --rad-sm: 12px;
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-ui: "Schibsted Grotesk", system-ui, sans-serif;
+
+  --shadow: 0 16px 34px rgba(20, 18, 15, 0.1);
+  --shadow-sm: 0 4px 14px rgba(20, 18, 15, 0.07);
+}
+
+/* Guest app, dark — near-black ground, cream ink */
+[data-theme="emerald-noir"] {
+  --bg: #0b0a08;
+  --bg2: #131210;
+  --fg: #f5f1e8;
+  --dim: #9a948a;
+  --line: rgba(245, 241, 232, 0.09);
+  --gl: rgba(245, 241, 232, 0.1);
+  --card: rgba(245, 241, 232, 0.045);
+  --panel: rgba(245, 241, 232, 0.045);
+  --chip: rgba(245, 241, 232, 0.075);
+  --soft: rgba(245, 241, 232, 0.09);
+
+  /* Inverted against lumen: on a black ground the accent is the cream, so a
+     primary button is a cream pill with black text. */
+  --acc: #f5f1e8;
+  --acc-fg: #0b0a08;
+  --acc2: #cfc8ba;
+
+  /* Status only — lifted for legibility on black, still muted. */
+  --ok: #6fb894;
+  --bad: #e08267;
+  --warn: #c9b98f;
+
+  --nav-bg: rgba(19, 18, 16, 0.55);
+  --nav-glow: none;
+  --join-glow: rgba(245, 241, 232, 0.35);
+
+  --hero: linear-gradient(145deg, #2a2723, #131210 60%, #0b0a08);
+  --rad: 18px;
+  --rad-sm: 12px;
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-ui: "Schibsted Grotesk", system-ui, sans-serif;
+
+  --shadow: 0 16px 34px rgba(0, 0, 0, 0.42);
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+/* Hotel + admin panels — cream, hairline borders, editorial restraint */
+[data-theme="ink-minimal"] {
+  --bg: #f7f4ec;
+  --bg2: #ffffff;
+  --fg: #14120f;
+  --dim: #6e6a62;
+  --line: #e4dfd3;
+  --gl: #e4dfd3;
+  --card: #ffffff;
+  --panel: #ffffff;
+  --chip: #efebe1;
+  --soft: #efebe1;
+
+  --acc: #14120f;
+  --acc-fg: #ffffff;
+  --acc2: #3a352c;
+  --ok: #2f6b4f;
+  --bad: #a6402c;
+  --warn: #7a6432;
+
+  --rail: #0b0a08;
+  --railfg: #f5f1e8;
+  --raildim: #8b857a;
+  --railact: #f5f1e8;
+  --railacttx: #0b0a08;
+
+  /* Defined for completeness: the panels have no floating nav, but every
+     theme must define every token so a shared component never renders
+     against an undefined variable. */
+  --nav-bg: #ffffff;
+  --nav-glow: none;
+  --join-glow: rgba(20, 18, 15, 0.1);
+
+  --hero: linear-gradient(145deg, #2b2721, #14120f 60%, #0a0908);
+  --rad: 10px;
+  --rad-sm: 8px;
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-ui: "Schibsted Grotesk", system-ui, sans-serif;
+
+  --shadow: 0 16px 42px rgba(20, 18, 15, 0.1);
+  --shadow-sm: 0 2px 8px rgba(20, 18, 15, 0.06);
+}
+
+.theme-root {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  min-height: 100svh;
+}
+
+/* The guest app has a floating bottom nav (58px + 14px offset), so toasts sit
+   above it rather than covering it. Both guest themes need this; panels have
+   no such nav. */
+[data-theme="emerald-noir"] .toasts,
+[data-theme="lumen"] .toasts {
+  bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+}

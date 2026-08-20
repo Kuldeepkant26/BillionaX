@@ -1,0 +1,49 @@
+import api, { unwrap } from "./axiosInstance.js";
+
+export const dashboard = () => api.get("/hotel/dashboard").then(unwrap);
+export const listMembers = (params) => api.get("/hotel/members", { params }).then(unwrap);
+export const allocate = (payload) => api.post("/hotel/members/allocate", payload).then(unwrap);
+
+export const verifyVoucher = (payload) => api.post("/hotel/vouchers/verify", payload).then(unwrap);
+export const redeemVoucher = (payload) => api.post("/hotel/vouchers/redeem", payload).then(unwrap);
+
+export const listTransactions = (params) => api.get("/hotel/transactions", { params }).then(unwrap);
+
+export const creditMember = (membershipId, payload) =>
+  api.post(`/hotel/members/${membershipId}/credit`, payload).then(unwrap);
+export const recordStay = (membershipId, payload) =>
+  api.post(`/hotel/members/${membershipId}/stay`, payload).then(unwrap);
+
+export const coinBalance = () => api.get("/hotel/coins/balance").then(unwrap);
+export const listPurchases = () => api.get("/hotel/coins/purchases").then(unwrap);
+export const listPacks = () => api.get("/hotel/coins/packs").then(unwrap);
+export const buyCoins = (payload) => api.post("/hotel/coins/buy", payload).then(unwrap);
+
+export const listContents = () => api.get("/hotel/contents").then(unwrap);
+export const createContent = (payload) => api.post("/hotel/contents", payload).then(unwrap);
+export const updateContent = (id, payload) => api.patch(`/hotel/contents/${id}`, payload).then(unwrap);
+export const deleteContent = (id) => api.delete(`/hotel/contents/${id}`).then(unwrap);
+
+export const listOffers = () => api.get("/hotel/offers").then(unwrap);
+export const createOffer = (payload) => api.post("/hotel/offers", payload).then(unwrap);
+export const updateOffer = (id, payload) => api.patch(`/hotel/offers/${id}`, payload).then(unwrap);
+export const deleteOffer = (id) => api.delete(`/hotel/offers/${id}`).then(unwrap);
+
+// Note these DO forward `params`, unlike listContents/listOffers above:
+// usePaginatedList calls fetcher(params), so a signature that ignores its
+// argument silently drops the page, limit and filters on the floor.
+export const listPrivileges = (params) => api.get("/hotel/privileges", { params }).then(unwrap);
+export const createPrivilege = (payload) => api.post("/hotel/privileges", payload).then(unwrap);
+export const updatePrivilege = (id, payload) =>
+  api.patch(`/hotel/privileges/${id}`, payload).then(unwrap);
+export const deletePrivilege = (id) => api.delete(`/hotel/privileges/${id}`).then(unwrap);
+
+export const listStaff = () => api.get("/hotel/staff").then(unwrap);
+export const createStaff = (payload) => api.post("/hotel/staff", payload).then(unwrap);
+export const setStaffActive = (id, isActive) =>
+  api.patch(`/hotel/staff/${id}`, { isActive }).then(unwrap);
+
+export const getSettings = () => api.get("/hotel/settings").then(unwrap);
+export const createLogoUpload = () => api.post("/hotel/settings/logo-upload").then(unwrap);
+export const createContentUpload = () => api.post("/hotel/content/image-upload").then(unwrap);
+export const updateSettings = (payload) => api.patch("/hotel/settings", payload).then(unwrap);

@@ -1,0 +1,65 @@
+.title {
+  font-size: 22px;
+}
+
+.sub {
+  color: var(--dim);
+  font-size: 12.5px;
+  margin: 5px 0 18px;
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.item {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--rad);
+  overflow: hidden;
+}
+
+.img {
+  display: block;
+  height: 132px;
+  background: var(--hero);
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+.img::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(85% 60% at 22% 12%, rgba(255, 255, 255, 0.24), transparent 62%);
+}
+
+.body {
+  padding: 14px;
+}
+.body b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+}
+.body p {
+  font-size: 12.5px;
+  color: var(--dim);
+  line-height: 1.5;
+  margin-top: 5px;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 11px;
+}
+.meta i {
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--dim);
+}

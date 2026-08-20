@@ -1,0 +1,50 @@
+/**
+ * Tailwind v4 entry point.
+ *
+ * Loaded FIRST, before index.css and the rest — Tailwind's preflight is a
+ * reset, and letting it land after the app's own reset would undo rules the
+ * existing pages rely on (heading margins, button appearance, table borders).
+ * Anything the app sets afterwards deliberately wins.
+ *
+ * v4 is configured in CSS rather than a tailwind.config.js — there is no
+ * config file to keep in sync.
+ */
+@import "tailwindcss";
+
+/*
+ * Existing CSS Modules are scoped and generate their own hashed class names,
+ * so they cannot collide with Tailwind utilities. The one real collision risk
+ * is the GLOBAL class names in components.css — .card, .btn, .input, .badge,
+ * .table — which are plain names Tailwind does not define, so they are safe
+ * today. Do not add a global class that shadows a utility name (.hidden,
+ * .block, .fixed); prefix or scope it instead.
+ */
+
+/*
+ * Bridges the app's design tokens into Tailwind, so `bg-canvas` and
+ * `text-ink` resolve to the SAME variables the existing CSS uses and both
+ * systems stay in step through a theme switch.
+ *
+ * The names are deliberately not Tailwind's defaults: `bg-white` should keep
+ * meaning literal white, while `bg-canvas` follows the active theme.
+ */
+@theme inline {
+  --color-canvas: var(--bg);
+  --color-surface: var(--bg2);
+  --color-card: var(--card);
+  --color-ink: var(--fg);
+  --color-muted: var(--dim);
+  --color-hairline: var(--line);
+  --color-chip: var(--chip);
+  --color-accent: var(--acc);
+  --color-accent-fg: var(--acc-fg);
+  --color-ok: var(--ok);
+  --color-bad: var(--bad);
+  --color-warn: var(--warn);
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-ui);
+
+  --radius-token: var(--rad);
+  --radius-token-sm: var(--rad-sm);
+}

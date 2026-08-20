@@ -1,0 +1,199 @@
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { ROLES } from "../config/constants.js";
+import * as hotelService from "../services/hotel.service.js";
+import * as coinService from "../services/coin.service.js";
+import * as reportService from "../services/report.service.js";
+import * as settingsService from "../services/settings.service.js";
+import * as adminUserService from "../services/adminUser.service.js";
+
+export const dashboard = asyncHandler(async (req, res) => {
+  const data = await reportService.adminDashboard();
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const listHotels = asyncHandler(async (req, res) => {
+  const { q, isActive, city, lowInventory, page = 1, limit = 25 } = req.query;
+  const data = await hotelService.listHotels({
+    q,
+    isActive,
+    city,
+    lowInventory,
+    page: Number(page),
+    limit: Number(limit),
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+/** Distinct cities for the hotels filter dropdown. */
+export const listHotelCities = asyncHandler(async (req, res) => {
+  const cities = await hotelService.listHotelCities();
+  res.status(200).json(new ApiResponse(200, { cities }));
+});
+
+export const createHotel = asyncHandler(async (req, res) => {
+  const hotel = await hotelService.createHotel(req.body);
+  res.status(201).json(new ApiResponse(201, { hotel }, `${hotel.name} registered`));
+});
+
+export const getHotel = asyncHandler(async (req, res) => {
+  const [hotel, staffPage, purchasePage, qr] = await Promise.all([
+    hotelService.getHotelOrFail(req.params.hotelId),
+    // Bounded rather than unlimited: this composite previously loaded every
+    // staff row and every purchase a hotel had ever made. The detail page only
+    // renders a summary, so a generous cap is enough.
+    hotelService.listHotelStaff({ hotelId: req.params.hotelId, limit: 100 }),
+    coinService.listPurchases({ hotelId: req.params.hotelId, limit: 100 }),
+    hotelService.getQrToken(req.params.hotelId),
+  ]);
+
+  res.status(200).json(
+    new ApiResponse(200, {
+      hotel,
+      // Kept as bare arrays — the detail page maps over them directly.
+      staff: staffPage.staff,
+      purchases: purchasePage.purchases,
+      staffTotal: staffPage.total,
+      purchaseTotal: purchasePage.total,
+      qr,
+    })
+  );
+});
+
+export const updateHotel = asyncHandler(async (req, res) => {
+  const hotel = await hotelService.updateHotel(req.params.hotelId, req.body);
+  res.status(200).json(new ApiResponse(200, { hotel }, "Hotel updated"));
+});
+
+export const createHotelAdmin = asyncHandler(async (req, res) => {
+  const { name, email, password, role } = req.body;
+  const user = await hotelService.createHotelUser({
+    hotelId: req.params.hotelId,
+    name,
+    email,
+    password,
+    role: role || ROLES.HOTEL_ADMIN,
+  });
+  res.status(201).json(new ApiResponse(201, { user }, "Hotel account created"));
+});
+
+export const sellCoins = asyncHandler(async (req, res) => {
+  const { coins, amountPaid, paymentRef, note } = req.body;
+
+  const result = await coinService.recordPurchase({
+    hotelId: req.params.hotelId,
+    coins: Number(coins),
+    amountPaid: Number(amountPaid),
+    paymentRef,
+    note,
+    recordedBy: req.user._id,
+  });
+
+  res
+    .status(201)
+    .json(new ApiResponse(201, result, `${coins} coins added to the hotel's inventory`));
+});
+
+export const hotelTransactions = asyncHandler(async (req, res) => {
+  const { type, outlet, minCoins, from, to, page = 1, limit = 25 } = req.query;
+  const data = await reportService.listTransactions({
+    hotelId: req.params.hotelId,
+    type,
+    outlet,
+    minCoins,
+    from,
+    to,
+    page: Number(page),
+    limit: Number(limit),
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const listTransactions = asyncHandler(async (req, res) => {
+  const { type, hotelId, outlet, minCoins, minBillAmount, from, to, page = 1, limit = 25 } =
+    req.query;
+  const data = await reportService.listTransactions({
+    type,
+    hotelId,
+    outlet,
+    minCoins,
+    minBillAmount,
+    from,
+    to,
+    page: Number(page),
+    limit: Number(limit),
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const listGuests = asyncHandler(async (req, res) => {
+  const { q, hasBalance, joinedFrom, joinedTo, page = 1, limit = 25 } = req.query;
+  const data = await reportService.listGuests({
+    q,
+    hasBalance,
+    joinedFrom,
+    joinedTo,
+    page: Number(page),
+    limit: Number(limit),
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const deleteHotel = asyncHandler(async (req, res) => {
+  await adminUserService.deleteHotel(req.params.hotelId);
+  res.status(200).json(new ApiResponse(200, null, "Hotel removed"));
+});
+
+// ---- platform admins ----
+
+export const listAdmins = asyncHandler(async (req, res) => {
+  const { isActive, page = 1, limit = 25 } = req.query;
+  const data = await adminUserService.listAdmins({
+    isActive,
+    page: Number(page),
+    limit: Number(limit),
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const createAdmin = asyncHandler(async (req, res) => {
+  const user = await adminUserService.createAdmin(req.body);
+  res.status(201).json(new ApiResponse(201, { user }, "Admin created"));
+});
+
+export const updateAdmin = asyncHandler(async (req, res) => {
+  const user = await adminUserService.updateAdmin({ userId: req.params.id, ...req.body });
+  res.status(200).json(new ApiResponse(200, { user }, "Admin updated"));
+});
+
+export const deleteAdmin = asyncHandler(async (req, res) => {
+  await adminUserService.deleteAdmin({ userId: req.params.id, actingUserId: req.user._id });
+  res.status(200).json(new ApiResponse(200, null, "Admin removed"));
+});
+
+// ---- guests ----
+
+export const getGuest = asyncHandler(async (req, res) => {
+  const data = await adminUserService.getGuest(req.params.id);
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const updateGuest = asyncHandler(async (req, res) => {
+  const guest = await adminUserService.updateGuest({ guestId: req.params.id, ...req.body });
+  res.status(200).json(new ApiResponse(200, { guest }, "Guest updated"));
+});
+
+export const deleteGuest = asyncHandler(async (req, res) => {
+  await adminUserService.deleteGuest(req.params.id);
+  res.status(200).json(new ApiResponse(200, null, "Guest removed"));
+});
+
+export const getSettings = asyncHandler(async (req, res) => {
+  const settings = await settingsService.getSettings({ fresh: true });
+  res.status(200).json(new ApiResponse(200, { settings }));
+});
+
+export const updateSettings = asyncHandler(async (req, res) => {
+  const settings = await settingsService.updateSettings(req.body, req.user._id);
+  res.status(200).json(new ApiResponse(200, { settings }, "Settings saved"));
+});

@@ -1,0 +1,97 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 9px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--fg);
+}
+.bar:disabled {
+  cursor: default;
+}
+
+/* Serves both an <img> logo and the initial fallback, so the two never differ
+   in size or shape. object-fit keeps a non-square logo from distorting. */
+.dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--hero);
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1;
+}
+
+.meta {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.25;
+}
+.meta b {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.meta i {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--dim);
+  text-transform: capitalize;
+}
+
+.action {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--acc);
+  padding-right: 8px;
+  flex: none;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--rad-sm);
+  padding: 11px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--fg);
+}
+.item:hover {
+  border-color: var(--acc);
+}
+.itemOn {
+  border-color: var(--acc);
+  background: var(--soft);
+}
+
+.bal {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  flex: none;
+}
