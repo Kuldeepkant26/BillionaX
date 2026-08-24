@@ -29,31 +29,45 @@ const GuestLayout = () => {
 
   return (
     <div className="theme-root" data-theme={guestTheme}>
-      <div className={styles.shell}>
-        <main className={showNav ? styles.mainWithNav : styles.main}>
+      {/* The guest app is used on a phone at a reception desk, so it is designed
+          mobile-first and simply centres itself on larger screens. */}
+      <div className="w-full max-w-[460px] mx-auto min-h-[100svh] flex flex-col relative bg-canvas">
+        <main className={`flex-1 px-[18px] pt-5 ${showNav ? "pb-24" : "pb-7"}`}>
           <Outlet />
         </main>
 
         {showNav && (
-          <nav className={styles.nav} aria-label="Main">
+          <nav
+            className={`fixed bottom-3.5 left-1/2 -translate-x-1/2 w-[min(432px,calc(100vw-28px))] h-[58px] rounded-full flex items-center justify-around px-1.5 z-[60] ${styles.nav}`}
+            aria-label="Main"
+          >
             {NAV.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
-                className={({ isActive }) => `${styles.navItem} ${isActive ? styles.on : ""}`}
+                className={({ isActive }) =>
+                  // Padding tightened from 14px so five tabs fit a 360px phone
+                  // without wrapping.
+                  `flex flex-col items-center gap-[3px] px-[9px] py-[7px] rounded-full text-muted transition-[color,background] duration-150 ${
+                    styles.navItem
+                  } ${isActive ? styles.on : ""}`
+                }
               >
-                <span className={styles.iconWrap}>
+                <span className="relative grid place-items-center">
                   <svg viewBox="0 0 20 20" aria-hidden="true">
                     <path d={item.icon} />
                   </svg>
                   {item.badge && unread > 0 && (
-                    <b className={styles.badge} aria-label={`${unread} unread`}>
+                    <b
+                      className="absolute -top-1 -right-[7px] min-w-[15px] h-[15px] px-1 rounded-full bg-[var(--bad)] text-white text-[9px] font-bold leading-[15px] text-center tabular-nums"
+                      aria-label={`${unread} unread`}
+                    >
                       {unread > 9 ? "9+" : unread}
                     </b>
                   )}
                 </span>
-                <i>{item.label}</i>
+                <i className="not-italic text-[10px]">{item.label}</i>
               </NavLink>
             ))}
           </nav>

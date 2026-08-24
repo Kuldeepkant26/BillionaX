@@ -20,6 +20,9 @@ const STEP = { PHONE: "phone", OTP: "otp" };
  * code, and lands with a membership card. `slug` is optional — /login reuses
  * this same flow without a hotel context.
  */
+// The three fanned cards share every rule but their offset and depth.
+const mini = "absolute w-[190px] h-[116px] rounded-[15px] p-[13px] overflow-hidden text-white";
+
 const JoinPage = () => {
   const { slug } = useParams();
   const [params] = useSearchParams();
@@ -113,35 +116,41 @@ const JoinPage = () => {
   if (loadingHotel) return <Loading />;
 
   return (
-    <div className={styles.wrap}>
-      <div className={styles.hero}>
+    <div className="pt-1.5">
+      <div className={`relative h-[210px] -mt-5 -mx-[18px] mb-[22px] overflow-hidden ${styles.hero}`}>
         <span className={styles.orbA} />
         <span className={styles.orbB} />
-        <div className={styles.cards}>
-          <div className={`${styles.mini} ${styles.c3}`} />
-          <div className={`${styles.mini} ${styles.c2}`} />
-          <div className={`${styles.mini} ${styles.c1}`}>
+        <div className="absolute inset-0">
+          <div className={`${mini} top-[30px] -ml-7 opacity-[0.42] z-[1] ${styles.mini}`} />
+          <div className={`${mini} top-[52px] -ml-3.5 opacity-70 z-[2] ${styles.mini}`} />
+          <div className={`${mini} top-[74px] z-[3] ${styles.mini}`}>
             <span className={styles.shine} />
-            <b>WAVE COINS</b>
-            <i>BILLIONAX</i>
+            <b className="text-[8.5px] tracking-[0.16em] font-bold opacity-[0.92]">WAVE COINS</b>
+            <i className="absolute left-[13px] bottom-[13px] not-italic text-[9px] tracking-[0.14em] opacity-[0.78]">
+              BILLIONAX
+            </i>
           </div>
         </div>
       </div>
 
-      <h1 className={`display ${styles.title}`}>
-        Your stay, <em>rewarded</em>.
+      <h1 className="display text-[27px] leading-[1.14]">
+        Your stay, <em className="italic text-accent">rewarded</em>.
       </h1>
 
-      <p className={styles.sub}>
+      <p className="text-muted text-[13px] leading-[1.55] mt-[9px] mb-5">
         {hotel
           ? `You're at ${hotel.name}. Turn every bill here into coins you can spend right away.`
           : "Sign in with your phone number to see your coins."}
       </p>
 
-      {message && <div className={styles.alert}>{message}</div>}
+      {message && (
+        <div className="bg-[color-mix(in_srgb,var(--bad)_12%,transparent)] border-l-[3px] border-l-[var(--bad)] rounded-token-sm px-3 py-2.5 text-[12.5px] text-[var(--bad)] mb-4">
+          {message}
+        </div>
+      )}
 
       {step === STEP.PHONE ? (
-        <form onSubmit={sendCode} className={styles.form}>
+        <form onSubmit={sendCode} className="mt-1">
           <Field label="Mobile number" error={errors.phone}>
             <PhoneInput
               value={form.phone}
@@ -167,14 +176,15 @@ const JoinPage = () => {
           </Button>
         </form>
       ) : (
-        <form onSubmit={verify} className={styles.form}>
-          <p className={styles.sentTo}>
-            We sent a code to <b>{form.phone}</b>
+        <form onSubmit={verify} className="mt-1">
+          <p className="text-[13px] text-muted mb-3.5">
+            We sent a code to <b className="text-ink">{form.phone}</b>
           </p>
 
           {devOtp && (
-            <div className={styles.devNote}>
-              Development mode — any code works. Yours is <b>{devOtp}</b>
+            <div className="bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] border border-dashed border-[color-mix(in_srgb,var(--warn)_45%,transparent)] rounded-token-sm px-3 py-2.5 text-xs text-[var(--warn)] mb-3.5">
+              Development mode — any code works. Yours is{" "}
+              <b className="font-display text-[15px] tracking-[2px]">{devOtp}</b>
             </div>
           )}
 
@@ -185,7 +195,7 @@ const JoinPage = () => {
               onChange={change("otp")}
               error={errors.otp}
               placeholder="1234"
-              className={styles.otpInput}
+              className="font-display text-[22px] tracking-[6px] text-center"
               autoFocus
               required
             />
@@ -197,7 +207,7 @@ const JoinPage = () => {
 
           <button
             type="button"
-            className={styles.linkBtn}
+            className="block w-full bg-none border-0 text-muted hover:text-ink text-[12.5px] mt-3.5 cursor-pointer underline"
             onClick={() => {
               setStep(STEP.PHONE);
               setDevOtp("");

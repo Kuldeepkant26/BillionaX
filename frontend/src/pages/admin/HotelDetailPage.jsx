@@ -26,7 +26,6 @@ import {
 import { PageHead } from "../../features/panel/PageHead.jsx";
 import { ROUTES } from "../../constants/routePaths.js";
 import { formatCoins, formatCurrency, formatDate } from "../../utils/format.js";
-import styles from "./HotelDetailPage.module.css";
 
 const HotelDetailPage = () => {
   const { hotelId } = useParams();
@@ -161,12 +160,15 @@ const HotelDetailPage = () => {
   };
 
   const alert = message && (
-    <div className={styles.alert}>{message}</div>
+    <div className="notice-bad">{message}</div>
   );
 
   return (
     <div>
-      <Link to={ROUTES.ADMIN_HOTELS} className={styles.back}>
+      <Link
+        to={ROUTES.ADMIN_HOTELS}
+        className="inline-block text-xs text-muted hover:text-ink mb-3"
+      >
         ← All hotels
       </Link>
 
@@ -201,7 +203,7 @@ const HotelDetailPage = () => {
         <Kpi label="Redeemed" value={formatCoins(hotel.totalCoinsRedeemed)} />
       </div>
 
-      <div className={styles.cols}>
+      <div className="grid grid-cols-1 [@media(min-width:901px)]:grid-cols-[1.3fr_1fr] gap-4 mt-4 items-start">
         <Card title="Purchase history">
           <Table
             columns={[
@@ -235,7 +237,7 @@ const HotelDetailPage = () => {
                 <tr key={u._id}>
                   <td>
                     <b>{u.name}</b>
-                    <div className="muted" style={{ fontSize: 11 }}>
+                    <div className="muted text-[11px]">
                       {u.email}
                     </div>
                   </td>
@@ -254,9 +256,9 @@ const HotelDetailPage = () => {
             />
           </Card>
 
-          <Card title="Guest QR link" className={styles.spaced}>
-            <div className={styles.url}>{joinUrl}</div>
-            <p className={styles.note}>
+          <Card title="Guest QR link" className="mt-4">
+            <div className="bg-chip rounded-token-sm p-3 text-xs break-all font-mono">{joinUrl}</div>
+            <p className="text-[11.5px] text-muted leading-[1.5] mt-2.5">
               The hotel prints this as a QR code for reception, rooms and outlets.
             </p>
           </Card>
@@ -405,7 +407,7 @@ const HotelDetailPage = () => {
             max={100}
           />
         </Field>
-        <label className={styles.check}>
+        <label className="flex items-center gap-[9px] text-[13px] cursor-pointer">
           <input
             type="checkbox"
             checked={editForm.isActive}
@@ -420,7 +422,7 @@ const HotelDetailPage = () => {
         title="Remove this hotel?"
         onClose={() => setDeleteOpen(false)}
         footer={
-          <div className="row" style={{ gap: 9 }}>
+          <div className="flex items-center gap-[9px]">
             <Button variant="ghost" block onClick={() => setDeleteOpen(false)}>
               Cancel
             </Button>
@@ -430,11 +432,11 @@ const HotelDetailPage = () => {
           </div>
         }
       >
-        <p className={styles.confirm}>
+        <p className="confirm-text">
           <b>{hotel.name}</b>, its staff accounts, content and memberships will be removed. This
           cannot be undone.
         </p>
-        <div className={styles.warnBox}>
+        <div className="notice-warn mt-3.5">
           If guests still hold coins at this hotel the removal is refused — those coins are a
           liability the hotel has already paid for. Deactivate it instead if you only want to pause
           it.

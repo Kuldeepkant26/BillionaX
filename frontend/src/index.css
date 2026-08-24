@@ -5,6 +5,15 @@
  * [data-theme]. Defining them on :root here (or a prefers-color-scheme block)
  * would fight the guest theme, which is dark by design regardless of the OS
  * setting.
+ *
+ * The ELEMENT resets below sit in `@layer base` on purpose. Unlayered CSS beats
+ * every layered rule no matter the order or specificity, so while these were
+ * unlayered `a { color: inherit }` silently defeated Tailwind's `text-*` on
+ * every link, button and input in the app — the panel rail's active tab is
+ * where it showed up first, as an icon that stayed --fg instead of taking the
+ * active colour. Keeping them layered lets a utility override an element
+ * default, which is what a utility is for. Anything that must NOT be
+ * overridable belongs outside the layer.
  */
 
 *,
@@ -48,35 +57,37 @@ body[data-theme="ink-minimal"] {
   flex-direction: column;
 }
 
-h1,
-h2,
-h3,
-h4 {
-  margin: 0;
-  font-weight: 600;
-  line-height: 1.15;
-}
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    margin: 0;
+    font-weight: 600;
+    line-height: 1.15;
+  }
 
-p {
-  margin: 0;
-}
+  p {
+    margin: 0;
+  }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
-  color: inherit;
-}
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 
-table {
-  border-collapse: collapse;
-  width: 100%;
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
 }
 
 :focus-visible {

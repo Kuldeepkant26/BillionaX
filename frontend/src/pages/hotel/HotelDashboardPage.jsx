@@ -23,10 +23,10 @@ const HotelDashboardPage = () => {
 
   return (
     <div>
-      <header className={styles.head}>
+      <header className="mb-5">
         <div>
-          <h1 className={`display ${styles.title}`}>Dashboard</h1>
-          <p className={styles.sub}>{d.hotel?.name}</p>
+          <h1 className="display text-[26px] tracking-[-0.6px]">Dashboard</h1>
+          <p className="text-muted text-[12.5px] mt-1">{d.hotel?.name}</p>
         </div>
       </header>
 
@@ -42,7 +42,7 @@ const HotelDashboardPage = () => {
         />
       </div>
 
-      <div className={styles.cols}>
+      <div className="grid grid-cols-1 [@media(min-width:901px)]:grid-cols-[1.4fr_1fr] gap-4 mt-4 items-start">
         <Card title="Coin flow, last 7 days">
           <BarSeries
             series={d.series || []}
@@ -57,17 +57,24 @@ const HotelDashboardPage = () => {
           {!d.recent?.length ? (
             <Empty title="No activity yet" hint="Transactions will appear here." />
           ) : (
-            <div className={styles.list}>
+            <div className="flex flex-col">
               {d.recent.map((t) => (
-                <div key={t._id} className={styles.row}>
+                <div
+                  key={t._id}
+                  className="flex items-center gap-[11px] py-2.5 border-b border-hairline last:border-b-0"
+                >
                   <span className="avatar">{initials(t.guestId?.name)}</span>
-                  <span className={styles.meta}>
-                    <b>{t.guestId?.name || "Guest"}</b>
-                    <i>
+                  <span className="flex-1 min-w-0 leading-[1.3]">
+                    <b className="block text-[12.5px] font-semibold">{t.guestId?.name || "Guest"}</b>
+                    <i className="not-italic text-[11px] text-muted">
                       {LABEL[t.type]} · {formatDateTime(t.createdAt)}
                     </i>
                   </span>
-                  <span className={`${styles.amount} ${t.coins > 0 ? styles.up : ""}`}>
+                  <span
+                    className={`text-[12.5px] font-semibold whitespace-nowrap tabular-nums ${
+                      t.coins > 0 ? "text-[var(--ok)]" : ""
+                    }`}
+                  >
                     {t.coins > 0 ? "+" : "−"}
                     {formatCoins(Math.abs(t.coins))}
                   </span>
@@ -78,28 +85,30 @@ const HotelDashboardPage = () => {
         </Card>
       </div>
 
-      <div className={styles.cols}>
+      <div className="grid grid-cols-1 [@media(min-width:901px)]:grid-cols-[1.4fr_1fr] gap-4 mt-4 items-start">
         <Card title="Members">
-          <div className={styles.pair}>
+          <div className="grid grid-cols-2 gap-3">
             <span>
-              <u>Total members</u>
-              <b>{formatCoins(d.members)}</b>
+              <u className="block no-underline text-[9.5px] tracking-[0.09em] uppercase text-muted font-bold">Total members</u>
+              <b className="block font-display text-2xl font-semibold mt-1">{formatCoins(d.members)}</b>
             </span>
             <span>
-              <u>Coins outstanding</u>
-              <b>{formatCoinsCompact(d.outstandingCoins)}</b>
+              <u className="block no-underline text-[9.5px] tracking-[0.09em] uppercase text-muted font-bold">Coins outstanding</u>
+              <b className="block font-display text-2xl font-semibold mt-1">{formatCoinsCompact(d.outstandingCoins)}</b>
             </span>
           </div>
-          <p className={styles.note}>
+          <p className="text-[11.5px] text-muted leading-[1.5] mt-3.5">
             Outstanding coins are a liability — guests can spend them against future bills here.
           </p>
         </Card>
 
         <Card title="Right now">
-          <div className={styles.live}>
-            <span className={styles.pulse} />
-            <b>{d.activeVouchers || 0} codes running</b>
-            <i>Guests waiting to pay at an outlet</i>
+          <div className="bg-[var(--soft)] rounded-token-sm p-3.5 relative">
+            <span
+              className={`absolute top-3.5 right-3.5 w-[9px] h-[9px] rounded-full bg-[var(--acc2)] ${styles.pulse}`}
+            />
+            <b className="block font-display text-[17px] font-semibold">{d.activeVouchers || 0} codes running</b>
+            <i className="not-italic text-[11.5px] text-muted">Guests waiting to pay at an outlet</i>
           </div>
         </Card>
       </div>

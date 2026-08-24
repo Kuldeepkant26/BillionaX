@@ -5,7 +5,6 @@ import { useCountdown } from "../../hooks/useCountdown.js";
 import { Button, Empty, Field, Input } from "../../components/common/index.jsx";
 import { RedeemSkeleton } from "../../features/guest/GuestSkeletons.jsx";
 import { formatCoins, mmss } from "../../utils/format.js";
-import styles from "./RedeemPage.module.css";
 
 const RedeemPage = () => {
   const memberships = useAppStore((s) => s.memberships);
@@ -83,33 +82,38 @@ const RedeemPage = () => {
 
   return (
     <div>
-      <h1 className={`display ${styles.title}`}>Use your coins</h1>
-      <p className={styles.sub}>
-        You have <b>{formatCoins(balance)}</b> coins at {active.hotelId?.name}. Generate a code and
+      <h1 className="display text-[22px]">Use your coins</h1>
+      <p className="text-muted text-[13px] leading-[1.55] mt-2 mb-5">
+        You have <b className="text-ink">{formatCoins(balance)}</b> coins at {active.hotelId?.name}. Generate a code and
         show it to the staff before they settle your bill.
       </p>
 
       {voucher && !expired ? (
-        <div className={styles.codeCard}>
+        <div className="bg-card border border-hairline rounded-token p-[18px] text-center">
           <span className="kicker">One-time code</span>
-          <div className={styles.code}>{voucher.code}</div>
-
-          <div className={styles.timer}>
-            <i style={{ width: `${Math.min(100, (seconds / 600) * 100)}%` }} />
+          <div className="font-display text-[27px] font-semibold tracking-[3px] mt-2.5 text-[var(--acc2)] break-all">
+            {voucher.code}
           </div>
-          <div className={styles.timerRow}>
+
+          <div className="h-1.5 rounded-full bg-chip overflow-hidden mt-4">
+            <i
+              className="block h-full rounded-full bg-accent transition-[width] duration-1000 ease-linear"
+              style={{ width: `${Math.min(100, (seconds / 600) * 100)}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-[10.5px] text-muted mt-[7px]">
             <span>
-              Expires in <b>{mmss(seconds)}</b>
+              Expires in <b className="text-[var(--acc2)] tabular-nums">{mmss(seconds)}</b>
             </span>
             <span>Works once</span>
           </div>
 
-          <div className={styles.codeMeta}>
-            Worth up to <b>{formatCoins(voucher.coinsRequested)}</b> coins. The final discount
+          <div className="text-[11.5px] text-muted leading-[1.5] mt-3.5 text-left">
+            Worth up to <b className="text-ink">{formatCoins(voucher.coinsRequested)}</b> coins. The final discount
             depends on your tier's cap and the bill amount.
           </div>
 
-          <div className={styles.actions}>
+          <div className="flex gap-[9px] mt-4">
             <Button variant="ghost" block onClick={copy}>
               Copy code
             </Button>
@@ -121,12 +125,12 @@ const RedeemPage = () => {
       ) : (
         <>
           {expired && (
-            <div className={styles.expired}>
+            <div className="bg-[var(--soft)] border-l-[3px] border-l-[var(--warn)] rounded-token-sm px-[13px] py-[11px] text-[12.5px] text-[var(--warn)] mb-4">
               That code expired. Generate a new one when you're ready to pay.
             </div>
           )}
 
-          <div className={styles.form}>
+          <div className="mt-1">
             <Field label="Coins to use" error={error}>
               <Input
                 type="number"
@@ -140,16 +144,23 @@ const RedeemPage = () => {
               />
             </Field>
 
-            <div className={styles.quick}>
+            <div className="flex flex-wrap gap-[7px] -mt-1 mb-[18px]">
               {[500, 1000, 2500].map(
                 (amount) =>
                   amount <= balance && (
-                    <button key={amount} className={styles.chip} onClick={() => setCoins(String(amount))}>
+                    <button
+                      key={amount}
+                      className="bg-chip border border-hairline rounded-full px-[13px] py-[7px] text-[11.5px] font-semibold text-ink cursor-pointer hover:border-accent hover:text-accent"
+                      onClick={() => setCoins(String(amount))}
+                    >
                       {formatCoins(amount)}
                     </button>
                   )
               )}
-              <button className={styles.chip} onClick={() => setCoins(String(balance))}>
+              <button
+                className="bg-chip border border-hairline rounded-full px-[13px] py-[7px] text-[11.5px] font-semibold text-ink cursor-pointer hover:border-accent hover:text-accent"
+                onClick={() => setCoins(String(balance))}
+              >
                 All {formatCoins(balance)}
               </button>
             </div>

@@ -7,7 +7,10 @@ import { GUEST_THEMES } from "../../store/slices/themeSlice.js";
 import { Button, Card, Field, Input, Modal, Skeleton } from "../../components/common/index.jsx";
 import { AvatarUpload } from "../../features/guest/AvatarUpload.jsx";
 import { formatCoins, maskPhone } from "../../utils/format.js";
-import styles from "./ProfilePage.module.css";
+
+// Shared by the two stat tiles below.
+const statLabel = "block no-underline text-[9.5px] tracking-[0.08em] uppercase text-muted";
+const statValue = "block font-display text-[19px] font-semibold mt-1";
 
 const ProfilePage = () => {
   const user = useAppStore((s) => s.user);
@@ -66,14 +69,14 @@ const ProfilePage = () => {
 
   return (
     <div>
-      <h1 className={`display ${styles.title}`}>Your account</h1>
+      <h1 className="display text-[22px] mb-[18px]">Your account</h1>
 
-      <Card className={styles.card}>
-        <div className={styles.identity}>
+      <Card className="mb-3.5">
+        <div className="flex items-center gap-[13px]">
           <AvatarUpload user={user} />
           <span className="grow">
-            <b>{user?.name}</b>
-            <i>{user?.email || maskPhone(user?.phone)}</i>
+            <b className="block font-display text-[17px] font-semibold">{user?.name}</b>
+            <i className="not-italic text-xs text-muted">{user?.email || maskPhone(user?.phone)}</i>
           </span>
           <Button size="sm" variant="ghost" onClick={openEdit}>
             Edit
@@ -85,27 +88,27 @@ const ProfilePage = () => {
           memberships arrive over the network — so only these two tiles wait.
           Rendering 0 hotels and 0 coins mid-flight reads as data loss. */}
       {memberships.length ? (
-        <div className={styles.stats}>
-          <span className={styles.stat}>
-            <u>Hotels</u>
-            <b>{memberships.length}</b>
+        <div className="grid grid-cols-2 gap-2.5 mb-3.5">
+          <span className="bg-card border border-hairline rounded-token-sm p-[13px] text-center">
+            <u className={statLabel}>Hotels</u>
+            <b className={statValue}>{memberships.length}</b>
           </span>
-          <span className={styles.stat}>
-            <u>Total coins</u>
-            <b>{formatCoins(totalCoins)}</b>
+          <span className="bg-card border border-hairline rounded-token-sm p-[13px] text-center">
+            <u className={statLabel}>Total coins</u>
+            <b className={statValue}>{formatCoins(totalCoins)}</b>
           </span>
         </div>
       ) : (
-        <div className={styles.stats}>
+        <div className="grid grid-cols-2 gap-2.5 mb-3.5">
           <Skeleton h={58} />
           <Skeleton h={58} />
         </div>
       )}
 
-      <Card title="Appearance" className={styles.card}>
+      <Card title="Appearance" className="mb-3.5">
         {/* A segmented control rather than a switch: "on" has no obvious
             meaning for a theme, but Light/Dark is unambiguous. */}
-        <div className={styles.themeRow} role="group" aria-label="Theme">
+        <div className="flex gap-1.5 bg-chip rounded-full p-1" role="group" aria-label="Theme">
           {[
             { value: GUEST_THEMES.LIGHT, label: "Light" },
             { value: GUEST_THEMES.DARK, label: "Dark" },
@@ -113,7 +116,11 @@ const ProfilePage = () => {
             <button
               key={option.value}
               type="button"
-              className={`${styles.themeBtn} ${guestTheme === option.value ? styles.themeOn : ""}`}
+              className={`flex-1 px-3 py-2 rounded-full border-0 font-[inherit] text-[12.5px] font-semibold cursor-pointer transition-[background,color] duration-150 ${
+                guestTheme === option.value
+                  ? "bg-surface text-ink shadow-[var(--shadow-sm)]"
+                  : "bg-transparent text-muted"
+              }`}
               aria-pressed={guestTheme === option.value}
               onClick={() => setGuestTheme(option.value)}
             >
@@ -123,16 +130,19 @@ const ProfilePage = () => {
         </div>
       </Card>
 
-      <Card title="Your memberships" className={styles.card}>
+      <Card title="Your memberships" className="mb-3.5">
         {memberships.map((m) => (
-          <div key={m._id} className={styles.row}>
-            <span className={styles.meta}>
-              <b>{m.hotelId?.name}</b>
-              <i>
+          <div
+            key={m._id}
+            className="flex items-center gap-[11px] py-[11px] border-b border-hairline last:border-b-0"
+          >
+            <span className="flex-1 min-w-0">
+              <b className="block text-[12.5px] font-semibold">{m.hotelId?.name}</b>
+              <i className="not-italic text-[10.5px] text-muted capitalize">
                 {m.tier.toLowerCase()} · {m.memberNo}
               </i>
             </span>
-            <span className={styles.bal}>{formatCoins(m.balance)}</span>
+            <span className="font-display text-[15px] font-semibold">{formatCoins(m.balance)}</span>
           </div>
         ))}
       </Card>
@@ -151,7 +161,11 @@ const ProfilePage = () => {
           </Button>
         }
       >
-        {message && <div className={styles.alert}>{message}</div>}
+        {message && (
+          <div className="bg-[color-mix(in_srgb,var(--bad)_12%,transparent)] border-l-[3px] border-l-[var(--bad)] rounded-token-sm px-3 py-2.5 text-[12.5px] text-[var(--bad)] mb-3.5">
+            {message}
+          </div>
+        )}
 
         <Field label="Your name" error={errors.name}>
           <Input

@@ -83,21 +83,26 @@ export const AvatarUpload = ({ user }) => {
   };
 
   return (
-    <span className={styles.wrap}>
+    <span className="flex flex-col items-center gap-[5px] flex-none">
       <button
         type="button"
-        className={styles.button}
+        className={`relative w-[54px] h-[54px] p-0 border-0 rounded-2xl overflow-hidden cursor-pointer disabled:cursor-progress grid place-items-center flex-none ${styles.button}`}
         onClick={() => inputRef.current?.click()}
         disabled={busy}
         aria-label={user?.avatarUrl ? "Change your profile picture" : "Add a profile picture"}
       >
         {shown ? (
-          <img src={shown} alt="" className={styles.image} />
+          <img src={shown} alt="" className="w-full h-full object-cover block" />
         ) : (
-          <span className={styles.initial}>{initial}</span>
+          <span className="font-display text-[21px] font-semibold text-white">{initial}</span>
         )}
 
-        <span className={styles.badge} aria-hidden="true">
+        {/* A small camera mark, so the avatar reads as tappable rather than
+            decorative — without it nobody discovers they can change it. */}
+        <span
+          className="absolute right-0.5 bottom-0.5 w-[18px] h-[18px] rounded-full grid place-items-center bg-surface text-ink border border-hairline"
+          aria-hidden="true"
+        >
           <svg viewBox="0 0 20 20" width="11" height="11">
             <path
               d="M3.5 6.5h3l1-1.6h5l1 1.6h3v9h-13z"
@@ -111,8 +116,10 @@ export const AvatarUpload = ({ user }) => {
         </span>
 
         {busy && (
-          <span className={styles.overlay}>
-            <span className={styles.pct}>{progress > 0 ? `${progress}%` : "…"}</span>
+          <span className={`absolute inset-0 grid place-items-center bg-black/55 ${styles.overlay}`}>
+            <span className="text-[11px] font-bold text-white tabular-nums">
+              {progress > 0 ? `${progress}%` : "…"}
+            </span>
           </span>
         )}
       </button>
@@ -127,7 +134,11 @@ export const AvatarUpload = ({ user }) => {
       />
 
       {user?.avatarUrl && !busy && (
-        <button type="button" className={styles.remove} onClick={remove}>
+        <button
+          type="button"
+          className="border-0 bg-none p-0 font-[inherit] text-[10.5px] font-semibold text-muted hover:text-[var(--bad)] cursor-pointer"
+          onClick={remove}
+        >
           Remove
         </button>
       )}

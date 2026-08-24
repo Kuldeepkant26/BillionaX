@@ -388,3 +388,46 @@
   .filters .filter-search { flex: 1 1 100%; min-width: 0; }
   .pager { justify-content: center; }
 }
+
+/* ---- inline notices ----------------------------------------------------- */
+
+/*
+ * Three notice bands that were duplicated verbatim across the admin and hotel
+ * pages. They live here rather than as repeated utility strings because each
+ * is a left-ruled band whose colour carries the meaning — error, caution,
+ * neutral confirmation — and that meaning should be named, not spelled out at
+ * every call site.
+ *
+ * Named `notice-*` rather than `.alert`/`.warn`: a bare `.alert` is the kind of
+ * plain name a future Tailwind utility could shadow, which the note at the top
+ * of tailwind.css warns against.
+ */
+.notice-bad {
+  background: var(--chip);
+  border-left: 3px solid var(--bad);
+  border-radius: var(--rad-sm);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--bad);
+  margin-bottom: 14px;
+}
+
+.notice-warn {
+  background: var(--chip);
+  border-left: 3px solid var(--acc2);
+  border-radius: var(--rad-sm);
+  padding: 11px 13px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.notice-warn b { color: var(--acc2); }
+
+/* The body copy inside a confirm modal: dimmed, with the consequential noun
+   picked back out in full ink. */
+.confirm-text {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--dim);
+}
+.confirm-text b { color: var(--fg); }

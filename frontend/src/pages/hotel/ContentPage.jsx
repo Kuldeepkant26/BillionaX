@@ -157,22 +157,26 @@ const ContentPage = ({ kind = "content" }) => {
         </Card>
       ) : (
         <>
-        <div className={styles.grid}>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3.5">
           {items.map((item) => (
-            <Card key={item._id} className={styles.item}>
+            <Card key={item._id} className="p-0 overflow-hidden">
               <span
-                className={styles.img}
+                className={`block h-[132px] ${styles.img}`}
                 style={item.imageUrl ? { backgroundImage: `url(${item.imageUrl})` } : undefined}
               />
-              <div className={styles.body}>
+              <div className="p-3.5">
                 <div className="between">
-                  <b>{item.title}</b>
+                  <b className="font-display text-[14.5px] font-semibold">{item.title}</b>
                   <Badge tone={item.isActive ? "ok" : undefined}>
                     {item.isActive ? "Live" : "Hidden"}
                   </Badge>
                 </div>
-                {item.description && <p>{item.description}</p>}
-                <div className={styles.actions}>
+                {item.description && (
+                  <p className="text-xs text-muted leading-[1.5] mt-1.5 line-clamp-2">
+                    {item.description}
+                  </p>
+                )}
+                <div className="flex gap-[7px] mt-3">
                   <Button size="sm" variant="ghost" onClick={() => startEdit(item)}>
                     Edit
                   </Button>
@@ -204,7 +208,7 @@ const ContentPage = ({ kind = "content" }) => {
           </Button>
         }
       >
-        {message && <div className={styles.alert}>{message}</div>}
+        {message && <div className="notice-bad">{message}</div>}
 
         <Field label="Title" error={errors.title}>
           <Input value={form.title} onChange={change("title")} error={errors.title} />
@@ -255,7 +259,7 @@ const ContentPage = ({ kind = "content" }) => {
           <Input value={form.outlet} onChange={change("outlet")} placeholder="Restaurant" />
         </Field>
 
-        <label className={styles.check}>
+        <label className="flex items-center gap-[9px] text-[13px] cursor-pointer">
           <input type="checkbox" checked={form.isActive} onChange={change("isActive")} />
           Visible to guests
         </label>

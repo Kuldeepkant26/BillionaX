@@ -29,25 +29,32 @@ const OffersPage = () => {
 
   return (
     <div>
-      <h1 className={`display ${styles.title}`}>What's on</h1>
-      <p className={styles.sub}>{active?.hotelId?.name}</p>
+      <h1 className="display text-[22px]">What's on</h1>
+      <p className="text-muted text-[12.5px] mt-[5px] mb-[18px]">{active?.hotelId?.name}</p>
 
       {!all.length ? (
         <Empty title="Nothing on right now" hint="Check back during your stay." />
       ) : (
-        <div className={styles.grid}>
+        <div className="flex flex-col gap-3.5">
           {all.map((item) => (
-            <article key={item._id} className={styles.item}>
+            <article
+              key={item._id}
+              className="bg-card border border-hairline rounded-token overflow-hidden"
+            >
               <span
-                className={styles.img}
+                className={`block h-[132px] relative ${styles.img}`}
                 style={item.imageUrl ? { backgroundImage: `url(${item.imageUrl})` } : undefined}
               />
-              <div className={styles.body}>
-                <b>{item.title}</b>
-                {item.description && <p>{item.description}</p>}
-                <span className={styles.meta}>
+              <div className="p-3.5">
+                <b className="block font-display text-[15px] font-semibold">{item.title}</b>
+                {item.description && (
+                  <p className="text-[12.5px] text-muted leading-[1.5] mt-[5px]">{item.description}</p>
+                )}
+                <span className="flex items-center gap-[9px] mt-[11px]">
                   {item.outlet && <span className="badge">{item.outlet}</span>}
-                  {item.validTo && <i>Until {formatDate(item.validTo)}</i>}
+                  {item.validTo && (
+                    <i className="not-italic text-[10.5px] text-muted">Until {formatDate(item.validTo)}</i>
+                  )}
                 </span>
               </div>
             </article>

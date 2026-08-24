@@ -87,7 +87,7 @@ export const HotelShowcase = ({ slides, hotelName }) => {
 
   return (
     <section
-      className={styles.wrap}
+      className="relative mt-4 rounded-token overflow-hidden shadow-[var(--shadow)]"
       aria-roledescription="carousel"
       aria-label={hotelName ? `${hotelName} gallery` : "Hotel gallery"}
       onPointerEnter={() => setPaused(true)}
@@ -95,18 +95,20 @@ export const HotelShowcase = ({ slides, hotelName }) => {
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
-      <div className={styles.track} ref={trackRef} onScroll={onScroll}>
+      <div className={`flex ${styles.track}`} ref={trackRef} onScroll={onScroll}>
         {items.map((slide, i) => (
           <figure
             key={slide.id || slide._id || slide.imageUrl}
-            className={styles.slide}
+            className={`relative h-[192px] m-0 flex items-end ${styles.slide}`}
             style={{ backgroundImage: `url(${slide.imageUrl})` }}
             aria-hidden={i !== index}
           >
-            <figcaption className={styles.caption}>
-              <b>{slide.title}</b>
+            <figcaption className="relative z-[1] px-4 pt-3.5 pb-[18px] text-white">
+              <b className="block font-display text-[17px] font-semibold tracking-[-0.2px]">{slide.title}</b>
               {(slide.caption || slide.description) && (
-                <span>{slide.caption || slide.description}</span>
+                <span className="block text-[11.5px] opacity-[0.86] mt-[3px] leading-[1.45]">
+                  {slide.caption || slide.description}
+                </span>
               )}
             </figcaption>
           </figure>
@@ -114,7 +116,7 @@ export const HotelShowcase = ({ slides, hotelName }) => {
       </div>
 
       {count > 1 && (
-        <div className={styles.dots} role="tablist" aria-label="Choose a slide">
+        <div className="absolute right-3.5 bottom-3.5 z-[2] flex gap-[5px]" role="tablist" aria-label="Choose a slide">
           {items.map((slide, i) => (
             <button
               key={slide.id || slide._id || i}
@@ -122,7 +124,13 @@ export const HotelShowcase = ({ slides, hotelName }) => {
               role="tab"
               aria-selected={i === index}
               aria-label={`Slide ${i + 1} of ${count}`}
-              className={`${styles.dot} ${i === index ? styles.dotOn : ""}`}
+              className={`h-1.5 p-0 border-0 rounded-full cursor-pointer transition-[width,background] duration-200 ${
+                styles.noMotion
+              } ${
+                // The active dot stretches rather than changing colour — it
+                // stays legible on any photograph, which a colour swap would not.
+                i === index ? "w-[18px] bg-white" : "w-1.5 bg-white/45"
+              }`}
               onClick={() => go(i)}
             />
           ))}

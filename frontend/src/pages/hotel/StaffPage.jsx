@@ -147,17 +147,7 @@ const StaffPage = () => {
         }
       >
         {message && (
-          <div
-            style={{
-              background: "var(--chip)",
-              borderLeft: "3px solid var(--bad)",
-              borderRadius: 8,
-              padding: "10px 12px",
-              fontSize: 12.5,
-              color: "var(--bad)",
-              marginBottom: 14,
-            }}
-          >
+          <div className="notice-bad">
             {message}
           </div>
         )}

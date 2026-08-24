@@ -4,7 +4,6 @@ import { useAsync } from "../../hooks/useAsync.js";
 import { Empty, ErrorState } from "../../components/common/index.jsx";
 import { ListSkeleton } from "../../features/guest/GuestSkeletons.jsx";
 import { formatCoins, formatDateTime, formatCurrency } from "../../utils/format.js";
-import styles from "./HistoryPage.module.css";
 
 const LABEL = {
   WELCOME: "Welcome credit",
@@ -30,29 +29,40 @@ const HistoryPage = () => {
 
   return (
     <div>
-      <h1 className={`display ${styles.title}`}>Coin history</h1>
-      <p className={styles.sub}>{active?.hotelId?.name}</p>
+      <h1 className="display text-[22px]">Coin history</h1>
+      <p className="text-muted text-[12.5px] mt-[5px] mb-[18px]">{active?.hotelId?.name}</p>
 
       {!items.length ? (
         <Empty title="No activity yet" hint="Your coins will appear here as you earn and spend." />
       ) : (
-        <div className={styles.list}>
+        <div className="flex flex-col">
           {items.map((t) => (
-            <div key={t._id} className={styles.row}>
-              <span className={`${styles.icon} ${t.coins > 0 ? styles.plus : styles.minus}`}>
+            <div
+              key={t._id}
+              className="flex items-center gap-[11px] py-[13px] border-b border-hairline last:border-b-0"
+            >
+              <span
+                className={`w-[34px] h-[34px] rounded-[11px] grid place-items-center text-[15px] font-bold flex-none ${
+                  t.coins > 0 ? "bg-[var(--soft)] text-accent" : "bg-chip text-muted"
+                }`}
+              >
                 {t.coins > 0 ? "+" : "−"}
               </span>
 
-              <span className={styles.meta}>
-                <b>{LABEL[t.type] || t.type}</b>
-                <i>
+              <span className="flex-1 min-w-0 leading-[1.35]">
+                <b className="block text-[12.5px] font-semibold">{LABEL[t.type] || t.type}</b>
+                <i className="not-italic text-[10.5px] text-muted">
                   {formatDateTime(t.createdAt)}
                   {t.outlet ? ` · ${t.outlet}` : ""}
                   {t.billAmount ? ` · bill ${formatCurrency(t.billAmount)}` : ""}
                 </i>
               </span>
 
-              <span className={`${styles.amount} ${t.coins > 0 ? styles.up : ""}`}>
+              <span
+                className={`text-[13px] font-semibold whitespace-nowrap tabular-nums ${
+                  t.coins > 0 ? "text-accent" : ""
+                }`}
+              >
                 {t.coins > 0 ? "+" : "−"}
                 {formatCoins(Math.abs(t.coins))}
               </span>

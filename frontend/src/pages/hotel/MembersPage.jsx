@@ -28,12 +28,11 @@ import {
   maskPhone,
   resolveTierByNights,
 } from "../../utils/format.js";
-import styles from "./MembersPage.module.css";
 
 const TIER_TONE = { SILVER: undefined, GOLD: "warn", PLATINUM: "ok" };
 const QUICK_COINS = [500, 1000, 2500, 5000];
 
-const Alert = ({ children }) => (children ? <div className={styles.alert}>{children}</div> : null);
+const Alert = ({ children }) => (children ? <div className="notice-bad">{children}</div> : null);
 
 /**
  * Nights still needed for the next tier up, or null once Platinum is reached.
@@ -274,7 +273,7 @@ const MembersPage = ({ canAllocate }) => {
               <tr key={m._id}>
                 <td>
                   <b>{m.guestId?.name || "Guest"}</b>
-                  <div className="muted" style={{ fontSize: 11 }}>
+                  <div className="muted text-[11px]">
                     {maskPhone(m.guestId?.phone)}
                     {m.guestId?.email ? ` · ${m.guestId.email}` : ""}
                   </div>
@@ -286,7 +285,7 @@ const MembersPage = ({ canAllocate }) => {
                 <td className="num">
                   <b>{m.lifetimeNights || 0}</b>
                   {nextTierFor(m.lifetimeNights, nightThresholds) && (
-                    <div className="muted" style={{ fontSize: 11 }}>
+                    <div className="muted text-[11px]">
                       {nextTierFor(m.lifetimeNights, nightThresholds).remaining} to{" "}
                       {nextTierFor(m.lifetimeNights, nightThresholds).tier}
                     </div>
@@ -300,9 +299,9 @@ const MembersPage = ({ canAllocate }) => {
                 <td className="num">{formatCoins(m.lifetimeRedeemed)}</td>
                 <td>
                   {canAllocate && (
-                    <div className={styles.rowActions}>
+                    <div className="flex gap-[5px] justify-end">
                       <button
-                        className={styles.iconBtn}
+                        className="w-[30px] h-[30px] rounded-lg border border-hairline bg-[var(--panel)] text-muted grid place-items-center cursor-pointer transition-[color,border-color,background] duration-150 hover:text-[var(--acc2)] hover:border-[var(--acc2)] hover:bg-chip"
                         onClick={() => openCredit(m)}
                         title="Add coins"
                         aria-label={`Add coins for ${m.guestId?.name || "guest"}`}
@@ -313,7 +312,7 @@ const MembersPage = ({ canAllocate }) => {
                         </svg>
                       </button>
                       <button
-                        className={styles.iconBtn}
+                        className="w-[30px] h-[30px] rounded-lg border border-hairline bg-[var(--panel)] text-muted grid place-items-center cursor-pointer transition-[color,border-color,background] duration-150 hover:text-[var(--acc2)] hover:border-[var(--acc2)] hover:bg-chip"
                         onClick={() => openStay(m)}
                         title="Record a stay"
                         aria-label={`Record a stay for ${m.guestId?.name || "guest"}`}
@@ -411,7 +410,7 @@ const MembersPage = ({ canAllocate }) => {
       >
         <Alert>{message}</Alert>
 
-        <p className={styles.currentBal}>
+        <p className="text-[12.5px] text-muted mb-3.5 [&>b]:text-ink [&>b]:font-display [&>b]:text-[15px]">
           Current balance: <b>{formatCoins(creditFor?.balance)}</b> coins
         </p>
 
@@ -427,12 +426,12 @@ const MembersPage = ({ canAllocate }) => {
           />
         </Field>
 
-        <div className={styles.quick}>
+        <div className="flex flex-wrap gap-[7px] -mt-1 mb-4">
           {QUICK_COINS.map((amount) => (
             <button
               key={amount}
               type="button"
-              className={styles.chip}
+              className="bg-chip border border-hairline rounded-full px-3 py-1.5 text-[11.5px] font-semibold text-ink cursor-pointer hover:border-[var(--acc2)] hover:text-[var(--acc2)]"
               onClick={() => setCreditForm((f) => ({ ...f, coins: String(amount) }))}
             >
               {formatCoins(amount)}
@@ -464,7 +463,7 @@ const MembersPage = ({ canAllocate }) => {
       >
         <Alert>{message}</Alert>
 
-        <p className={styles.currentBal}>
+        <p className="text-[12.5px] text-muted mb-3.5 [&>b]:text-ink [&>b]:font-display [&>b]:text-[15px]">
           Currently <b>{stayFor?.tier}</b> · {stayFor?.lifetimeNights || 0} nights stayed
         </p>
 

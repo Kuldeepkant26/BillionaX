@@ -17,7 +17,6 @@ import {
 } from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
 import { formatCoins, formatCurrency, formatDate } from "../../utils/format.js";
-import styles from "./CoinsPage.module.css";
 
 const METHODS = [
   { id: "card", label: "Card", hint: "Visa, Mastercard, Rupay" },
@@ -115,16 +114,16 @@ const CoinsPage = () => {
       </div>
 
       {low && (
-        <div className={styles.warn}>
+        <div className="flex items-center gap-3 flex-wrap bg-chip border-l-[3px] border-l-[var(--bad)] rounded-token-sm px-3.5 py-3 text-[12.5px] mt-4">
           <b>Your coin inventory is running low.</b> Allocations and welcome credits will start
           failing once it reaches zero.
-          <Button size="sm" onClick={openBuy} className={styles.warnBtn}>
+          <Button size="sm" onClick={openBuy} className="ml-auto">
             Buy coins
           </Button>
         </div>
       )}
 
-      <div style={{ marginTop: 16 }}>
+      <div className="mt-4">
         <Card title="Purchase history">
           {(
             <>
@@ -184,25 +183,33 @@ const CoinsPage = () => {
           )
         }
       >
-        {message && <div className={styles.alert}>{message}</div>}
+        {message && <div className="notice-bad">{message}</div>}
 
         {step === STEP.PICK && (
           <>
-            <div className={styles.packs}>
+            <div className="grid grid-cols-2 gap-2.5 mb-[18px]">
               {packList.map((p) => (
                 <button
                   key={p.id}
                   type="button"
-                  className={`${styles.pack} ${selected === p.id ? styles.packOn : ""}`}
+                  className={`relative text-left bg-[var(--panel)] border rounded-token p-3.5 cursor-pointer text-ink transition-[border-color,background] duration-150 hover:border-[var(--acc2)] ${
+                    selected === p.id ? "border-accent bg-[var(--soft)]" : "border-hairline"
+                  }`}
                   onClick={() => {
                     setSelected(p.id);
                     setCustom("");
                   }}
                 >
-                  <span className={styles.packName}>{p.label}</span>
-                  <b className={styles.packCoins}>{formatCoins(p.coins)}</b>
-                  <span className={styles.packPrice}>{formatCurrency(p.price)}</span>
-                  {p.saving && <span className={styles.packSave}>{p.saving}</span>}
+                  <span className="block text-[9.5px] tracking-[0.1em] uppercase text-muted font-bold">{p.label}</span>
+                  <b className="block font-display text-[21px] font-semibold mt-[5px] tracking-[-0.5px]">
+                    {formatCoins(p.coins)}
+                  </b>
+                  <span className="block text-xs text-muted mt-0.5">{formatCurrency(p.price)}</span>
+                  {p.saving && (
+                    <span className="absolute top-2.5 right-2.5 text-[9.5px] font-bold bg-[var(--acc2)] text-white px-[7px] py-0.5 rounded-full">
+                      {p.saving}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -224,36 +231,38 @@ const CoinsPage = () => {
 
         {step === STEP.PAY && (
           <>
-            <div className={styles.summary}>
+            <div className="bg-chip rounded-token-sm p-[13px] mb-4 [&>div]:flex [&>div]:justify-between [&>div]:gap-3 [&>div]:text-[12.5px] [&>div]:text-muted [&>div]:py-[5px] [&>div>b]:text-ink [&>div>b]:font-semibold">
               <div>
                 <span>Coins</span>
                 <b>{formatCoins(chosen.coins)}</b>
               </div>
-              <div className={styles.summaryTotal}>
+              <div className="!pt-2.5 border-t border-hairline mt-[5px] [&>b]:font-display [&>b]:text-lg">
                 <span>Total payable</span>
                 <b>{formatCurrency(chosen.price)}</b>
               </div>
             </div>
 
-            <span className="label" style={{ marginTop: 4 }}>
+            <span className="label mt-1">
               Payment method
             </span>
-            <div className={styles.methods}>
+            <div className="flex flex-col gap-2 mb-4">
               {METHODS.map((m) => (
                 <button
                   key={m.id}
                   type="button"
-                  className={`${styles.method} ${method === m.id ? styles.methodOn : ""}`}
+                  className={`text-left bg-[var(--panel)] border rounded-token-sm px-[13px] py-[11px] cursor-pointer text-ink hover:border-[var(--acc2)] ${
+                    method === m.id ? "border-accent bg-[var(--soft)]" : "border-hairline"
+                  }`}
                   onClick={() => setMethod(m.id)}
                 >
-                  <b>{m.label}</b>
-                  <i>{m.hint}</i>
+                  <b className="block text-[12.5px] font-semibold">{m.label}</b>
+                  <i className="not-italic text-[11px] text-muted">{m.hint}</i>
                 </button>
               ))}
             </div>
 
-            <div className={styles.demo}>
-              <b>Demo mode</b>
+            <div className="bg-chip border border-dashed border-hairline rounded-token-sm px-[13px] py-[11px] text-[11.5px] leading-[1.5] text-muted">
+              <b className="block text-[var(--acc2)] mb-[3px]">Demo mode</b>
               <span>
                 No real payment is taken. Clicking Pay records the purchase and credits your coins
                 immediately. A payment gateway drops in here later without changing anything else.
@@ -263,8 +272,8 @@ const CoinsPage = () => {
         )}
 
         {step === STEP.DONE && receipt && (
-          <div className={styles.done}>
-            <span className={styles.tick}>
+          <div className="text-center">
+            <span className="w-[54px] h-[54px] rounded-full bg-[var(--soft)] text-[var(--ok)] grid place-items-center mx-auto mb-3.5">
               <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
                 <path
                   d="M4 12.5l5 5L20 7"
@@ -277,9 +286,9 @@ const CoinsPage = () => {
               </svg>
             </span>
 
-            <b className={styles.doneCoins}>{formatCoins(receipt.purchase.coins)} coins added</b>
+            <b className="block font-display text-[19px] font-semibold mb-4">{formatCoins(receipt.purchase.coins)} coins added</b>
 
-            <div className={styles.summary}>
+            <div className="bg-chip rounded-token-sm p-[13px] mb-4 [&>div]:flex [&>div]:justify-between [&>div]:gap-3 [&>div]:text-[12.5px] [&>div]:text-muted [&>div]:py-[5px] [&>div>b]:text-ink [&>div>b]:font-semibold text-left">
               <div>
                 <span>Paid</span>
                 <b>{formatCurrency(receipt.purchase.amountPaid)}</b>
@@ -288,7 +297,7 @@ const CoinsPage = () => {
                 <span>Reference</span>
                 <b>{receipt.purchase.paymentRef}</b>
               </div>
-              <div className={styles.summaryTotal}>
+              <div className="!pt-2.5 border-t border-hairline mt-[5px] [&>b]:font-display [&>b]:text-lg">
                 <span>New inventory</span>
                 <b>{formatCoins(receipt.coinInventory)}</b>
               </div>

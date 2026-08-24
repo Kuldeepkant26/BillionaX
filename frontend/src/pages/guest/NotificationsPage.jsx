@@ -6,7 +6,6 @@ import { useAppStore } from "../../store/useAppStore.js";
 import { Button, Empty, ErrorState } from "../../components/common/index.jsx";
 import { ListSkeleton } from "../../features/guest/GuestSkeletons.jsx";
 import { formatCoins, formatDateTime } from "../../utils/format.js";
-import styles from "./NotificationsPage.module.css";
 
 const PAGE_SIZE = 50;
 
@@ -102,8 +101,8 @@ const NotificationsPage = () => {
 
   return (
     <div>
-      <header className={styles.head}>
-        <h1 className={`display ${styles.title}`}>Alerts</h1>
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="display text-[22px]">Alerts</h1>
         {unread > 0 && (
           <Button
             size="sm"
@@ -114,7 +113,9 @@ const NotificationsPage = () => {
           </Button>
         )}
       </header>
-      <p className={styles.sub}>Coins you have earned and spent, across every hotel</p>
+      <p className="text-muted text-[12.5px] mt-[5px] mb-[18px]">
+        Coins you have earned and spent, across every hotel
+      </p>
 
       {!items.length ? (
         <Empty
@@ -122,30 +123,48 @@ const NotificationsPage = () => {
           hint="Coins you earn and spend will show up here as it happens."
         />
       ) : (
-        <div className={styles.list}>
+        <div className="flex flex-col">
           {items.map((n) => {
             const positive = n.coins > 0;
             return (
-              <div key={n.id} className={`${styles.row} ${n.read ? "" : styles.fresh}`}>
+              <div
+                key={n.id}
+                className={`flex items-start gap-[11px] py-[13px] pr-2.5 border-b border-hairline last:border-b-0 rounded-token-sm ${
+                  // Unread rows carry a tinted ground and an accent rule, so the
+                  // ones that arrived since the last visit are obvious without
+                  // a per-row badge.
+                  n.read
+                    ? "pl-0"
+                    : "pl-2.5 bg-[var(--soft)] shadow-[inset_2px_0_0_var(--acc)]"
+                }`}
+              >
                 <span
-                  className={`${styles.icon} ${
-                    n.coins == null ? styles.notice : positive ? styles.plus : styles.minus
+                  className={`w-[34px] h-[34px] rounded-[11px] grid place-items-center text-[15px] font-bold flex-none ${
+                    n.coins == null
+                      ? "bg-chip text-[var(--acc2)]"
+                      : positive
+                        ? "bg-[var(--soft)] text-accent"
+                        : "bg-chip text-muted"
                   }`}
                 >
                   {GLYPH[n.kind] || "•"}
                 </span>
 
-                <span className={styles.meta}>
-                  <b>{n.title}</b>
-                  <i>{n.body}</i>
-                  <u>
+                <span className="flex-1 min-w-0 leading-[1.4]">
+                  <b className="block text-[12.5px] font-semibold">{n.title}</b>
+                  <i className="block not-italic text-[11.5px] text-ink opacity-75 mt-px">{n.body}</i>
+                  <u className="block no-underline text-[10.5px] text-muted mt-[3px]">
                     {formatDateTime(n.createdAt)}
                     {n.hotel?.name ? ` · ${n.hotel.name}` : ""}
                   </u>
                 </span>
 
                 {n.coins != null && (
-                  <span className={`${styles.amount} ${positive ? styles.up : ""}`}>
+                  <span
+                    className={`text-[13px] font-semibold whitespace-nowrap tabular-nums ${
+                      positive ? "text-accent" : ""
+                    }`}
+                  >
                     {positive ? "+" : "−"}
                     {formatCoins(Math.abs(n.coins))}
                   </span>
@@ -160,7 +179,7 @@ const NotificationsPage = () => {
             <Button
               variant="ghost"
               block
-              className={styles.more}
+              className="mt-3.5"
               onClick={loadOlder}
               disabled={loadingMore}
             >

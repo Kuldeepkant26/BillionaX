@@ -17,7 +17,6 @@ import {
 } from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
 import { formatCoins, formatDate, isValidPhone } from "../../utils/format.js";
-import styles from "./GuestsPage.module.css";
 
 const GuestsPage = () => {
   const [editing, setEditing] = useState(null);
@@ -148,7 +147,7 @@ const GuestsPage = () => {
                 <td className="num">{formatCoins(g.lifetimeEarned)}</td>
                 <td className="num">{formatCoins(g.lifetimeRedeemed)}</td>
                 <td>
-                  <div className={styles.actions}>
+                  <div className="flex gap-[5px] justify-end">
                     <Button size="sm" variant="ghost" onClick={() => startEdit(g)}>
                       Edit
                     </Button>
@@ -181,7 +180,7 @@ const GuestsPage = () => {
           </Button>
         }
       >
-        {message && <div className={styles.alert}>{message}</div>}
+        {message && <div className="notice-bad">{message}</div>}
 
         <Field label="Name" error={errors.name}>
           <Input
@@ -219,7 +218,7 @@ const GuestsPage = () => {
         title="Remove this guest?"
         onClose={() => setConfirmDelete(null)}
         footer={
-          <div className="row" style={{ gap: 9 }}>
+          <div className="flex items-center gap-[9px]">
             <Button variant="ghost" block onClick={() => setConfirmDelete(null)}>
               Cancel
             </Button>
@@ -229,12 +228,12 @@ const GuestsPage = () => {
           </div>
         }
       >
-        <p className={styles.confirm}>
+        <p className="confirm-text">
           <b>{confirmDelete?.name}</b> ({confirmDelete?.phone}) and all their memberships will be
           removed. Their transaction history is kept as an audit record.
         </p>
         {confirmDelete?.balance > 0 && (
-          <div className={styles.warn}>
+          <div className="notice-warn mt-3.5">
             This guest still holds <b>{formatCoins(confirmDelete.balance)}</b> coins. Those are a
             liability a hotel has already paid for, so the removal will be refused until the
             balance is cleared.

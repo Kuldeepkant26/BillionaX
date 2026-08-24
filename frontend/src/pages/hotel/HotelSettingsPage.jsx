@@ -4,7 +4,6 @@ import { useAsync } from "../../hooks/useAsync.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import { Button, ErrorState, Input, Loading } from "../../components/common/index.jsx";
 import { LogoUpload } from "../../features/panel/LogoUpload.jsx";
-import styles from "./HotelSettingsPage.module.css";
 
 const toForm = (hotel) => ({
   name: hotel.name || "",
@@ -36,28 +35,30 @@ const HotelSettingsPage = () => {
 
 /** Label + control on one row, so a field costs ~40px instead of ~80px. */
 const Row = ({ label, hint, error, children }) => (
-  <div className={styles.row}>
-    <span className={styles.rowLabel}>
+  <div className="grid grid-cols-1 gap-1.5 [@media(min-width:561px)]:grid-cols-[minmax(150px,34%)_1fr] [@media(min-width:561px)]:gap-3.5 items-center py-[9px] border-b border-hairline last:border-b-0 last:pb-0">
+    <span className="text-[12.5px] font-medium text-ink leading-[1.3] [&>i]:block [&>i]:not-italic [&>i]:text-[10.5px] [&>i]:text-muted [&>i]:mt-px">
       {label}
       {hint && <i>{hint}</i>}
     </span>
-    <span className={styles.rowControl}>
+    <span className="min-w-0 w-full [&_.input]:w-full">
       {children}
-      {error && <em className={styles.err}>{error}</em>}
+      {error && <em className="block not-italic text-[11px] text-[var(--bad)] mt-1">{error}</em>}
     </span>
   </div>
 );
 
+// Hairline sections rather than boxed cards: five bordered panels stacked on
+// one screen is what made the old page feel heavy.
 const Section = ({ title, description, children, aside }) => (
-  <section className={styles.section}>
-    <header className={styles.sectionHead}>
+  <section className="bg-[var(--panel)] border border-hairline rounded-token px-4 pt-[15px] pb-4">
+    <header className="flex items-start justify-between gap-3 pb-3 border-b border-hairline mb-1 [&>div>h2]:font-display [&>div>h2]:text-[14.5px] [&>div>h2]:font-semibold [&>div>h2]:tracking-[-0.1px] [&>div>p]:text-[11.5px] [&>div>p]:text-muted [&>div>p]:leading-[1.5] [&>div>p]:mt-[3px] [&>div>p]:max-w-[46ch]">
       <div>
         <h2>{title}</h2>
         {description && <p>{description}</p>}
       </div>
       {aside}
     </header>
-    <div className={styles.sectionBody}>{children}</div>
+    <div className="flex flex-col">{children}</div>
   </section>
 );
 
@@ -112,11 +113,11 @@ const SettingsForm = ({ data, reload }) => {
   const example = (rate) => Math.floor((40000 * Number(rate || 0)) / 100).toLocaleString("en-IN");
 
   return (
-    <div className={styles.page}>
+    <div className="max-w-[1040px]">
       {/* One save for the whole page, pinned to the header — the old layout
           repeated the same button under three cards, which made it look like
           each section saved separately. */}
-      <header className={styles.head}>
+      <header className="static [@media(min-width:901px)]:sticky top-0 z-20 flex items-center justify-between gap-4 pt-1 pb-3.5 mb-1 bg-canvas border-b border-hairline [&>div>h1]:text-[22px] [&>div>h1]:tracking-[-0.4px] [&>div>p]:text-xs [&>div>p]:text-muted [&>div>p]:mt-0.5">
         <div>
           <h1 className="display">Settings</h1>
           <p>Your hotel's details, tiers and guest QR code</p>
@@ -126,10 +127,10 @@ const SettingsForm = ({ data, reload }) => {
         </Button>
       </header>
 
-      <div className={styles.grid}>
-        <div className={styles.col}>
+      <div className="grid grid-cols-1 [@media(min-width:901px)]:grid-cols-[1.15fr_1fr] gap-[18px] items-start">
+        <div className="flex flex-col gap-[18px] min-w-0">
           <Section title="Hotel details">
-            <div className={styles.logoRow}>
+            <div className="pt-0.5 pb-3.5 border-b border-hairline mb-1">
               <LogoUpload
                 value={form.logoUrl}
                 name={form.name}
@@ -196,18 +197,21 @@ const SettingsForm = ({ data, reload }) => {
           </Section>
         </div>
 
-        <div className={styles.col}>
+        <div className="flex flex-col gap-[18px] min-w-0">
           <Section
             title="Coins per stay"
             description="Share of a recorded stay credited as coins, by the guest's tier."
           >
-            <div className={styles.rates}>
+            <div className="grid grid-cols-3 gap-2.5 pt-3">
               {[
                 ["Silver", "silverRate", "tierEarnRates.SILVER"],
                 ["Gold", "goldRate", "tierEarnRates.GOLD"],
                 ["Platinum", "platinumRate", "tierEarnRates.PLATINUM"],
               ].map(([label, key, errKey]) => (
-                <label key={key} className={styles.rate}>
+                <label
+                  key={key}
+                  className="[&>span]:block [&>span]:text-[10px] [&>span]:font-bold [&>span]:tracking-[0.08em] [&>span]:uppercase [&>span]:text-muted [&>span]:mb-[5px] [&>i]:block [&>i]:not-italic [&>i]:text-[10.5px] [&>i]:text-muted [&>i]:mt-[5px]"
+                >
                   <span>{label}</span>
                   <Input
                     type="number"
@@ -221,11 +225,11 @@ const SettingsForm = ({ data, reload }) => {
                 </label>
               ))}
             </div>
-            <p className={styles.note}>Per ₹40,000 stay.</p>
+            <p className="text-[11px] text-muted mt-2.5">Per ₹40,000 stay.</p>
 
             {/* Still the fallback rate for the older "Add coins for a stay"
                 flow on the Members tab, so it stays editable. */}
-            <div className={styles.legacy}>
+            <div className="mt-3 pt-1 border-t border-hairline">
               <Row
                 label="Legacy earn rate"
                 hint="Room × nights × this %"
@@ -247,7 +251,9 @@ const SettingsForm = ({ data, reload }) => {
             title="Guest QR link"
             description="Print this as a QR code for reception, rooms and outlets."
           >
-            <div className={styles.url}>{joinUrl}</div>
+            <div className="bg-chip rounded-token-sm px-[11px] py-[9px] text-[11.5px] break-all mt-3 mb-2.5 font-mono">
+              {joinUrl}
+            </div>
             <Button
               variant="ghost"
               size="sm"
@@ -263,9 +269,9 @@ const SettingsForm = ({ data, reload }) => {
           </Section>
 
           <Section title="Redemption caps" description="Most of a bill payable with coins. Set by Billionax.">
-            <div className={styles.caps}>
+            <div className="flex flex-col gap-2.5 pt-3">
               {Object.entries(data.hotel?.tierCaps || {}).map(([tier, pct]) => (
-                <div key={tier} className={styles.cap}>
+                <div key={tier} className="text-xs [&>b]:font-semibold [&_.progress]:mt-[5px]">
                   <div className="between">
                     <span>{tier}</span>
                     <b>{pct}%</b>

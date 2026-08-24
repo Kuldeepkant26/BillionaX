@@ -26,6 +26,11 @@ const hotelHeading = (hotel) => {
   return `${name} · ${city}`;
 };
 
+// Shared by the three stat tiles below — identical styling, so the strings
+// live once rather than being repeated per tile.
+const statLabel = "block no-underline text-[9px] text-muted tracking-[0.08em] uppercase";
+const statValue = "block font-display text-base font-semibold mt-1";
+
 const GuestHomePage = () => {
   const user = useAppStore((s) => s.user);
   const memberships = useAppStore((s) => s.memberships);
@@ -65,24 +70,26 @@ const GuestHomePage = () => {
 
   return (
     <div>
-      <header className={styles.top}>
+      <header className="flex items-center justify-between mb-3.5">
         <span>
-          <u className={styles.greeting}>Good evening</u>
-          <b className={`display ${styles.name}`}>{user?.name}</b>
+          <u className="block no-underline text-[10.5px] text-muted">Good evening</u>
+          <b className="display text-[18px] tracking-[-0.2px]">{user?.name}</b>
         </span>
 
         {/* Links to the You tab rather than opening a picker here — one place
             owns changing the picture. */}
         <button
           type="button"
-          className={styles.me}
+          className={`w-[38px] h-[38px] flex-none p-0 border-0 rounded-full overflow-hidden cursor-pointer grid place-items-center ${styles.me}`}
           onClick={() => navigate(ROUTES.APP_PROFILE)}
           aria-label="Your account"
         >
           {user?.avatarUrl ? (
-            <img src={avatarUrl(user.avatarUrl, 80)} alt="" />
+            <img src={avatarUrl(user.avatarUrl, 80)} alt="" className="w-full h-full object-cover block" />
           ) : (
-            <span>{(user?.name || "?").trim().charAt(0).toUpperCase() || "?"}</span>
+            <span className="font-display text-[15px] font-semibold text-white">
+              {(user?.name || "?").trim().charAt(0).toUpperCase() || "?"}
+            </span>
           )}
         </button>
       </header>
@@ -93,7 +100,7 @@ const GuestHomePage = () => {
         onSelect={setActiveHotel}
       />
 
-      <div className={styles.cardWrap}>
+      <div className="mt-3.5">
         <MembershipCard
           membership={active}
           guestName={user?.name}
@@ -101,7 +108,7 @@ const GuestHomePage = () => {
         />
       </div>
 
-      <div className={styles.actions}>
+      <div className="flex gap-[9px] mt-3.5">
         <Button block onClick={() => navigate(ROUTES.APP_REDEEM)} disabled={!active?.balance}>
           Use coins on a bill
         </Button>
@@ -110,18 +117,18 @@ const GuestHomePage = () => {
         </Button>
       </div>
 
-      <div className={styles.stats}>
-        <span className={styles.stat}>
-          <u>Earned</u>
-          <b>{formatCoins(active?.lifetimeEarned)}</b>
+      <div className="grid grid-cols-3 gap-2 mt-3.5">
+        <span className="bg-card border border-hairline rounded-token-sm px-2.5 py-[11px] text-center">
+          <u className={statLabel}>Earned</u>
+          <b className={statValue}>{formatCoins(active?.lifetimeEarned)}</b>
         </span>
-        <span className={styles.stat}>
-          <u>Redeemed</u>
-          <b>{formatCoins(active?.lifetimeRedeemed)}</b>
+        <span className="bg-card border border-hairline rounded-token-sm px-2.5 py-[11px] text-center">
+          <u className={statLabel}>Redeemed</u>
+          <b className={statValue}>{formatCoins(active?.lifetimeRedeemed)}</b>
         </span>
-        <span className={styles.stat}>
-          <u>Max discount</u>
-          <b>{cap ? `${cap}%` : "—"}</b>
+        <span className="bg-card border border-hairline rounded-token-sm px-2.5 py-[11px] text-center">
+          <u className={statLabel}>Max discount</u>
+          <b className={statValue}>{cap ? `${cap}%` : "—"}</b>
         </span>
       </div>
 
@@ -132,24 +139,28 @@ const GuestHomePage = () => {
       {/* Already filtered to this guest's tier by the API — anything they are
           not entitled to never reaches the payload. */}
       {contentData?.privileges?.length > 0 && (
-        <section className={styles.section}>
+        <section className="mt-6">
           <span className="kicker">Your privileges</span>
-          <div className={styles.privGrid}>
+          <div className={`gap-2 mt-2.5 ${styles.privGrid}`}>
             {/* Not capped at 4: the grid fills two rows then scrolls
                 sideways, so a hotel with six perks shows all six. */}
             {contentData.privileges.slice(0, 8).map((privilege) => (
               <article
                 key={privilege._id}
-                className={styles.priv}
+                className={`relative overflow-hidden min-h-[92px] flex items-end rounded-token-sm border border-hairline px-[11px] py-2.5 text-white ${styles.priv}`}
                 style={
                   privilege.imageUrl
                     ? { backgroundImage: `url(${privilege.imageUrl})` }
                     : undefined
                 }
               >
-                <span className={styles.privBody}>
-                  <b>{privilege.title}</b>
-                  {privilege.valueLabel && <u>{privilege.valueLabel}</u>}
+                <span className="relative z-[1]">
+                  <b className="block text-[12.5px] font-semibold leading-[1.25]">{privilege.title}</b>
+                  {privilege.valueLabel && (
+                    <u className="block no-underline text-[10.5px] opacity-[0.88] mt-0.5">
+                      {privilege.valueLabel}
+                    </u>
+                  )}
                 </span>
               </article>
             ))}
@@ -158,31 +169,36 @@ const GuestHomePage = () => {
       )}
 
       {contentData?.offers?.length > 0 && (
-        <section className={styles.section}>
+        <section className="mt-6">
           {/* Named for the hotel rather than "Offers at …": this row carries
               whatever the property wants to show — a walkthrough, the rooftop,
               a promotion — so a heading that says "offers" undersells it. */}
           <span className="kicker">{hotelHeading(active?.hotelId)}</span>
-          <div className={styles.offerRow}>
+          <div className={`flex flex-nowrap gap-2.5 mt-2.5 pb-1 ${styles.offerRow}`}>
             {/* One line that scrolls, so the cap is generous rather than a
                 layout constraint. */}
             {contentData.offers.slice(0, 10).map((offer) => (
-              <article key={offer._id} className={styles.offer}>
+              <article key={offer._id} className="flex-none w-[152px]">
                 <span
-                  className={styles.offerImg}
+                  className={`block h-[94px] rounded-token-sm relative overflow-hidden ${styles.offerImg}`}
                   style={
                     offer.imageUrl ? { backgroundImage: `url(${offer.imageUrl})` } : undefined
                   }
                 >
                   {/* A card reads as playable only when it actually has a
                       video, so the badge never promises something missing. */}
-                  {offer.videoUrl && <i className={styles.play} aria-hidden="true" />}
+                  {offer.videoUrl && <i
+                      className={`absolute inset-0 m-auto w-8 h-8 rounded-full bg-white/[0.92] z-[2] ${styles.play}`}
+                      aria-hidden="true"
+                    />}
                   {offer.videoUrl && offer.duration && (
-                    <em className={styles.duration}>{offer.duration}</em>
+                    <em className="absolute right-1.5 bottom-1.5 z-[2] not-italic text-[9px] font-semibold text-white bg-black/55 px-1.5 py-0.5 rounded-full tabular-nums">
+                      {offer.duration}
+                    </em>
                   )}
                 </span>
-                <b>{offer.title}</b>
-                <u>{offer.outlet || "Members only"}</u>
+                <b className="block text-xs font-semibold mt-[7px]">{offer.title}</b>
+                <u className="block no-underline text-[10px] text-muted">{offer.outlet || "Members only"}</u>
               </article>
             ))}
           </div>

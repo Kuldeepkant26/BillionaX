@@ -198,29 +198,39 @@ const PrivilegesPage = () => {
         </Card>
       ) : (
         <>
-          <div className={styles.grid}>
+          {/* Text-first cards: a privilege is a short label and a value, so the list
+              is denser than the image-led Content grid. */}
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-3.5">
             {items.map((item) => (
               <Card
                 key={item._id}
-                className={`${styles.item} ${item.isActive ? "" : styles.hidden}`}
+                className={`flex flex-col p-0 overflow-hidden ${item.isActive ? "" : styles.hidden}`}
               >
                 {/* Mirrors exactly what the guest sees on their home screen. */}
                 <span
-                  className={styles.preview}
+                  className={`relative flex items-end min-h-[104px] px-3 py-[11px] text-white ${styles.preview}`}
                   style={
                     item.imageUrl ? { backgroundImage: `url(${item.imageUrl})` } : undefined
                   }
                 >
-                  <span className={styles.previewBody}>
-                    <b>{item.title}</b>
-                    {item.valueLabel && <u>{item.valueLabel}</u>}
+                  <span className="relative z-[1]">
+                    <b className="block font-display text-[14.5px] font-semibold">{item.title}</b>
+                    {item.valueLabel && (
+                      <u className="block no-underline text-[11px] opacity-[0.88] mt-0.5">
+                        {item.valueLabel}
+                      </u>
+                    )}
                   </span>
                 </span>
 
-                <div className={styles.body}>
-                  {item.description && <p className={styles.desc}>{item.description}</p>}
+                <div className="p-3">
+                  {item.description && (
+                    <p className="text-xs text-muted leading-[1.5] mt-1.5 line-clamp-2">
+                      {item.description}
+                    </p>
+                  )}
 
-                  <div className={styles.badges}>
+                  <div className="flex flex-wrap gap-[5px] mt-2.5">
                     {item.tiers?.length ? (
                       item.tiers.map((tier) => <Badge key={tier}>{tier}</Badge>)
                     ) : (
@@ -228,8 +238,8 @@ const PrivilegesPage = () => {
                     )}
                   </div>
 
-                  <div className={styles.actions}>
-                    <label className={styles.switchRow}>
+                  <div className="flex items-center justify-between gap-[7px] mt-3">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
                       <input
                         type="checkbox"
                         className={styles.switchInput}
@@ -238,12 +248,12 @@ const PrivilegesPage = () => {
                         aria-label={`Show ${item.title} to guests`}
                       />
                       <span className={styles.switch} />
-                      <span className={styles.switchLabel}>
+                      <span className="text-[11.5px] font-semibold text-muted">
                         {item.isActive ? "Shown" : "Hidden"}
                       </span>
                     </label>
 
-                    <span className={styles.rowBtns}>
+                    <span className="flex gap-[5px]">
                       <Button size="sm" variant="ghost" onClick={() => startEdit(item)}>
                         Edit
                       </Button>
@@ -276,7 +286,11 @@ const PrivilegesPage = () => {
           </Button>
         }
       >
-        {message && <div className={styles.alert}>{message}</div>}
+        {message && (
+          <div className="bg-[color-mix(in_srgb,var(--bad)_12%,transparent)] border-l-[3px] border-l-[var(--bad)] rounded-token-sm px-3 py-2.5 text-[12.5px] text-[var(--bad)] mb-3.5">
+            {message}
+          </div>
+        )}
 
         <Field label="Title" hint="What the benefit is" error={errors.title}>
           <Input
@@ -306,9 +320,9 @@ const PrivilegesPage = () => {
           hint="Leave all unticked to show this to every member."
           error={errors.tiers || errors["tiers[0]"]}
         >
-          <div className={styles.tierRow}>
+          <div className="flex flex-wrap gap-3.5">
             {TIERS.map((tier) => (
-              <label key={tier} className={styles.check}>
+              <label key={tier} className="flex items-center gap-[7px] text-[12.5px] text-ink cursor-pointer">
                 <input
                   type="checkbox"
                   checked={form.tiers.includes(tier)}
@@ -340,7 +354,7 @@ const PrivilegesPage = () => {
 
         {/* Also on every row as a switch — kept here so the create form can
             add something hidden, before its wording is finished. */}
-        <label className={styles.check}>
+        <label className="flex items-center gap-[7px] text-[12.5px] text-ink cursor-pointer">
           <input type="checkbox" checked={form.isActive} onChange={change("isActive")} />
           Visible to guests
         </label>

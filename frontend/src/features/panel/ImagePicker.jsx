@@ -15,6 +15,10 @@ import styles from "./ImagePicker.module.css";
  * server-side once the new URL is actually saved. Deleting on pick would lose
  * the picture if the manager then cancelled the form.
  */
+// The two text links share everything but their colour.
+const linkBtn =
+  "border-0 bg-none p-0 font-[inherit] text-[11.5px] font-semibold cursor-pointer";
+
 export const ImagePicker = ({
   value,
   onChange,
@@ -67,20 +71,26 @@ export const ImagePicker = ({
   };
 
   return (
-    <div className={styles.wrap}>
-      <span className={styles.label}>{label}</span>
+    <div className="mb-3.5">
+      <span className="label">{label}</span>
 
       <button
         type="button"
-        className={`${styles.drop} ${styles[aspect]} ${shown ? styles.filled : ""}`}
+        className={`relative block w-full p-0 overflow-hidden border-[1.5px] rounded-token-sm cursor-pointer disabled:cursor-progress transition-[border-color,background] duration-150 enabled:hover:border-accent ${
+          styles[aspect]
+        } ${
+          // Solid once there is an image: a dashed border around a real picture
+          // reads as a placeholder that failed to fill.
+          shown ? "border-solid bg-surface" : "border-dashed bg-chip"
+        } border-hairline`}
         onClick={() => inputRef.current?.click()}
         disabled={busy}
         aria-label={value ? `Change ${label.toLowerCase()}` : `Upload ${label.toLowerCase()}`}
       >
         {shown ? (
-          <img src={shown} alt="" className={styles.image} />
+          <img src={shown} alt="" className="w-full h-full object-cover block" />
         ) : (
-          <span className={styles.empty}>
+          <span className="absolute inset-0 flex flex-col items-center justify-center gap-[3px] text-muted p-3 text-center">
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
               <path
                 d="M4 17.5V6.5h16v11z"
@@ -99,26 +109,32 @@ export const ImagePicker = ({
                 strokeLinejoin="round"
               />
             </svg>
-            <b>Choose an image</b>
-            <i>{hint}</i>
+            <b className="text-[12.5px] font-semibold text-ink mt-1">Choose an image</b>
+            <i className="not-italic text-[11px] leading-[1.4]">{hint}</i>
           </span>
         )}
 
         {busy && (
-          <span className={styles.overlay}>
-            <span className={styles.pct}>{progress > 0 ? `${progress}%` : "…"}</span>
+          <span className="absolute inset-0 grid place-items-center bg-black/55">
+            <span className="text-[13px] font-bold text-white tabular-nums">
+              {progress > 0 ? `${progress}%` : "…"}
+            </span>
           </span>
         )}
       </button>
 
       {shown && !busy && (
-        <div className={styles.actions}>
-          <button type="button" onClick={() => inputRef.current?.click()}>
+        <div className="flex gap-3 mt-[7px]">
+          <button
+            type="button"
+            className={`${linkBtn} text-accent`}
+            onClick={() => inputRef.current?.click()}
+          >
             Replace
           </button>
           <button
             type="button"
-            className={styles.danger}
+            className={`${linkBtn} text-muted hover:text-[var(--bad)]`}
             onClick={() => {
               setPreview(null);
               // Empty string, not undefined — the API reads "" as "remove it".

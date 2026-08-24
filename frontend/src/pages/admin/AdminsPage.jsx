@@ -16,7 +16,6 @@ import {
 } from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
 import { formatDate } from "../../utils/format.js";
-import styles from "./AdminsPage.module.css";
 
 const BLANK = { name: "", email: "", password: "" };
 
@@ -138,11 +137,11 @@ const AdminsPage = () => {
                   <td>
                     <b>{a.name}</b>
                     {a.isProtected && (
-                      <Badge tone="acc" className={styles.tag}>
+                      <Badge tone="acc" className="ml-2">
                         Superadmin
                       </Badge>
                     )}
-                    {isMe && !a.isProtected && <span className={styles.you}>you</span>}
+                    {isMe && !a.isProtected && <span className="ml-2 text-[10.5px] text-muted">you</span>}
                   </td>
                   <td>{a.email}</td>
                   <td>{a.lastLoginAt ? formatDate(a.lastLoginAt) : "Never"}</td>
@@ -153,11 +152,11 @@ const AdminsPage = () => {
                   </td>
                   <td>
                     {a.isProtected ? (
-                      <span className={styles.locked} title="The primary superadmin is protected">
+                      <span className="text-[11.5px] text-muted italic" title="The primary superadmin is protected">
                         Protected
                       </span>
                     ) : (
-                      <div className={styles.actions}>
+                      <div className="flex gap-[5px] justify-end flex-wrap">
                         <Button size="sm" variant="ghost" onClick={() => startEdit(a)}>
                           Edit
                         </Button>
@@ -187,7 +186,7 @@ const AdminsPage = () => {
         )}
       </Card>
 
-      <p className={styles.note}>
+      <p className="text-[11.5px] text-muted leading-[1.5] mt-3.5 max-w-[60ch]">
         The primary superadmin cannot be edited, disabled or deleted — that guarantee is what stops
         the platform being locked out of its own admin panel.
       </p>
@@ -202,7 +201,7 @@ const AdminsPage = () => {
           </Button>
         }
       >
-        {message && <div className={styles.alert}>{message}</div>}
+        {message && <div className="notice-bad">{message}</div>}
 
         <Field label="Name" error={errors.name}>
           <Input value={form.name} onChange={change("name")} error={errors.name} autoFocus />
@@ -230,7 +229,7 @@ const AdminsPage = () => {
         title="Remove this admin?"
         onClose={() => setConfirmDelete(null)}
         footer={
-          <div className="row" style={{ gap: 9 }}>
+          <div className="flex items-center gap-[9px]">
             <Button variant="ghost" block onClick={() => setConfirmDelete(null)}>
               Cancel
             </Button>
@@ -240,7 +239,7 @@ const AdminsPage = () => {
           </div>
         }
       >
-        <p className={styles.confirm}>
+        <p className="confirm-text">
           <b>{confirmDelete?.name}</b> ({confirmDelete?.email}) will lose access immediately. This
           cannot be undone.
         </p>

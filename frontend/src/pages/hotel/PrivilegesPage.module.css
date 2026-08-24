@@ -1,17 +1,11 @@
-/* Text-first cards: a privilege is a short label and a value, so the list is
-   denser than the image-led Content grid. */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 14px;
-}
-
-.item {
-  display: flex;
-  flex-direction: column;
-  padding: 0;
-  overflow: hidden;
-}
+/*
+ * Residual CSS for PrivilegesPage.
+ *
+ * Layout and type are Tailwind utilities in the JSX. What stays here is the
+ * photo scrim, the grayscale treatment for hidden rows, and the custom switch
+ * — the switch is driven by `:checked + .switch`, a sibling selector that has
+ * no utility equivalent because the state lives on a different element.
+ */
 
 /* Hidden rows stay legible but visibly inactive, so a manager can see at a
    glance which perks guests are not getting. */
@@ -23,15 +17,9 @@
 /* Deliberately the same treatment as the guest card, so what a manager sees
    here is what the guest gets. */
 .preview {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  min-height: 104px;
   background: var(--hero);
   background-size: cover;
   background-position: center;
-  padding: 11px 12px;
-  color: #fff;
 }
 .preview::after {
   content: "";
@@ -40,69 +28,8 @@
   background: linear-gradient(to top, rgba(0, 0, 0, 0.74), rgba(0, 0, 0, 0.14) 62%, transparent);
 }
 
-.previewBody {
-  position: relative;
-  z-index: 1;
-}
-.previewBody b {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 14.5px;
-  font-weight: 600;
-}
-.previewBody u {
-  display: block;
-  text-decoration: none;
-  font-size: 11px;
-  opacity: 0.88;
-  margin-top: 2px;
-}
-
-.body {
-  padding: 12px;
-}
-
-.desc {
-  font-size: 12px;
-  color: var(--dim);
-  line-height: 1.5;
-  margin-top: 6px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 10px;
-}
-
-.actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 7px;
-  margin-top: 12px;
-}
-
-.rowBtns {
-  display: flex;
-  gap: 5px;
-}
-
 /* Show/hide switch. The native checkbox stays in the DOM for keyboard and
    screen-reader support and is visually replaced by the track below. */
-.switchRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-}
-
 .switchInput {
   position: absolute;
   opacity: 0;
@@ -144,35 +71,4 @@
 .switchInput:focus-visible + .switch {
   outline: 2px solid var(--acc);
   outline-offset: 2px;
-}
-
-.switchLabel {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--dim);
-}
-
-.tierRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-}
-
-.check {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12.5px;
-  color: var(--fg);
-  cursor: pointer;
-}
-
-.alert {
-  background: color-mix(in srgb, var(--bad) 12%, transparent);
-  border-left: 3px solid var(--bad);
-  border-radius: var(--rad-sm);
-  padding: 10px 12px;
-  font-size: 12.5px;
-  color: var(--bad);
-  margin-bottom: 14px;
 }

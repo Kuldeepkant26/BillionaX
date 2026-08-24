@@ -11,6 +11,10 @@ import styles from "./LogoUpload.module.css";
  * and saving separately would let a manager upload a logo, close the page, and
  * find it had not stuck.
  */
+// The two text links share everything but their colour.
+const linkBtn =
+  "border-0 bg-none p-0 font-[inherit] text-[11.5px] font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-progress";
+
 export const LogoUpload = ({ value, name, onChange, getSignature }) => {
   const inputRef = useRef(null);
   const toastError = useAppStore((s) => s.toastError);
@@ -57,38 +61,51 @@ export const LogoUpload = ({ value, name, onChange, getSignature }) => {
   };
 
   return (
-    <div className={styles.row}>
+    <div className="flex items-center gap-3.5">
       <button
         type="button"
-        className={styles.thumb}
+        className={`relative w-16 h-16 flex-none p-0 border border-hairline rounded-token-sm overflow-hidden cursor-pointer disabled:cursor-progress grid place-items-center ${styles.thumb}`}
         onClick={() => inputRef.current?.click()}
         disabled={busy}
         aria-label={value ? "Change hotel logo" : "Add a hotel logo"}
       >
         {shown ? (
-          <img src={shown} alt="" className={styles.image} />
+          <img src={shown} alt="" className="w-full h-full object-cover block" />
         ) : (
-          <span className={styles.initial}>{initial}</span>
+          <span className="font-display text-2xl font-semibold text-white">{initial}</span>
         )}
         {busy && (
-          <span className={styles.overlay}>
-            <span className={styles.pct}>{progress > 0 ? `${progress}%` : "…"}</span>
+          <span className="absolute inset-0 grid place-items-center bg-black/55">
+            <span className="text-[11px] font-bold text-white tabular-nums">
+              {progress > 0 ? `${progress}%` : "…"}
+            </span>
           </span>
         )}
       </button>
 
-      <div className={styles.meta}>
-        <b>Hotel logo</b>
-        <span>Square works best. JPG, PNG or WEBP, up to 5MB.</span>
-        <div className={styles.links}>
-          <button type="button" onClick={() => inputRef.current?.click()} disabled={busy}>
+      <div className="min-w-0">
+        <b className="block text-[12.5px] font-semibold">Hotel logo</b>
+        <span className="block text-[11.5px] text-muted mt-0.5 leading-[1.45]">
+          Square works best. JPG, PNG or WEBP, up to 5MB.
+        </span>
+        <div className="flex gap-3 mt-[7px]">
+          <button
+            type="button"
+            className={`${linkBtn} text-accent`}
+            onClick={() => inputRef.current?.click()}
+            disabled={busy}
+          >
             {value ? "Replace" : "Upload"}
           </button>
           {value && !busy && (
-            <button type="button" className={styles.danger} onClick={() => {
-              setPreview(null);
-              onChange("");
-            }}>
+            <button
+              type="button"
+              className={`${linkBtn} text-muted hover:text-[var(--bad)]`}
+              onClick={() => {
+                setPreview(null);
+                onChange("");
+              }}
+            >
               Remove
             </button>
           )}

@@ -3,7 +3,6 @@ import { verifyVoucher, redeemVoucher } from "../../api/hotel.api.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import { Badge, Button, Card, Field, Input, Select } from "../../components/common/index.jsx";
 import { formatCoins, formatCurrency, initials, maskPhone } from "../../utils/format.js";
-import styles from "./VerifyPage.module.css";
 
 const OUTLETS = ["Restaurant", "Room Service", "Spa", "Bar", "Cafe", "Laundry", "Other"];
 
@@ -78,16 +77,16 @@ const VerifyPage = () => {
 
   return (
     <div>
-      <header className={styles.head}>
+      <header className="mb-5">
         <div>
-          <h1 className={`display ${styles.title}`}>Verify a code</h1>
-          <p className={styles.sub}>
+          <h1 className="display text-[26px] tracking-[-0.6px]">Verify a code</h1>
+          <p className="text-muted text-[12.5px] mt-1">
             Enter the bill first, then the guest's code. Verifying does not deduct anything.
           </p>
         </div>
       </header>
 
-      <div className={styles.cols}>
+      <div className="grid grid-cols-1 [@media(min-width:901px)]:grid-cols-2 gap-4 items-start">
         <Card title="Guest code">
           <Field label="Bill amount (₹)">
             <Input
@@ -116,11 +115,11 @@ const VerifyPage = () => {
               onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
               error={error}
               placeholder="GW-8KQ2-XP91"
-              className={styles.codeInput}
+              className="font-display text-lg tracking-[2px] uppercase"
             />
           </Field>
 
-          <div className={styles.actions}>
+          <div className="flex gap-[9px] [&>*:first-child]:flex-1">
             <Button block onClick={check} disabled={busy}>
               {busy ? "Checking…" : "Verify code"}
             </Button>
@@ -129,32 +128,32 @@ const VerifyPage = () => {
             </Button>
           </div>
 
-          <p className={styles.note}>
+          <p className="text-[11.5px] text-muted leading-[1.5] mt-3.5">
             Codes last 10 minutes and work once. If one fails, ask the guest to generate a new code
             in their app.
           </p>
         </Card>
 
         {receipt ? (
-          <Card title="Applied" className={styles.result}>
+          <Card title="Applied" className="min-h-[220px]">
             <Badge tone="ok">Redeemed</Badge>
 
-            <div className={styles.lines}>
+            <div className="my-3.5 [&>div]:flex [&>div]:justify-between [&>div]:gap-3 [&>div]:text-[12.5px] [&>div]:text-muted [&>div]:py-1.5 [&>div>b]:text-ink [&>div>b]:font-semibold [&>div>b]:tabular-nums">
               <div>
                 <span>Bill amount</span>
                 <b>{formatCurrency(receipt.billAmount)}</b>
               </div>
               <div>
                 <span>Coins applied</span>
-                <b className={styles.discount}>− {formatCoins(receipt.coinsApplied)}</b>
+                <b className="!text-[var(--acc2)]">− {formatCoins(receipt.coinsApplied)}</b>
               </div>
-              <div className={styles.total}>
+              <div className="!pt-[11px] !text-[13.5px] border-t border-hairline mt-1.5 [&>b]:font-display [&>b]:text-xl">
                 <span>Collect from guest</span>
                 <b>{formatCurrency(receipt.cashPayable)}</b>
               </div>
             </div>
 
-            <p className={styles.note}>
+            <p className="text-[11.5px] text-muted leading-[1.5] mt-3.5">
               Guest's remaining balance: {formatCoins(receipt.balanceAfter)} coins. Platform fee{" "}
               {formatCurrency(receipt.platformFee)}.
             </p>
@@ -164,47 +163,47 @@ const VerifyPage = () => {
             </Button>
           </Card>
         ) : checked ? (
-          <Card title="Guest details" className={styles.result}>
+          <Card title="Guest details" className="min-h-[220px]">
             <Badge tone="ok">Valid code</Badge>
 
-            <div className={styles.who}>
+            <div className="flex items-center gap-[11px] my-3.5">
               <span className="avatar">{initials(checked.guest.name)}</span>
               <span>
-                <b>{checked.guest.name}</b>
-                <i>
+                <b className="block font-display text-base font-semibold">{checked.guest.name}</b>
+                <i className="not-italic text-[11.5px] text-muted capitalize">
                   {checked.membership.tier} · {maskPhone(checked.guest.phone)}
                 </i>
               </span>
             </div>
 
-            <div className={styles.kpis}>
-              <span className={styles.kpi}>
-                <u>Balance</u>
-                <b>{formatCoins(checked.membership.balance)}</b>
+            <div className="grid grid-cols-2 gap-2.5 mb-3.5">
+              <span className="bg-chip rounded-token-sm p-[11px]">
+                <u className="block no-underline text-[9.5px] tracking-[0.09em] uppercase text-muted font-bold">Balance</u>
+                <b className="block font-display text-[21px] font-semibold mt-[3px]">{formatCoins(checked.membership.balance)}</b>
               </span>
-              <span className={styles.kpi}>
-                <u>Max discount</u>
-                <b>{checked.membership.tierCapPercent}%</b>
+              <span className="bg-chip rounded-token-sm p-[11px]">
+                <u className="block no-underline text-[9.5px] tracking-[0.09em] uppercase text-muted font-bold">Max discount</u>
+                <b className="block font-display text-[21px] font-semibold mt-[3px]">{checked.membership.tierCapPercent}%</b>
               </span>
             </div>
 
             {preview ? (
-              <div className={styles.lines}>
+              <div className="my-3.5 [&>div]:flex [&>div]:justify-between [&>div]:gap-3 [&>div]:text-[12.5px] [&>div]:text-muted [&>div]:py-1.5 [&>div>b]:text-ink [&>div>b]:font-semibold [&>div>b]:tabular-nums">
                 <div>
                   <span>Bill amount</span>
                   <b>{formatCurrency(Number(form.billAmount))}</b>
                 </div>
                 <div>
                   <span>Coins to apply</span>
-                  <b className={styles.discount}>− {formatCoins(preview.coinsApplied)}</b>
+                  <b className="!text-[var(--acc2)]">− {formatCoins(preview.coinsApplied)}</b>
                 </div>
-                <div className={styles.total}>
+                <div className="!pt-[11px] !text-[13.5px] border-t border-hairline mt-1.5 [&>b]:font-display [&>b]:text-xl">
                   <span>Guest pays</span>
                   <b>{formatCurrency(preview.cashPayable)}</b>
                 </div>
               </div>
             ) : (
-              <p className={styles.note}>Enter the bill amount to see the discount.</p>
+              <p className="text-[11.5px] text-muted leading-[1.5] mt-3.5">Enter the bill amount to see the discount.</p>
             )}
 
             <Button block onClick={commit} disabled={busy || !preview?.coinsApplied}>
@@ -212,9 +211,9 @@ const VerifyPage = () => {
             </Button>
           </Card>
         ) : (
-          <Card title="Guest details" className={styles.result}>
-            <div className={styles.placeholder}>
-              <span className={styles.ph} />
+          <Card title="Guest details" className="min-h-[220px]">
+            <div className="text-center px-2.5 py-[26px]">
+              <span className="block w-[46px] h-[46px] rounded-[14px] bg-chip mx-auto" />
               <p>Verify a code to see the guest, their balance and the discount.</p>
             </div>
           </Card>

@@ -135,7 +135,7 @@ const HotelsPage = () => {
               <tr
                 key={h._id}
                 onClick={() => navigate(adminHotelPath(h._id))}
-                style={{ cursor: "pointer" }}
+                className="cursor-pointer"
               >
                 <td>
                   <b>{h.name}</b>
@@ -177,17 +177,7 @@ const HotelsPage = () => {
         }
       >
         {message && (
-          <div
-            style={{
-              background: "var(--chip)",
-              borderLeft: "3px solid var(--bad)",
-              borderRadius: 8,
-              padding: "10px 12px",
-              fontSize: 12.5,
-              color: "var(--bad)",
-              marginBottom: 14,
-            }}
-          >
+          <div className="notice-bad">
             {message}
           </div>
         )}
