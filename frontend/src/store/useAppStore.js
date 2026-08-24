@@ -31,6 +31,10 @@ export const useAppStore = create()(
           isAuthenticated: state.isAuthenticated,
           activeHotelId: state.activeHotelId,
           guestTheme: state.guestTheme,
+          // Persisted so the card paints in the admin's chosen design on the
+          // first frame after a reload. Without it every refresh flashes the
+          // default design until the memberships call lands.
+          cardDesign: state.cardDesign,
         }),
 
         // Persisted state means the session is already known — skip the

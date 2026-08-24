@@ -5,6 +5,7 @@ import {
   OUTLETS,
   TX_TYPE_VALUES,
   PURCHASE_STATUS_VALUES,
+  CARD_DESIGN_VALUES,
 } from "../config/constants.js";
 
 export const objectIdParam = (name) =>
@@ -203,6 +204,12 @@ export const settingsRules = [
   body("tierCaps.SILVER").optional().isFloat({ min: 0, max: 100 }).toFloat(),
   body("tierCaps.GOLD").optional().isFloat({ min: 0, max: 100 }).toFloat(),
   body("tierCaps.PLATINUM").optional().isFloat({ min: 0, max: 100 }).toFloat(),
+  // Rejected rather than silently defaulted: a typo'd key would otherwise
+  // change every guest's card to the fallback with no error shown.
+  body("cardDesign")
+    .optional()
+    .isIn(CARD_DESIGN_VALUES)
+    .withMessage("Unknown card design"),
 ];
 
 /**

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { TIERS } from "../config/constants.js";
+import { TIERS, CARD_DESIGN_VALUES, DEFAULT_CARD_DESIGN } from "../config/constants.js";
 
 /** Platform-wide configuration. Singleton, enforced by the unique `key`. */
 const platformSettingsSchema = new mongoose.Schema(
@@ -27,6 +27,15 @@ const platformSettingsSchema = new mongoose.Schema(
     },
 
     coinsExpire: { type: Boolean, default: false },
+
+    // Which membership-card art every guest sees. Network-wide by design:
+    // the card is the product's face, so it stays consistent across hotels
+    // rather than becoming a per-property choice.
+    cardDesign: {
+      type: String,
+      enum: CARD_DESIGN_VALUES,
+      default: DEFAULT_CARD_DESIGN,
+    },
 
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },

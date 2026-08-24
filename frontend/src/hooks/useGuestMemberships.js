@@ -17,6 +17,7 @@ export const useGuestMemberships = () => {
   const role = useAppStore((s) => s.user?.role);
   const setMemberships = useAppStore((s) => s.setMemberships);
   const setTierThresholds = useAppStore((s) => s.setTierThresholds);
+  const setCardDesign = useAppStore((s) => s.setCardDesign);
 
   useEffect(() => {
     if (!isAuthenticated || role !== "GUEST") return;
@@ -27,6 +28,7 @@ export const useGuestMemberships = () => {
         if (cancelled || !data) return;
         if (data.memberships) setMemberships(data.memberships);
         if (data.tierThresholds) setTierThresholds(data.tierThresholds);
+        if (data.cardDesign) setCardDesign(data.cardDesign);
       })
       .catch(() => {
         // Each page still renders from whatever the store already holds.

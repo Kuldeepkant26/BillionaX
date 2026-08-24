@@ -81,3 +81,30 @@ export const NOTIFICATION_KINDS = Object.freeze({
 });
 
 export const NOTIFICATION_KIND_VALUES = Object.values(NOTIFICATION_KINDS);
+
+/**
+ * Membership-card art. The main admin picks one and it applies network-wide.
+ *
+ * These are KEYS ONLY — every design is drawn in the guest app (see the
+ * frontend's cardDesigns registry). Storing a key rather than markup keeps the
+ * payload small and means nothing renders admin-supplied HTML.
+ *
+ * A key here that the frontend does not know falls back to the default, so
+ * removing a design cannot leave guests with a blank card. Keep the two lists
+ * in step.
+ */
+export const CARD_DESIGNS = Object.freeze({
+  METALICA: "METALICA",
+  BRUSHED_STEEL: "BRUSHED_STEEL",
+  ORNAMENT: "ORNAMENT",
+  AURUM: "AURUM",
+  FACET: "FACET",
+  LEDGER: "LEDGER",
+  KEYCARD: "KEYCARD",
+  MONOGRAM: "MONOGRAM",
+});
+
+export const CARD_DESIGN_VALUES = Object.values(CARD_DESIGNS);
+
+/** Brushed steel is the house default. */
+export const DEFAULT_CARD_DESIGN = CARD_DESIGNS.BRUSHED_STEEL;

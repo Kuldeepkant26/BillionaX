@@ -23,6 +23,11 @@ export const listMemberships = asyncHandler(async (req, res) => {
     new ApiResponse(200, {
       memberships,
       tierThresholds: settings.tierThresholds,
+      // The card art the main admin selected. Sent here because this is the
+      // one call the guest app already makes before painting the card, so the
+      // design arrives with the data it decorates rather than in a second
+      // round trip that would flash the default first.
+      cardDesign: settings.cardDesign,
     })
   );
 });

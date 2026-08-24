@@ -44,6 +44,10 @@
 
   --font-display: var(--font-display);
   --font-sans: var(--font-ui);
+  /* Membership-card numerals. The mockups specified IBM Plex Mono; a system
+     mono stack matches its role (fixed-width, scannable at a front desk)
+     without a third webfont download on the guest's first paint. */
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, monospace;
 
   --radius-token: var(--rad);
   --radius-token-sm: var(--rad-sm);

@@ -11,6 +11,14 @@ export const createHotelSlice = (set, get) => ({
   tierThresholds: null,
   setTierThresholds: (tierThresholds) => set({ tierThresholds }),
 
+  /**
+   * Which membership-card art to draw, chosen by the main admin and applied
+   * network-wide. Null until the first memberships call returns; the card
+   * falls back to the default design until then, so it never renders blank.
+   */
+  cardDesign: null,
+  setCardDesign: (cardDesign) => set({ cardDesign }),
+
   setMemberships: (memberships) => {
     const { activeHotelId } = get();
     const stillValid = memberships.some((m) => String(m.hotelId?._id) === String(activeHotelId));

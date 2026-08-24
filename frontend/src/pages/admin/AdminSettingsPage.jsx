@@ -4,7 +4,8 @@ import { useAsync } from "../../hooks/useAsync.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import { Button, Card, ErrorState, Field, Input, Loading } from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
-import styles from "./AdminSettingsPage.module.css";
+import { CardDesignPicker } from "../../features/panel/CardDesignPicker.jsx";
+import { DEFAULT_CARD_DESIGN } from "../../features/guest/cardDesigns/registry.jsx";
 
 const toForm = (s) => ({
   welcomeCredit: s.welcomeCredit,
@@ -15,6 +16,7 @@ const toForm = (s) => ({
   silver: s.tierCaps?.SILVER,
   gold: s.tierCaps?.GOLD,
   platinum: s.tierCaps?.PLATINUM,
+  cardDesign: s.cardDesign || DEFAULT_CARD_DESIGN,
 });
 
 const AdminSettingsPage = () => {
@@ -55,6 +57,7 @@ const RulesForm = ({ settings, reload }) => {
           GOLD: Number(form.gold),
           PLATINUM: Number(form.platinum),
         },
+        cardDesign: form.cardDesign,
       });
       toastSuccess("Settings saved");
       run();
@@ -70,7 +73,7 @@ const RulesForm = ({ settings, reload }) => {
     <div>
       <PageHead title="Platform rules" subtitle="These apply across every hotel on the network" />
 
-      <div className={styles.cols}>
+      <div className="grid grid-cols-1 [@media(min-width:901px)]:grid-cols-2 gap-4 items-start">
         <Card title="Coins">
           <Field
             label="Welcome credit"
@@ -124,13 +127,13 @@ const RulesForm = ({ settings, reload }) => {
         </Card>
       </div>
 
-      <Card title="Redemption caps" className={styles.spaced}>
-        <p className={styles.note}>
+      <Card title="Redemption caps" className="my-4">
+        <p className="text-xs text-muted leading-[1.5] mb-3.5">
           The largest share of any bill a guest can settle with coins. Raising a cap increases the
           discount hotels absorb on every member bill.
         </p>
 
-        <div className={styles.caps}>
+        <div className="grid grid-cols-1 [@media(min-width:601px)]:grid-cols-3 gap-3">
           <Field label="Silver (%)" error={errors["tierCaps.SILVER"]}>
             <Input type="number" value={form.silver} onChange={change("silver")} />
           </Field>
@@ -141,6 +144,13 @@ const RulesForm = ({ settings, reload }) => {
             <Input type="number" value={form.platinum} onChange={change("platinum")} />
           </Field>
         </div>
+      </Card>
+
+      <Card title="Membership card design" className="my-4">
+        <CardDesignPicker
+          value={form.cardDesign}
+          onChange={(cardDesign) => setForm((f) => ({ ...f, cardDesign }))}
+        />
       </Card>
 
       <Button onClick={save} disabled={busy} size="lg">
