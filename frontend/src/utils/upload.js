@@ -47,6 +47,9 @@ export const uploadToCloudinary = (file, signed, onProgress) =>
     form.append("signature", signed.signature);
     form.append("folder", signed.folder);
     form.append("public_id", signed.publicId);
+    // Part of the server's signature, so it must be sent back exactly as
+    // given — omitting it makes Cloudinary reject the upload.
+    if (signed.invalidate !== undefined) form.append("invalidate", String(signed.invalidate));
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", signed.uploadUrl);

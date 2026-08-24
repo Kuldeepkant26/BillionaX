@@ -25,6 +25,20 @@ const removeAsset = (url) => {
 };
 
 /**
+ * Drops `previous` only when it is a genuinely different asset from `next`.
+ *
+ * Content uploads currently get a unique public_id each time, so the two can
+ * only collide if that ever changes — but comparing ids rather than URLs is
+ * what makes this safe either way. Two URLs for one asset differ by version
+ * and transformation, and deleting on that difference would destroy the live
+ * file, which is exactly how the avatar bug happened.
+ */
+const replaceAsset = (previous, next) => {
+  const previousId = publicIdFromUrl(previous);
+  if (previousId && previousId !== publicIdFromUrl(next)) removeAsset(previous);
+};
+
+/**
  * Returns a bare array by default so the guest-facing content route is
  * unchanged. Pass `paginate: true` for the panel, which needs { items, total }.
  */
@@ -121,8 +135,8 @@ export const updateContent = async ({ id, hotelId, patch }) => {
 
   // Drop whatever the row no longer points at, so replacing a picture does not
   // leave the previous one paid for and unreferenced.
-  if (existing.imageUrl && existing.imageUrl !== content.imageUrl) removeAsset(existing.imageUrl);
-  if (existing.videoUrl && existing.videoUrl !== content.videoUrl) removeAsset(existing.videoUrl);
+  replaceAsset(existing.imageUrl, content.imageUrl);
+  replaceAsset(existing.videoUrl, content.videoUrl);
 
   return content;
 };

@@ -122,11 +122,18 @@ export const updateHotel = async (hotelId, patch) => {
   });
   if (!hotel) throw new ApiError(404, "Hotel not found");
 
+  // Compare public_ids, NOT URLs: a hotel's logo always uploads to the same
+  // public_id, so replacing it OVERWRITES the old file and the two URLs differ
+  // only by version. Deleting on that difference would remove the logo that
+  // was just saved.
+  //
   // Best-effort: an orphaned file costs less than a settings save that fails
   // because a delete timed out.
-  if (previous && previous !== hotel.logoUrl) {
-    const publicId = publicIdFromUrl(previous);
-    if (publicId) destroyAsset(publicId).catch(() => {});
+  const previousId = publicIdFromUrl(previous);
+  const nextId = publicIdFromUrl(hotel.logoUrl);
+
+  if (previousId && previousId !== nextId) {
+    destroyAsset(previousId).catch(() => {});
   }
 
   return hotel;

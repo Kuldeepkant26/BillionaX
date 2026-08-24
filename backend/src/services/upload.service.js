@@ -66,7 +66,11 @@ export const createUploadSignature = ({ folder, publicId }) => {
   const timestamp = Math.floor(Date.now() / 1000);
   const scopedFolder = `${env.cloudinary.folder}/${folder}`;
 
-  const signed = { folder: scopedFolder, public_id: publicId, timestamp };
+  // invalidate purges the CDN copy of the previous file at this public_id.
+  // Avatars and logos overwrite a fixed public_id, so the delivery URL is
+  // unchanged between versions — without this the CDN keeps serving the OLD
+  // picture for hours after a change, which looks exactly like a failed save.
+  const signed = { folder: scopedFolder, invalidate: true, public_id: publicId, timestamp };
 
   return {
     signature: sign(signed),
@@ -74,6 +78,9 @@ export const createUploadSignature = ({ folder, publicId }) => {
     apiKey: env.cloudinary.apiKey,
     cloudName: env.cloudinary.cloudName,
     folder: scopedFolder,
+    // Every signed param must be echoed back verbatim by the browser, or
+    // Cloudinary recomputes a different signature and rejects the upload.
+    invalidate: true,
     publicId,
     uploadUrl: `${API_BASE}/${env.cloudinary.cloudName}/image/upload`,
     expiresIn: SIGNATURE_TTL_SECONDS,
@@ -103,18 +110,40 @@ export const isOwnCloudinaryUrl = (value) => {
   }
 };
 
-/** Pulls `billionax/avatars/<id>` back out of a delivery URL, for deletion. */
+/**
+ * Pulls `billionax/avatars/<id>` back out of a delivery URL, for deletion.
+ *
+ * Returns the public_id ONLY — no version, no transformation. Both are part of
+ * how an asset is *delivered*, not of its identity, and two URLs differing in
+ * either still name the same file. Callers rely on that: comparing public_ids
+ * is how they tell an overwrite ("same file, new bytes") from a genuine
+ * replacement, and deleting on a mismatch that was really just a different
+ * version would destroy the live avatar.
+ */
 export const publicIdFromUrl = (value) => {
   if (!isOwnCloudinaryUrl(value)) return null;
 
   try {
     const { pathname } = new URL(value);
-    // /<cloud>/image/upload/[v123/][transforms/]<folder>/<id>.<ext>
+    // /<cloud>/image/upload/[transforms/][v123/]<folder>/<id>.<ext>
     const afterUpload = pathname.split("/image/upload/")[1];
     if (!afterUpload) return null;
 
-    const withoutVersion = afterUpload.replace(/^v\d+\//, "");
-    return decodeURIComponent(withoutVersion.replace(/\.[a-z0-9]+$/i, ""));
+    // Transformations are slash-separated segments of comma-joined `k_v` pairs
+    // (w_160,h_160,c_fill). They may appear before AND after the version, so
+    // drop every leading segment that looks like one rather than just the
+    // first — a public_id itself never contains a comma-joined k_v list.
+    const isTransform = (segment) =>
+      segment.length > 0 &&
+      segment.split(",").every((part) => /^[a-z]{1,3}_[^/]+$/i.test(part));
+
+    const segments = afterUpload.split("/");
+    while (segments.length > 1 && (isTransform(segments[0]) || /^v\d+$/.test(segments[0]))) {
+      segments.shift();
+    }
+
+    const withoutExtension = segments.join("/").replace(/\.[a-z0-9]+$/i, "");
+    return decodeURIComponent(withoutExtension) || null;
   } catch {
     return null;
   }

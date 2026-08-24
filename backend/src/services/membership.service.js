@@ -222,11 +222,18 @@ export const updateGuestProfile = async ({ guestId, name, email, avatarUrl }) =>
     const previous = guest.avatarUrl;
     guest.avatarUrl = avatarUrl || undefined;
 
+    // Compare public_ids, NOT URLs. Every avatar for a given guest uploads to
+    // the same public_id, so a re-upload OVERWRITES the old file and the two
+    // URLs differ only by version — deleting on that difference would destroy
+    // the picture that was just saved, leaving the profile pointing at a 404.
+    //
     // Fire-and-forget: an orphaned file in Cloudinary is a far smaller problem
     // than a profile save that fails because a delete timed out.
-    if (previous && previous !== avatarUrl) {
-      const publicId = publicIdFromUrl(previous);
-      if (publicId) destroyAsset(publicId).catch(() => {});
+    const previousId = publicIdFromUrl(previous);
+    const nextId = publicIdFromUrl(guest.avatarUrl);
+
+    if (previousId && previousId !== nextId) {
+      destroyAsset(previousId).catch(() => {});
     }
   }
 
