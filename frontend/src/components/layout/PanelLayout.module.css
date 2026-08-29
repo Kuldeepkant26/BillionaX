@@ -2,20 +2,14 @@
  * Residual CSS for PanelLayout.
  *
  * Layout, spacing and type are Tailwind utilities in the JSX. What stays here
- * is the logo glyph (a pseudo-element), the nav icon fill, and the responsive
- * rail — which switches from a static sidebar column to a fixed slide-in
- * drawer below 900px, a state change that spans several properties at once.
+ * is the nav icon fill, the collapse animation, and the responsive rail —
+ * which switches from a static sidebar column to a fixed slide-in drawer
+ * below 900px, a state change that spans several properties at once.
  */
 
-.logo::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 11px;
-  height: 11px;
-  border-radius: 3px;
-  background: var(--rail);
+/* Animates the desktop collapse between 248px and 76px columns. */
+.shell {
+  transition: grid-template-columns 0.24s ease;
 }
 
 /* fill: currentColor is what lets the active/hover colour reach the icon. */
@@ -30,7 +24,7 @@
   .rail {
     position: fixed;
     inset: 0 auto 0 0;
-    width: 240px;
+    width: 260px;
     z-index: 120;
     transform: translateX(-100%);
     transition: transform 0.22s ease;

@@ -1,19 +1,21 @@
 import { Link } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore.js";
 import { homeForRole, ROUTES } from "../constants/routePaths.js";
-import { useThemeRoot } from "../components/layout/useThemeRoot.js";
+import { useThemeRoot, useAccentStyle } from "../components/layout/useThemeRoot.js";
 
 const NotFoundPage = () => {
   // Follows the guest preference: a dark 404 inside a light app reads as a bug.
   const guestTheme = useAppStore((s) => s.guestTheme);
+  const accent = useAppStore((s) => s.accent);
   useThemeRoot(guestTheme);
+  const accentStyle = useAccentStyle();
 
   const user = useAppStore((s) => s.user);
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
   const to = isAuthenticated ? homeForRole(user?.role) : ROUTES.HOME;
 
   return (
-    <div className="theme-root" data-theme={guestTheme}>
+    <div className="theme-root" data-theme={guestTheme} data-accent={accent} style={accentStyle}>
       <div
         style={{
           minHeight: "100svh",

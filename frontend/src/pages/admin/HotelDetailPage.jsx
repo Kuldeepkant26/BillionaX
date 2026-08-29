@@ -21,9 +21,11 @@ import {
   Modal,
   PasswordInput,
   Select,
+  Slider,
   Table,
 } from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
+import { QrCode } from "../../features/panel/QrCode.jsx";
 import { ROUTES } from "../../constants/routePaths.js";
 import { formatCoins, formatCurrency, formatDate } from "../../utils/format.js";
 
@@ -257,10 +259,17 @@ const HotelDetailPage = () => {
           </Card>
 
           <Card title="Guest QR link" className="mt-4">
-            <div className="bg-chip rounded-token-sm p-3 text-xs break-all font-mono">{joinUrl}</div>
-            <p className="text-[11.5px] text-muted leading-[1.5] mt-2.5">
-              The hotel prints this as a QR code for reception, rooms and outlets.
-            </p>
+            <div className="flex items-start gap-4 flex-wrap">
+              <QrCode value={joinUrl} />
+              <div className="flex-1 min-w-[200px]">
+                <div className="bg-chip rounded-token-sm p-3 text-xs break-all font-mono">
+                  {joinUrl}
+                </div>
+                <p className="text-[11.5px] text-muted leading-[1.5] mt-2.5">
+                  The hotel prints this QR code for reception, rooms and outlets.
+                </p>
+              </div>
+            </div>
           </Card>
         </div>
       </div>
@@ -395,16 +404,17 @@ const HotelDetailPage = () => {
           />
         </Field>
         <Field
-          label="Earn rate (%)"
+          label="Earn rate"
           hint="Coins = room amount × nights × this percentage"
           error={errors.earnRatePercent}
         >
-          <Input
-            type="number"
-            value={editForm.earnRatePercent}
-            onChange={(e) => setEditForm((f) => ({ ...f, earnRatePercent: e.target.value }))}
+          <Slider
             min={0}
             max={100}
+            unit="%"
+            value={editForm.earnRatePercent}
+            onChange={(e) => setEditForm((f) => ({ ...f, earnRatePercent: e.target.value }))}
+            error={errors.earnRatePercent}
           />
         </Field>
         <label className="flex items-center gap-[9px] text-[13px] cursor-pointer">

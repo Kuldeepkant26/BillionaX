@@ -20,3 +20,28 @@ export const cancelVoucher = (id) => api.delete(`/guest/vouchers/${id}`).then(un
 
 export const getHotelContent = (hotelId) =>
   api.get(`/guest/hotels/${hotelId}/content`).then(unwrap);
+
+/* ---- offers ---------------------------------------------------------- */
+
+export const getOffer = (hotelId, contentId) =>
+  api.get(`/guest/hotels/${hotelId}/offers/${contentId}`).then(unwrap);
+
+/* ---- videos ---------------------------------------------------------- */
+
+export const listVideos = (hotelId, params) =>
+  api.get(`/guest/hotels/${hotelId}/videos`, { params }).then(unwrap);
+
+export const getVideo = (hotelId, contentId) =>
+  api.get(`/guest/hotels/${hotelId}/videos/${contentId}`).then(unwrap);
+
+export const toggleVideoLike = (hotelId, contentId) =>
+  api.post(`/guest/hotels/${hotelId}/videos/${contentId}/like`).then(unwrap);
+
+export const listVideoComments = (hotelId, contentId, params) =>
+  api.get(`/guest/hotels/${hotelId}/videos/${contentId}/comments`, { params }).then(unwrap);
+
+export const addVideoComment = (hotelId, contentId, body) =>
+  api.post(`/guest/hotels/${hotelId}/videos/${contentId}/comments`, { body }).then(unwrap);
+
+export const deleteVideoComment = (commentId) =>
+  api.delete(`/guest/comments/${commentId}`).then(unwrap);

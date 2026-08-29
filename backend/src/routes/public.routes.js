@@ -5,8 +5,32 @@ import { ApiError } from "../utils/ApiError.js";
 import { Hotel } from "../models/hotel.model.js";
 import { Content } from "../models/content.model.js";
 import { CONTENT_KINDS } from "../config/constants.js";
+import { env } from "../config/env.js";
+import { getSettings } from "../services/settings.service.js";
 
 const router = Router();
+
+/**
+ * Unauthenticated app config: the theme preset the main admin chose. Public
+ * because the login pages must paint in it before anyone has a token, and it
+ * leaks nothing — it is a single enum key served from the settings cache.
+ */
+router.get(
+  "/config",
+  asyncHandler(async (req, res) => {
+    const settings = await getSettings();
+    res.status(200).json(
+      new ApiResponse(200, {
+        themePreset: settings.themePreset,
+        themeCustomColor: settings.themeCustomColor,
+        // So the code input can size itself to the codes actually issued
+        // rather than hardcoding a length the server is free to change.
+        otpLength: env.otp.length,
+        otpChannel: env.otp.channel,
+      })
+    );
+  })
+);
 
 /**
  * Unauthenticated hotel lookup for the QR landing screen — the guest needs to

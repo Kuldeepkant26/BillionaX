@@ -7,7 +7,7 @@ import {
   hashToken,
 } from "../utils/token.util.js";
 import { User } from "../models/user.model.js";
-import { verifyOtp, normalizePhone } from "./otp.service.js";
+import { verifyOtp, defaultChannel } from "./otp.service.js";
 import { findHotelByQr, joinHotel } from "./membership.service.js";
 
 const MAX_SESSIONS = 5;
@@ -38,7 +38,7 @@ export const staffLogin = async ({ email, password }) => {
   }
   if (!user.isActive) throw new ApiError(403, "This account has been deactivated");
   if (user.role === ROLES.GUEST) {
-    throw new ApiError(403, "Guests sign in with their phone number");
+    throw new ApiError(403, "Guests sign in from the guest app, not here");
   }
 
   const tokens = await issueTokens(user);
@@ -48,16 +48,43 @@ export const staffLogin = async ({ email, password }) => {
 /**
  * Verifies the OTP and signs the guest in, creating the account on first use.
  * If a hotel is supplied (from the QR), the guest is joined to it.
+ *
+ * The guest is looked up by whichever identifier they verified. Email-first
+ * accounts start with no phone number; they gain one when the guest adds it in
+ * their profile, which is also where any staff-created account holding that
+ * number gets merged in (see linkPhone).
  */
-export const guestVerify = async ({ phone: rawPhone, otp, hotelSlug, qrToken, name }) => {
-  await verifyOtp(rawPhone, otp);
-  const phone = normalizePhone(rawPhone);
+export const guestVerify = async ({
+  identifier: rawIdentifier,
+  channel = defaultChannel(),
+  otp,
+  hotelSlug,
+  qrToken,
+  name,
+}) => {
+  const { identifier } = await verifyOtp(rawIdentifier, otp, channel);
 
-  let user = await User.findOne({ phone, role: ROLES.GUEST });
+  // The verified identifier IS the lookup key — never a value from elsewhere
+  // in the request, or a guest could verify their own address and sign in as
+  // somebody else.
+  const query = channel === "email" ? { email: identifier } : { phone: identifier };
+
+  let user = await User.findOne({ ...query, role: ROLES.GUEST });
   let isNewUser = false;
 
   if (!user) {
-    user = await User.create({ role: ROLES.GUEST, name: name?.trim() || "Guest", phone });
+    // Staff and admins are identified by email too, and the unique index spans
+    // every role. Without this, verifying a staff address would try to create a
+    // second account on it and fail on a raw duplicate-key error.
+    if (await User.exists(query)) {
+      throw new ApiError(409, "That address belongs to a staff account. Sign in from the staff login.");
+    }
+
+    user = await User.create({
+      role: ROLES.GUEST,
+      name: name?.trim() || "Guest",
+      ...query,
+    });
     isNewUser = true;
   } else if (!user.isActive) {
     throw new ApiError(403, "This account has been deactivated");

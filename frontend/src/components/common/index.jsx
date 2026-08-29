@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
 import { useAppStore } from "../../store/useAppStore.js";
 
 export const Button = ({ variant = "primary", size, block, className = "", ...props }) => {
@@ -343,10 +344,102 @@ export const FilterBar = ({ children, activeCount = 0, onClear }) => (
   </div>
 );
 
-export const Kpi = ({ label, value, delta, tone }) => (
-  <div className="kpi">
-    <span className="kicker">{label}</span>
-    <b className="kpi-v display">{value}</b>
-    {delta && <span className={`kpi-d badge ${tone ? `badge-${tone}` : ""}`}>{delta}</span>}
-  </div>
-);
+/**
+ * Stat tile. All decoration is optional so older call sites render unchanged:
+ * `icon` puts a tinted glyph well before the label, `progress` (0–100) draws
+ * a completion ring on the right, `trend` ("up"/"down") prefixes the delta
+ * with an arrow, and `to` makes the whole tile a link to its detail page.
+ */
+export const Kpi = ({ label, value, delta, tone, trend, progress, icon, to }) => {
+  const clamped =
+    progress == null ? null : Math.max(0, Math.min(100, Number(progress) || 0));
+
+  const body = (
+    <>
+      <span className="kpi-top">
+        {icon && (
+          <span className="kpi-ic" aria-hidden="true">
+            {icon}
+          </span>
+        )}
+        <span className="kicker">{label}</span>
+        {clamped != null && (
+          <span
+            className="kpi-ring"
+            style={{ "--p": `${clamped}%` }}
+            role="img"
+            aria-label={`${Math.round(clamped)}%`}
+          >
+            <i />
+          </span>
+        )}
+      </span>
+      <b className="kpi-v display">{value}</b>
+      {delta && (
+        <span className={`kpi-d badge ${tone ? `badge-${tone}` : ""}`}>
+          {trend === "up" && <span aria-hidden="true">▲ </span>}
+          {trend === "down" && <span aria-hidden="true">▼ </span>}
+          {delta}
+        </span>
+      )}
+    </>
+  );
+
+  return to ? (
+    <Link to={to} className="kpi">
+      {body}
+    </Link>
+  ) : (
+    <div className="kpi">{body}</div>
+  );
+};
+
+/**
+ * A bounded value you can drag OR type. The range and number inputs stay in
+ * sync; dragging clamps by nature, while typed values are clamped only on
+ * blur so entering "7" on the way to "75" doesn't fight the user.
+ *
+ * onChange receives `{ target: { value } }` with a string value — the same
+ * shape Input produces — so the pages' existing change(key) handlers work
+ * unmodified.
+ */
+export const Slider = ({ value, onChange, min = 0, max = 100, step = 1, unit, error }) => {
+  const num = Number(value);
+  const safe = Number.isFinite(num) ? Math.min(max, Math.max(min, num)) : min;
+  const pct = max > min ? ((safe - min) / (max - min)) * 100 : 0;
+
+  const emit = (v) => onChange?.({ target: { value: v } });
+
+  return (
+    <span className="slider">
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={safe}
+        onChange={(e) => emit(e.target.value)}
+        style={{
+          background: `linear-gradient(to right, var(--acc) ${pct}%, var(--acc-soft) ${pct}%)`,
+        }}
+        aria-label={unit ? `Value in ${unit}` : undefined}
+      />
+      <input
+        type="number"
+        className={`input ${error ? "input-err" : ""}`}
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => emit(e.target.value)}
+        onBlur={(e) => {
+          const n = Number(e.target.value);
+          if (!Number.isFinite(n) || e.target.value === "") return emit(String(min));
+          const clamped = Math.min(max, Math.max(min, n));
+          if (clamped !== n) emit(String(clamped));
+        }}
+      />
+      {unit && <i className="slider-unit">{unit}</i>}
+    </span>
+  );
+};

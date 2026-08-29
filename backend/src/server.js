@@ -5,12 +5,18 @@ import { env, validateEnv } from "./config/env.js";
 import { connectDB } from "./config/db.js";
 import { logger } from "./utils/logger.js";
 import { createRealtime, closeRealtime } from "./realtime/index.js";
+import { startOfferSweep } from "./services/offerExpiry.service.js";
 
 let server;
+let stopOfferSweep;
 
 const shutdown = async (signal, code = 0) => {
   logger.info(`${signal} received, shutting down gracefully`);
-  // Sockets must go FIRST. They are open connections that keep the HTTP
+  // The sweep goes first of all: it is the only thing that could START new
+  // Mongo work after the decision to shut down, and the connection close at
+  // the end of this function would otherwise land mid-delete.
+  if (stopOfferSweep) stopOfferSweep();
+  // Sockets must go next. They are open connections that keep the HTTP
   // server's close() callback from ever firing, so closing in the other order
   // hangs the process instead of exiting.
   await closeRealtime();
@@ -31,6 +37,10 @@ const startServer = async () => {
   server.listen(env.port, () => {
     logger.info(`Server running in ${env.nodeEnv} mode on port ${env.port}`);
   });
+
+  // Started after listen: reclaiming storage is not a prerequisite for
+  // answering requests.
+  stopOfferSweep = startOfferSweep();
 };
 
 process.on("unhandledRejection", (reason) => {

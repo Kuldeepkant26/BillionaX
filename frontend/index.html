@@ -2,7 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#FFFFFF" />
     <meta name="description" content="Billionax — turn every hotel bill into coins you can spend on the spot." />
@@ -33,10 +34,24 @@
       (function () {
         try {
           var raw = localStorage.getItem("gw-storage");
-          var theme = raw && JSON.parse(raw).state && JSON.parse(raw).state.guestTheme;
+          var state = (raw && JSON.parse(raw).state) || {};
+
+          var theme = state.guestTheme;
           if (theme !== "emerald-noir" && theme !== "lumen") theme = "lumen";
 
-          // Only guest routes are themeable; the panels are always ink-minimal.
+          // The admin-chosen colour preset. Hardcoded allowlist rather than an
+          // import: any module import would be deferred past paint. Keep in
+          // step with theme/accentPresets.js.
+          var accent = state.accent;
+          var accents = [
+            "CORAL", "SAND", "INDIGO", "LAVENDER", "CHAMPAGNE", "EMERALD",
+            "TEAL", "OCEAN", "MIDNIGHT", "ROSE", "MONO", "CUSTOM"
+          ];
+          if (accents.indexOf(accent) === -1) accent = "CORAL";
+
+          // Guest routes take the saved light/dark theme; every other route
+          // is a panel or the staff login and paints ink-minimal — set here
+          // too, so panel cold loads do not flash unthemed.
           var path = location.pathname;
           var isGuest =
             path === "/" ||
@@ -44,10 +59,14 @@
             path.indexOf("/join") === 0 ||
             path === "/login";
 
-          if (isGuest) {
-            document.body.setAttribute("data-theme", theme);
-            var meta = document.querySelector('meta[name="theme-color"]');
-            if (meta) meta.setAttribute("content", theme === "emerald-noir" ? "#0B0A08" : "#FFFFFF");
+          document.body.setAttribute("data-theme", isGuest ? theme : "ink-minimal");
+          document.body.setAttribute("data-accent", accent);
+
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta && isGuest) {
+            meta.setAttribute("content", theme === "emerald-noir" ? "#0B0A08" : "#FFFFFF");
+          } else if (meta) {
+            meta.setAttribute("content", "#F5F6F8");
           }
         } catch (e) {
           /* A blocked or malformed localStorage must not stop the app booting. */

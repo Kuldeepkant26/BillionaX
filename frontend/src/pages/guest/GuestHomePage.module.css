@@ -33,6 +33,11 @@
      rather than stopping short at an arbitrary margin. */
   margin-inline: -18px;
   padding-inline: 18px;
+  /* Without this the browser can rest the scroll position past the leading
+     padding, which parks the first card flush against the screen edge while
+     every section above it sits on the 18px gutter. scroll-padding keeps the
+     snap origin at the gutter, so the row starts aligned and returns there. */
+  scroll-padding-inline: 18px;
 }
 .privGrid::-webkit-scrollbar {
   display: none;
@@ -45,6 +50,12 @@
  * A photo tile, not a text box. The text sits on white over a gradient scrim
  * in BOTH themes — like the membership card, this is imagery rather than a
  * theme surface, so it does not invert.
+ *
+ * No border: the tile is imagery, and a themed hairline around it drew a pale
+ * line along the bottom edge in dark mode where the scrim could not reach.
+ * An absolutely-positioned ::after is laid out against the PADDING box, so a
+ * border ring always sits outside it however the inset is written. The photo
+ * edge is its own boundary and needs no hairline.
  */
 .priv {
   /* --hero is the fallback ground when a privilege has no image of its own. */
@@ -71,6 +82,10 @@
   /* Bleeds to the screen edge, so a scrolled row does not stop at the gutter. */
   margin-inline: -18px;
   padding-inline: 18px;
+  /* See .privGrid: without this the row rests at scrollLeft = 18, hiding the
+     leading padding and butting the first video card against the screen edge
+     while the heading above it stays on the gutter. */
+  scroll-padding-inline: 18px;
 }
 .offerRow::-webkit-scrollbar {
   display: none;

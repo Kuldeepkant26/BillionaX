@@ -60,8 +60,18 @@ const sign = (params) => {
  * redirect the upload elsewhere in the library or overwrite another user's
  * image by tampering with the request.
  */
-export const createUploadSignature = ({ folder, publicId }) => {
+/** Cloudinary scopes every asset operation by resource type. */
+const RESOURCE_TYPES = ["image", "video"];
+
+const assertResourceType = (resourceType) => {
+  if (!RESOURCE_TYPES.includes(resourceType)) {
+    throw new ApiError(400, `Unsupported upload type: ${resourceType}`);
+  }
+};
+
+export const createUploadSignature = ({ folder, publicId, resourceType = "image" }) => {
   assertConfigured();
+  assertResourceType(resourceType);
 
   const timestamp = Math.floor(Date.now() / 1000);
   const scopedFolder = `${env.cloudinary.folder}/${folder}`;
@@ -82,7 +92,11 @@ export const createUploadSignature = ({ folder, publicId }) => {
     // Cloudinary recomputes a different signature and rejects the upload.
     invalidate: true,
     publicId,
-    uploadUrl: `${API_BASE}/${env.cloudinary.cloudName}/image/upload`,
+    resourceType,
+    // The resource type is part of the ENDPOINT, not the signed params, so it
+    // does not affect the signature — but posting a video to /image/upload
+    // fails, hence threading it through here.
+    uploadUrl: `${API_BASE}/${env.cloudinary.cloudName}/${resourceType}/upload`,
     expiresIn: SIGNATURE_TTL_SECONDS,
   };
 };
@@ -125,8 +139,13 @@ export const publicIdFromUrl = (value) => {
 
   try {
     const { pathname } = new URL(value);
-    // /<cloud>/image/upload/[transforms/][v123/]<folder>/<id>.<ext>
-    const afterUpload = pathname.split("/image/upload/")[1];
+    // /<cloud>/<image|video>/upload/[transforms/][v123/]<folder>/<id>.<ext>
+    // Matched generically: splitting on the literal "/image/upload/" returned
+    // null for every video URL, which silently disabled asset cleanup for
+    // them — an orphaned file on every replace.
+    const marker = pathname.match(/\/(image|video)\/upload\//);
+    if (!marker) return null;
+    const afterUpload = pathname.slice(marker.index + marker[0].length);
     if (!afterUpload) return null;
 
     // Transformations are slash-separated segments of comma-joined `k_v` pairs
@@ -150,27 +169,41 @@ export const publicIdFromUrl = (value) => {
 };
 
 /**
+ * Which Cloudinary pipeline a delivery URL belongs to.
+ *
+ * destroy is scoped by resource type, so deleting a video through the image
+ * endpoint reports "not found" and silently leaves the file behind. Callers
+ * that hold only a URL use this to pick the right one.
+ */
+export const resourceTypeFromUrl = (value) =>
+  /\/video\/upload\//.test(String(value || "")) ? "video" : "image";
+
+/**
  * Removes an asset. Best-effort by design: a failed delete must never block
  * the user's action — the worst case is an orphaned file, which is cheaper
  * than a profile update that refuses to save.
  */
-export const destroyAsset = async (publicId) => {
+export const destroyAsset = async (publicId, resourceType = "image") => {
   if (!isUploadConfigured || !publicId) return false;
+  if (!RESOURCE_TYPES.includes(resourceType)) return false;
 
   const timestamp = Math.floor(Date.now() / 1000);
   const signature = sign({ public_id: publicId, timestamp });
 
   try {
-    const response = await fetch(`${API_BASE}/${env.cloudinary.cloudName}/image/destroy`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        public_id: publicId,
-        timestamp,
-        signature,
-        api_key: env.cloudinary.apiKey,
-      }),
-    });
+    const response = await fetch(
+      `${API_BASE}/${env.cloudinary.cloudName}/${resourceType}/destroy`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          public_id: publicId,
+          timestamp,
+          signature,
+          api_key: env.cloudinary.apiKey,
+        }),
+      }
+    );
 
     const result = await response.json();
     if (result?.result !== "ok" && result?.result !== "not found") {

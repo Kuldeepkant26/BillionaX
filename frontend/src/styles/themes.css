@@ -9,13 +9,19 @@
 
 /*
  * The guest app has TWO themes — lumen (light, the default) and emerald-noir
- * (dark) — toggled from the You tab. The panels stay on ink-minimal and are
- * not themeable: they are a staff data surface, not a consumer one.
+ * (dark) — toggled from the You tab. The panels use ink-minimal.
  *
- * The palette is deliberately MONOCHROME: cream, white and black. Colour is
- * reserved for status meaning — an error must look like an error — and is
- * never used decoratively. If you are reaching for a hue to make something
- * look nicer, the answer here is contrast or weight instead.
+ * MODE and ACCENT are two separate axes:
+ *   - [data-theme]  — the neutrals: grounds, ink, hairlines, shadows.
+ *   - [data-accent] — the colour: accent, rail, hero, chart hues. Chosen by
+ *     the MAIN ADMIN in platform settings and applied network-wide, to the
+ *     panels and the guest app alike. See the accent layer at the bottom of
+ *     this file and theme/accentPresets.js.
+ *
+ * Both attributes sit on the SAME elements (the .theme-root div and <body>).
+ * The accent blocks come after the theme blocks, so with equal specificity
+ * they win for any token both define; per-mode corrections use compound
+ * [data-theme][data-accent] selectors, which win on specificity.
  *
  * The theme names are historical. `emerald-noir` carries no emerald; renaming
  * it would break the persisted `gw-storage.guestTheme` key and the pre-paint
@@ -41,10 +47,14 @@
   --chip: #f2efe8;
   --soft: rgba(20, 18, 15, 0.06);
 
-  /* The accent IS the ink. A primary button is black on white. */
+  /* The accent IS the ink. A primary button is black on white.
+     (Fallbacks only — in practice the [data-accent] layer below overrides
+     all four accent tokens.) */
   --acc: #14120f;
   --acc-fg: #ffffff;
   --acc2: #3a352c;
+  --acc-soft: rgba(20, 18, 15, 0.06);
+  --chart2: #4a5d80;
 
   /* Status only — muted so they read as information, not decoration. */
   --ok: #2f6b4f;
@@ -86,6 +96,8 @@
   --acc: #f5f1e8;
   --acc-fg: #0b0a08;
   --acc2: #cfc8ba;
+  --acc-soft: rgba(245, 241, 232, 0.09);
+  --chart2: #8fa4c8;
 
   /* Status only — lifted for legibility on black, still muted. */
   --ok: #6fb894;
@@ -107,22 +119,26 @@
   --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.28);
 }
 
-/* Hotel + admin panels — cream, hairline borders, editorial restraint */
+/* Hotel + admin panels — cool neutral ground, hairline borders. The old warm
+   cream (#f7f4ec) was retired on request; keep these greys hue-free so every
+   accent preset sits on the same neutral stage. */
 [data-theme="ink-minimal"] {
-  --bg: #f7f4ec;
+  --bg: #f5f6f8;
   --bg2: #ffffff;
-  --fg: #14120f;
-  --dim: #6e6a62;
-  --line: #e4dfd3;
-  --gl: #e4dfd3;
+  --fg: #101318;
+  --dim: #667085;
+  --line: #e4e7ec;
+  --gl: #e4e7ec;
   --card: #ffffff;
   --panel: #ffffff;
-  --chip: #efebe1;
-  --soft: #efebe1;
+  --chip: #eef1f4;
+  --soft: #f2f4f7;
 
-  --acc: #14120f;
+  --acc: #101318;
   --acc-fg: #ffffff;
-  --acc2: #3a352c;
+  --acc2: #343b46;
+  --acc-soft: #eef1f4;
+  --chart2: #4a5d80;
   --ok: #2f6b4f;
   --bad: #a6402c;
   --warn: #7a6432;
@@ -141,14 +157,299 @@
   --join-glow: rgba(20, 18, 15, 0.1);
 
   --hero: linear-gradient(145deg, #2b2721, #14120f 60%, #0a0908);
-  --rad: 10px;
-  --rad-sm: 8px;
+  --rad: 16px;
+  --rad-sm: 12px;
 
   --font-display: "Fraunces", Georgia, serif;
   --font-ui: "Schibsted Grotesk", system-ui, sans-serif;
 
-  --shadow: 0 16px 42px rgba(20, 18, 15, 0.1);
-  --shadow-sm: 0 2px 8px rgba(20, 18, 15, 0.06);
+  --shadow: 0 2px 6px rgba(16, 19, 24, 0.04), 0 18px 44px rgba(16, 19, 24, 0.09);
+  --shadow-sm: 0 1px 3px rgba(16, 19, 24, 0.04), 0 4px 14px rgba(16, 19, 24, 0.06);
+}
+
+/* ------------------------------------------------------------------------- *
+ * ACCENT LAYER — the admin-chosen colour, one block per preset.
+ *
+ * Each block restyles ONLY the colour tokens; neutrals stay with the theme.
+ * Values here are the light-mode/panel palette. The compound
+ * [data-theme="emerald-noir"][data-accent] blocks lift the hue for dark mode
+ * (a saturated mid-tone accent holds contrast on white but not on black).
+ *
+ * Preset keys mirror backend THEME_PRESETS — see theme/accentPresets.js.
+ * Every rail colour must hold white text at AA; every dark-mode --acc must
+ * hold its --acc-fg at AA.
+ *
+ * --chart2 is the SECOND categorical series colour for the dashboard charts.
+ * It is set per preset, not shared: no single companion hue stays separable
+ * from every accent. Each accent/--chart2 pair was checked with the dataviz
+ * validator for colourblind separation, normal-vision separation and
+ * contrast against the card surface.
+ * ------------------------------------------------------------------------- */
+
+[data-accent="CORAL"] {
+  --acc: #d8411f;
+  --acc-fg: #ffffff;
+  --acc2: #b03312;
+  --acc-soft: #fbe7df;
+  --chart2: #4a5d80;
+  --hero: linear-gradient(145deg, #ff7a55, #e8481f 60%, #b03312);
+  --rail: #d8411f;
+  --railfg: #ffffff;
+  --raildim: rgba(255, 255, 255, 0.78);
+  --railact: #ffffff;
+  --railacttx: #c43a18;
+  --join-glow: rgba(216, 65, 31, 0.3);
+}
+
+/* Soft terracotta on a warm near-black rail — the quietest of the warm set. */
+[data-accent="SAND"] {
+  --acc: #b5673f;
+  --acc-fg: #ffffff;
+  --acc2: #93502e;
+  --acc-soft: #f7ebe3;
+  --chart2: #4a5d80;
+  --hero: linear-gradient(145deg, #d99368, #b5673f 60%, #7d4326);
+  --rail: #2b2622;
+  --railfg: #f6f1ec;
+  --raildim: rgba(246, 241, 236, 0.62);
+  --railact: #d9926a;
+  --railacttx: #241f1b;
+  --join-glow: rgba(181, 103, 63, 0.28);
+}
+[data-theme="emerald-noir"][data-accent="SAND"] {
+  --acc: #e0996f;
+  --acc-fg: #241207;
+  --acc2: #c07c52;
+  --acc-soft: rgba(224, 153, 111, 0.15);
+  --chart2: #8fa4c8;
+}
+[data-theme="emerald-noir"][data-accent="CORAL"] {
+  --acc: #ff8b6a;
+  --acc-fg: #23100a;
+  --acc2: #e0674a;
+  --acc-soft: rgba(255, 139, 106, 0.16);
+}
+
+[data-accent="INDIGO"] {
+  --acc: #5f51e3;
+  --acc-fg: #ffffff;
+  --acc2: #483bb8;
+  --acc-soft: #ebe8fc;
+  --chart2: #b5793f;
+  --hero: linear-gradient(145deg, #8f7bff, #5f51e3 60%, #483bb8);
+  --rail: #4d40c9;
+  --railfg: #ffffff;
+  --raildim: rgba(255, 255, 255, 0.76);
+  --railact: #ffffff;
+  --railacttx: #4d40c9;
+  --join-glow: rgba(95, 81, 227, 0.3);
+}
+[data-theme="emerald-noir"][data-accent="INDIGO"] {
+  --acc: #a99cff;
+  --acc-fg: #17123a;
+  --acc2: #8478e8;
+  --acc-soft: rgba(169, 156, 255, 0.16);
+  --chart2: #d9a26a;
+}
+
+/* Muted violet on a deep plum rail — softer than Indigo, still cool. */
+[data-accent="LAVENDER"] {
+  --acc: #7a5cb8;
+  --acc-fg: #ffffff;
+  --acc2: #614795;
+  --acc-soft: #f0ecfa;
+  --chart2: #b5793f;
+  --hero: linear-gradient(145deg, #a88ad6, #7a5cb8 60%, #513a80);
+  --rail: #3a3457;
+  --railfg: #f3f0fa;
+  --raildim: rgba(243, 240, 250, 0.64);
+  --railact: #a88ad6;
+  --railacttx: #241f38;
+  --join-glow: rgba(122, 92, 184, 0.28);
+}
+[data-theme="emerald-noir"][data-accent="LAVENDER"] {
+  --acc: #b79ce6;
+  --acc-fg: #1b1330;
+  --acc2: #9a7fcc;
+  --acc-soft: rgba(183, 156, 230, 0.16);
+  --chart2: #d9a26a;
+}
+
+/* Drawn from the gold of the logo; the rail stays near-black so the gold can
+   be the jewellery rather than the wall. */
+[data-accent="CHAMPAGNE"] {
+  --acc: #8a6f28;
+  --acc-fg: #ffffff;
+  --acc2: #6f5920;
+  --acc-soft: #f3ecd9;
+  --chart2: #4a5d80;
+  --hero: linear-gradient(145deg, #c9a84c, #8a6f28 60%, #4f3f16);
+  --rail: #171310;
+  --railfg: #f5f1e8;
+  --raildim: rgba(245, 241, 232, 0.62);
+  --railact: #c9a84c;
+  --railacttx: #171310;
+  --join-glow: rgba(169, 138, 76, 0.32);
+}
+[data-theme="emerald-noir"][data-accent="CHAMPAGNE"] {
+  --acc: #d7b662;
+  --acc-fg: #1c160a;
+  --acc2: #b59544;
+  --acc-soft: rgba(215, 182, 98, 0.15);
+  --chart2: #8fa4c8;
+}
+
+[data-accent="EMERALD"] {
+  --acc: #177a53;
+  --acc-fg: #ffffff;
+  --acc2: #0f5c3e;
+  --acc-soft: #dff2e9;
+  /* Mauve rather than another cool hue: green sits close to every blue and
+     slate under deuteranopia. This pair clears the normal-vision floor and
+     the charts add legend + direct labels as the required second encoding. */
+  --chart2: #9c5a86;
+  --hero: linear-gradient(145deg, #3fae7e, #177a53 60%, #0f5c3e);
+  --rail: #10603f;
+  --railfg: #ffffff;
+  --raildim: rgba(255, 255, 255, 0.74);
+  --railact: #ffffff;
+  --railacttx: #10603f;
+  --join-glow: rgba(23, 122, 83, 0.3);
+}
+[data-theme="emerald-noir"][data-accent="EMERALD"] {
+  --acc: #64c99b;
+  --acc-fg: #082018;
+  --acc2: #3da878;
+  --acc-soft: rgba(100, 201, 155, 0.15);
+  --chart2: #d094b4;
+}
+
+/* Soft blue-green — the calmest option in the cool set. */
+[data-accent="TEAL"] {
+  --acc: #3f7d8c;
+  --acc-fg: #ffffff;
+  --acc2: #2d6270;
+  --acc-soft: #e2f0f2;
+  --chart2: #b5793f;
+  --hero: linear-gradient(145deg, #6fb0bd, #3f7d8c 60%, #24505c);
+  --rail: #1d4d55;
+  --railfg: #eef7f8;
+  --raildim: rgba(238, 247, 248, 0.66);
+  --railact: #ffffff;
+  --railacttx: #1d4d55;
+  --join-glow: rgba(63, 125, 140, 0.28);
+}
+[data-theme="emerald-noir"][data-accent="TEAL"] {
+  --acc: #7fbcc9;
+  --acc-fg: #0c1f24;
+  --acc2: #5c9dab;
+  --acc-soft: rgba(127, 188, 201, 0.15);
+  --chart2: #d9a26a;
+}
+
+[data-accent="OCEAN"] {
+  --acc: #176ba8;
+  --acc-fg: #ffffff;
+  --acc2: #0f507f;
+  --acc-soft: #e0eef8;
+  --chart2: #b5793f;
+  --hero: linear-gradient(145deg, #4da3d8, #176ba8 60%, #0f507f);
+  --rail: #10598c;
+  --railfg: #ffffff;
+  --raildim: rgba(255, 255, 255, 0.76);
+  --railact: #ffffff;
+  --railacttx: #10598c;
+  --join-glow: rgba(23, 107, 168, 0.3);
+}
+[data-theme="emerald-noir"][data-accent="OCEAN"] {
+  --acc: #7ab8e8;
+  --acc-fg: #0a1a26;
+  --acc2: #4a95cc;
+  --acc-soft: rgba(122, 184, 232, 0.15);
+  --chart2: #d9a26a;
+}
+
+/* Deep navy rail with a brighter azure accent — corporate without the grey. */
+[data-accent="MIDNIGHT"] {
+  --acc: #2f6fd0;
+  --acc-fg: #ffffff;
+  --acc2: #2456a5;
+  --acc-soft: #e6eefb;
+  --chart2: #b5793f;
+  --hero: linear-gradient(145deg, #5f97e8, #2f6fd0 60%, #1c4483);
+  --rail: #111a2e;
+  --railfg: #eef2fa;
+  --raildim: rgba(238, 242, 250, 0.6);
+  --railact: #4f8ae0;
+  --railacttx: #0b1220;
+  --join-glow: rgba(47, 111, 208, 0.3);
+}
+[data-theme="emerald-noir"][data-accent="MIDNIGHT"] {
+  --acc: #86b2f0;
+  --acc-fg: #0a1526;
+  --acc2: #5f92d8;
+  --acc-soft: rgba(134, 178, 240, 0.16);
+  --chart2: #d9a26a;
+}
+
+/* Warm mauve — refined, and the only preset whose rail leans plum. */
+[data-accent="ROSE"] {
+  --acc: #9a5b7d;
+  --acc-fg: #ffffff;
+  --acc2: #7d4763;
+  --acc-soft: #f8eaf1;
+  --chart2: #5f8a4a;
+  --hero: linear-gradient(145deg, #c489a6, #9a5b7d 60%, #683a53);
+  --rail: #3d2630;
+  --railfg: #f8eef2;
+  --raildim: rgba(248, 238, 242, 0.64);
+  --railact: #c489a6;
+  --railacttx: #2b1a22;
+  --join-glow: rgba(154, 91, 125, 0.28);
+}
+[data-theme="emerald-noir"][data-accent="ROSE"] {
+  --acc: #cf94b1;
+  --acc-fg: #240f1a;
+  --acc2: #b0798f;
+  --acc-soft: rgba(207, 148, 177, 0.15);
+  --chart2: #96c47c;
+}
+
+/* Monochrome, now on the cool neutral ground rather than the old cream. */
+[data-accent="MONO"] {
+  --acc: #101318;
+  --acc-fg: #ffffff;
+  --acc2: #343b46;
+  --acc-soft: #eef1f4;
+  --chart2: #8a94a6;
+  --hero: linear-gradient(145deg, #2b313c, #101318 60%, #05070a);
+  --rail: #0f1216;
+  --railfg: #f2f4f7;
+  --raildim: #8a94a6;
+  --railact: #f2f4f7;
+  --railacttx: #0f1216;
+  --join-glow: rgba(16, 19, 24, 0.14);
+}
+[data-theme="emerald-noir"][data-accent="MONO"] {
+  --acc: #f5f1e8;
+  --acc-fg: #0b0a08;
+  --acc2: #cfc8ba;
+  --acc-soft: rgba(245, 241, 232, 0.09);
+  --chart2: #98a2b3;
+  --join-glow: rgba(245, 241, 232, 0.35);
+}
+
+/*
+ * CUSTOM — the admin's own colour from the wheel.
+ *
+ * The values come from deriveCustomTokens() and are written onto the themed
+ * root as inline style properties, so this block only has to exist to keep
+ * the attribute selector valid. Everything it needs is inherited.
+ */
+[data-accent="CUSTOM"] {
+  --railfg: #ffffff;
+  --raildim: rgba(255, 255, 255, 0.74);
+  --railact: #ffffff;
 }
 
 .theme-root {

@@ -12,6 +12,7 @@ import {
   verifyVoucherRules,
   redeemVoucherRules,
   contentRules,
+  offerRules,
   privilegeRules,
   hotelUserRules,
   buyCoinsRules,
@@ -23,6 +24,7 @@ import {
   staffFilterRules,
   purchaseFilterRules,
   contentFilterRules,
+  monthlyReportRules,
 } from "../validators/common.validator.js";
 
 const router = Router();
@@ -42,6 +44,14 @@ router.get("/members", paginationRules, memberFilterRules, validate, hotelContro
 
 // --- hotel admin only ---
 router.get("/dashboard", adminOnly, hotelController.dashboard);
+router.get(
+  "/reports/monthly-redemptions",
+  adminOnly,
+  monthlyReportRules,
+  validate,
+  hotelController.monthlyRedemptions
+);
+router.get("/rebates", adminOnly, hotelController.listSettlements);
 router.post("/members/allocate", adminOnly, allocateRules, validate, hotelController.allocate);
 
 router.get("/coins/balance", adminOnly, hotelController.coinBalance);
@@ -74,6 +84,7 @@ router.post(
 );
 
 router.post("/content/image-upload", adminOnly, hotelController.createContentUpload);
+router.post("/content/video-upload", adminOnly, hotelController.createContentVideoUpload);
 
 router.get("/contents", adminOnly, paginationRules, contentFilterRules, validate, hotelController.content.list);
 router.post("/contents", adminOnly, contentRules, validate, hotelController.content.create);
@@ -81,9 +92,23 @@ router.patch("/contents/:id", adminOnly, objectIdParam("id"), validate, hotelCon
 router.delete("/contents/:id", adminOnly, objectIdParam("id"), validate, hotelController.content.remove);
 
 router.get("/offers", adminOnly, paginationRules, contentFilterRules, validate, hotelController.offers.list);
-router.post("/offers", adminOnly, contentRules, validate, hotelController.offers.create);
-router.patch("/offers/:id", adminOnly, objectIdParam("id"), validate, hotelController.offers.update);
+router.post("/offers", adminOnly, offerRules, validate, hotelController.offers.create);
+// PATCH validates too, unlike the other kinds: an unchecked validTo here would
+// drive the expiry sweep, so a bad date could delete an offer outright.
+router.patch(
+  "/offers/:id",
+  adminOnly,
+  objectIdParam("id"),
+  offerRules,
+  validate,
+  hotelController.offers.update
+);
 router.delete("/offers/:id", adminOnly, objectIdParam("id"), validate, hotelController.offers.remove);
+
+router.get("/videos", adminOnly, paginationRules, contentFilterRules, validate, hotelController.videos.list);
+router.post("/videos", adminOnly, contentRules, validate, hotelController.videos.create);
+router.patch("/videos/:id", adminOnly, objectIdParam("id"), validate, hotelController.videos.update);
+router.delete("/videos/:id", adminOnly, objectIdParam("id"), validate, hotelController.videos.remove);
 
 // Unlike contents/offers above, PATCH here runs the body rules too — an
 // unvalidated PATCH is how an over-long valueLabel or a bogus tier reaches

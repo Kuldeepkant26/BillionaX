@@ -1,0 +1,149 @@
+/*
+ * Watch screen.
+ *
+ * The player is the header of this page, so it bleeds past the app's 18px
+ * gutter to the frame edge; everything below returns to the gutter.
+ */
+
+.page {
+  /* Cancels GuestLayout's page padding for the player only. */
+  margin-inline: -18px;
+  margin-top: -20px;
+}
+
+.playerWrap {
+  position: relative;
+  background: #000;
+}
+
+/* Floats over the video rather than taking a row of its own — the player is
+   already the tallest thing on the screen. */
+.back {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  border: 0;
+  cursor: pointer;
+}
+.back:hover {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.body {
+  padding: 14px 18px 8px;
+}
+
+/* Pill actions under the title. */
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--chip);
+  border: 1px solid transparent;
+  color: var(--fg);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.action:hover {
+  background: var(--soft);
+}
+
+/* Liked: the accent carries the state, with the filled heart as the second
+   cue so it does not rely on colour alone. */
+.actionOn {
+  background: var(--acc-soft);
+  border-color: var(--acc);
+  color: var(--acc);
+}
+
+.desc {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--dim);
+  background: var(--soft);
+  border-radius: var(--rad-sm);
+  padding: 11px 13px;
+  white-space: pre-wrap;
+}
+
+.clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.composer {
+  width: 100%;
+  resize: none;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 6px 0;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--fg);
+  outline: none;
+  /* Grown from JS on input; this is the floor. */
+  min-height: 32px;
+  max-height: 160px;
+}
+.composer:focus {
+  border-bottom-color: var(--acc);
+}
+.composer::placeholder {
+  color: var(--dim);
+}
+
+/* ---- up-next rail ---- */
+
+.upNext {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+
+.thumb {
+  position: relative;
+  flex: none;
+  width: 132px;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--rad-sm);
+  overflow: hidden;
+  background: var(--hero);
+}
+
+.dur {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  font-style: normal;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.72);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+}

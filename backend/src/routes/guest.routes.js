@@ -10,6 +10,7 @@ import {
   createVoucherRules,
   joinHotelRules,
   memberDetailsRules,
+  commentRules,
 } from "../validators/common.validator.js";
 
 const router = Router();
@@ -45,6 +46,67 @@ router.get(
   objectIdParam("hotelId"),
   validate,
   guestController.getHotelContent
+);
+
+/* ---- offers ---------------------------------------------------------- */
+
+router.get(
+  "/hotels/:hotelId/offers/:contentId",
+  objectIdParam("hotelId"),
+  objectIdParam("contentId"),
+  validate,
+  guestController.getOffer
+);
+
+/* ---- videos ---------------------------------------------------------- */
+
+router.get(
+  "/hotels/:hotelId/videos",
+  objectIdParam("hotelId"),
+  paginationRules,
+  validate,
+  guestController.listVideos
+);
+
+router.get(
+  "/hotels/:hotelId/videos/:contentId",
+  objectIdParam("hotelId"),
+  objectIdParam("contentId"),
+  validate,
+  guestController.getVideo
+);
+
+router.post(
+  "/hotels/:hotelId/videos/:contentId/like",
+  objectIdParam("hotelId"),
+  objectIdParam("contentId"),
+  validate,
+  guestController.toggleVideoLike
+);
+
+router.get(
+  "/hotels/:hotelId/videos/:contentId/comments",
+  objectIdParam("hotelId"),
+  objectIdParam("contentId"),
+  paginationRules,
+  validate,
+  guestController.listVideoComments
+);
+
+router.post(
+  "/hotels/:hotelId/videos/:contentId/comments",
+  objectIdParam("hotelId"),
+  objectIdParam("contentId"),
+  commentRules,
+  validate,
+  guestController.addVideoComment
+);
+
+router.delete(
+  "/comments/:commentId",
+  objectIdParam("commentId"),
+  validate,
+  guestController.deleteVideoComment
 );
 
 export default router;

@@ -6,6 +6,7 @@ import {
   TX_TYPE_VALUES,
   PURCHASE_STATUS_VALUES,
   CARD_DESIGN_VALUES,
+  THEME_PRESET_VALUES,
 } from "../config/constants.js";
 
 export const objectIdParam = (name) =>
@@ -73,7 +74,11 @@ export const purchaseFilterRules = [
 
 export const contentFilterRules = [
   query("isActive").optional({ values: "falsy" }).isBoolean().toBoolean(),
+  // The three halves of the panel's offer state filter. Orthogonal to
+  // isActive: an offer can be hidden AND expired.
   query("currentlyValid").optional({ values: "falsy" }).isBoolean().toBoolean(),
+  query("expired").optional({ values: "falsy" }).isBoolean().toBoolean(),
+  query("scheduled").optional({ values: "falsy" }).isBoolean().toBoolean(),
 ];
 
 export const allocateRules = [
@@ -164,6 +169,55 @@ export const contentRules = [
 ];
 
 /**
+ * Offers: a dated, tier-targeted promotion.
+ *
+ * Every rule is optional so one chain serves POST and PATCH alike — the
+ * model's `required: true` on title is what enforces it at creation. That
+ * matters more here than elsewhere: `validTo` now DRIVES DELETION, so the
+ * PATCH route must validate it rather than accepting whatever arrives.
+ */
+export const offerRules = [
+  body("title").optional().isString().trim().isLength({ min: 2, max: 140 }).withMessage("Enter a title"),
+  body("description").optional().isString().trim().isLength({ max: 2000 }),
+  body("discountLabel")
+    .optional({ values: "falsy" })
+    .isString()
+    .trim()
+    .isLength({ max: 24 })
+    .withMessage("Keep the discount under 24 characters"),
+  body("terms").optional({ values: "falsy" }).isString().trim().isLength({ max: 1000 }),
+  body("howToRedeem").optional({ values: "falsy" }).isString().trim().isLength({ max: 300 }),
+  body("imageUrl")
+    .optional({ values: "falsy" })
+    .isURL({ protocols: ["http", "https"] })
+    .withMessage("Image must be an http(s) URL"),
+  body("outlet").optional().isString().trim(),
+  body("isActive").optional().isBoolean().toBoolean(),
+  body("sortOrder").optional().isInt().toInt(),
+  body("validFrom").optional({ values: "falsy" }).isISO8601().toDate(),
+  // Declared on validTo rather than validFrom so the message lands on the
+  // field the manager has to move. The chain runs in array order, so
+  // req.body.validFrom has already been through its own .toDate() by here.
+  body("validTo")
+    .optional({ values: "falsy" })
+    .isISO8601()
+    .toDate()
+    .custom((validTo, { req }) => {
+      const from = req.body.validFrom;
+      if (from && new Date(validTo) <= new Date(from)) {
+        throw new Error("The deadline must be after the start date");
+      }
+      return true;
+    }),
+  body("tiers")
+    .optional()
+    .isArray({ max: TIER_VALUES.length })
+    .withMessage("Choose which tiers this offer is for"),
+  // Deliberately NOT .optional() — see privilegeRules below for why.
+  body("tiers.*").isIn(TIER_VALUES).withMessage("Unknown tier"),
+];
+
+/**
  * Privileges reuse the Content shape, plus a short value label and an optional
  * tier target.
  *
@@ -194,10 +248,20 @@ export const privilegeRules = [
   body("tiers.*").isIn(TIER_VALUES).withMessage("Unknown tier"),
 ];
 
+/** A guest's comment on a video. Plain text, always rendered as text. */
+export const commentRules = [
+  body("body")
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 600 })
+    .withMessage("Write something first (600 characters max)"),
+];
+
 export const settingsRules = [
   body("welcomeCredit").optional().isInt({ min: 0 }).toInt(),
   body("defaultEarnRatePercent").optional().isFloat({ min: 0, max: 100 }).toFloat(),
   body("platformFeePercent").optional().isFloat({ min: 0, max: 100 }).toFloat(),
+  body("redemptionRebatePercent").optional().isFloat({ min: 0, max: 100 }).toFloat(),
   body("voucherTtlMinutes").optional().isInt({ min: 1, max: 120 }).toInt(),
   body("settlementDays").optional().isInt({ min: 0, max: 60 }).toInt(),
   body("coinValuePaise").optional().isInt({ min: 1 }).toInt(),
@@ -210,6 +274,16 @@ export const settingsRules = [
     .optional()
     .isIn(CARD_DESIGN_VALUES)
     .withMessage("Unknown card design"),
+  body("themePreset")
+    .optional()
+    .isIn(THEME_PRESET_VALUES)
+    .withMessage("Unknown theme"),
+  // Strict hex only: the value is interpolated into a CSS custom property on
+  // every dashboard, so anything else is refused rather than sanitised.
+  body("themeCustomColor")
+    .optional()
+    .matches(/^#[0-9a-fA-F]{6}$/)
+    .withMessage("Enter a 6-digit hex colour"),
 ];
 
 /**
@@ -240,9 +314,46 @@ export const creditMemberRules = [
 ];
 
 /** Guests editing their own profile. Hotels no longer edit member details. */
+/**
+ * Month-wise redemption reporting. Every field optional: with none supplied the
+ * service returns its default trailing window.
+ */
+export const monthlyReportRules = [
+  query("hotelId").optional({ values: "falsy" }).isMongoId(),
+  query("months").optional({ values: "falsy" }).isInt({ min: 1, max: 60 }).toInt(),
+  ...dateRangeRules,
+];
+
+/**
+ * Triggering the month-end rebate by hand.
+ *
+ * `period` is validated against the same YYYY-MM shape the settlement model
+ * stores, so a malformed month is refused here rather than reaching the
+ * aggregation and quietly matching nothing.
+ */
+export const runRebateRules = [
+  body("period")
+    .optional({ values: "falsy" })
+    .matches(/^\d{4}-(0[1-9]|1[0-2])$/)
+    .withMessage('Period must look like "2026-08"'),
+  body("hotelId").optional({ values: "falsy" }).isMongoId(),
+  body("dryRun").optional().isBoolean().toBoolean(),
+];
+
 export const memberDetailsRules = [
   body("name").optional().isString().trim().isLength({ min: 2, max: 80 }),
   body("email").optional({ values: "falsy" }).isEmail().withMessage("Enter a valid email").normalizeEmail(),
+  // Linking a mobile number. Sanitised to the bare 10 digits exactly as the
+  // login rule does, so "+91 98765 43210" matches the account staff created by
+  // typing "9876543210" — the whole point of the merge.
+  body("phone")
+    .optional({ values: "falsy" })
+    .customSanitizer((value) => {
+      const digits = String(value || "").replace(/\D/g, "");
+      return digits.length > 10 ? digits.slice(-10) : digits;
+    })
+    .matches(/^[6-9]\d{9}$/)
+    .withMessage("Enter a valid 10-digit mobile number"),
   // Shape only. That it belongs to OUR Cloudinary account is enforced in the
   // service, which is the check that actually matters.
   body("avatarUrl")

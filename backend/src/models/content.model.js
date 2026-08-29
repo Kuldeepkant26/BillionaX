@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { CONTENT_KIND_VALUES, TIER_VALUES } from "../config/constants.js";
+import { CONTENT_KINDS, CONTENT_KIND_VALUES, TIER_VALUES } from "../config/constants.js";
 
 /** Rejects javascript: and data: URLs, which would be an XSS vector in <img src>. */
 const isSafeUrl = (value) => {
@@ -29,9 +29,24 @@ const contentSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     sortOrder: { type: Number, default: 0 },
 
-    // OFFER only
+    // OFFER only.
+    //
+    // validTo is a deadline with teeth: the guest query hides the offer the
+    // moment it passes, and the expiry sweep deletes the row and its image
+    // OFFER_GRACE_DAYS later. A row with no validTo never expires and is
+    // never swept.
     validFrom: { type: Date },
     validTo: { type: Date },
+
+    // The headline deal, free text rather than a number: hotels express deals
+    // in shapes a number cannot hold ("2 for 1", "₹500 off", "30% off"), and
+    // it is display-only. 24 characters is what fits at display size in the
+    // fallback card art without shrinking.
+    discountLabel: { type: String, trim: true, maxlength: 24 },
+    // Fine print, shown collapsed on the detail screen.
+    terms: { type: String, trim: true, maxlength: 1000 },
+    // One actionable line: "Show this screen at the host desk."
+    howToRedeem: { type: String, trim: true, maxlength: 300 },
 
     // PRIVILEGE only — the short value shown beside the title on the guest's
     // home screen ("Included", "Till 8pm", "20% off").
@@ -50,7 +65,8 @@ const contentSchema = new mongoose.Schema(
     },
     duration: { type: String, trim: true, maxlength: 12 },
 
-    // PRIVILEGE only — which tiers see this. Absent or empty means every tier.
+    // PRIVILEGE and OFFER — which tiers see this. Absent or empty means every
+    // tier.
     //
     // `default: undefined` is load-bearing: Mongoose otherwise stamps [] onto
     // EVERY document on save, so existing CONTENT and OFFER rows would quietly
@@ -64,5 +80,14 @@ const contentSchema = new mongoose.Schema(
 );
 
 contentSchema.index({ hotelId: 1, kind: 1, isActive: 1, sortOrder: 1 });
+
+// The expiry sweep's only query. Partial so it indexes offers with a deadline
+// and nothing else — slideshow photos, videos and privileges never have one.
+// `$type: "date"` rather than `$exists` keeps rows whose validTo is null out
+// of the index entirely, which is what makes "no deadline" mean "never swept".
+contentSchema.index(
+  { validTo: 1 },
+  { partialFilterExpression: { kind: CONTENT_KINDS.OFFER, validTo: { $type: "date" } } }
+);
 
 export const Content = mongoose.model("Content", contentSchema);

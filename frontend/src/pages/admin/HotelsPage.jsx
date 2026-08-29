@@ -15,6 +15,7 @@ import {
   Modal,
   Pagination,
   Select,
+  Slider,
   Table,
 } from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
@@ -203,16 +204,17 @@ const HotelsPage = () => {
           <Input type="email" value={form.email} onChange={change("email")} error={errors.email} />
         </Field>
         <Field
-          label="Earn rate (%)"
+          label="Earn rate"
           hint="Coins = room amount × nights × this percentage"
           error={errors.earnRatePercent}
         >
-          <Input
-            type="number"
-            value={form.earnRatePercent}
-            onChange={change("earnRatePercent")}
+          <Slider
             min={0}
             max={100}
+            unit="%"
+            value={form.earnRatePercent}
+            onChange={change("earnRatePercent")}
+            error={errors.earnRatePercent}
           />
         </Field>
       </Modal>

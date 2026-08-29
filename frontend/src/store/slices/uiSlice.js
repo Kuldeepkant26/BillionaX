@@ -3,6 +3,12 @@ let toastId = 0;
 export const createUiSlice = (set, get) => ({
   toasts: [],
 
+  // Panel sidebar collapse (desktop only — the mobile drawer ignores it).
+  // Persisted (see partialize): a rail that springs back open on every
+  // reload would make collapsing it pointless.
+  sidebarCollapsed: false,
+  toggleSidebar: () => set({ sidebarCollapsed: !get().sidebarCollapsed }),
+
   toast: (message, variant = "info") => {
     const id = ++toastId;
     set({ toasts: [...get().toasts, { id, message, variant }] });

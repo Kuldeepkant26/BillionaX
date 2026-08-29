@@ -19,7 +19,8 @@
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--rad);
-  padding: 16px;
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
 }
 .card-hd {
   display: flex;
@@ -48,8 +49,9 @@
   white-space: nowrap;
 }
 .btn:hover:not(:disabled) { opacity: 0.88; }
-.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:active:not(:disabled) { transform: translateY(1px) scale(0.99); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--acc-soft), 0 0 0 1px var(--acc); }
 .btn-ghost { background: var(--chip); color: var(--fg); border-color: var(--line); }
 .btn-danger { background: var(--bad); color: #fff; }
 .btn-sm { padding: 8px 14px; font-size: 12px; }
@@ -76,7 +78,7 @@
   font-size: 14px;
   color: var(--fg);
 }
-.input:focus { outline: none; border-color: var(--acc); }
+.input:focus { outline: none; border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
 .input::placeholder { color: var(--dim); opacity: 0.7; }
 .input-err { border-color: var(--bad); }
 
@@ -153,12 +155,20 @@
   padding: 9px 10px;
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
+  /* Headers hold while long tables scroll inside their card. The solid card
+     background matters: without it rows show through the sticky header. */
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  z-index: 1;
 }
 .table td {
-  padding: 12px 10px;
+  padding: 13px 10px;
   border-bottom: 1px solid var(--line);
   font-size: 12.5px;
 }
+.table tbody tr { transition: background 0.12s ease; }
+.table tbody tr:hover { background: var(--soft); }
 .table tr:last-child td { border-bottom: 0; }
 .table .num { text-align: right; font-variant-numeric: tabular-nums; }
 
@@ -169,11 +179,41 @@
   gap: 12px;
 }
 .kpi {
+  display: block;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--rad);
-  padding: 15px;
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  color: inherit;
+  text-decoration: none;
 }
+a.kpi { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+a.kpi:hover { border-color: var(--acc); box-shadow: var(--shadow); }
+.kpi-top { display: flex; align-items: center; gap: 9px; }
+.kpi-ic {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--acc-soft);
+  color: var(--acc);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.kpi-ic svg { width: 17px; height: 17px; fill: currentColor; }
+/* Conic-gradient completion ring; --p is set inline as a percentage. */
+.kpi-ring {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: conic-gradient(var(--acc) var(--p, 0%), var(--acc-soft) 0);
+  display: grid;
+  place-items: center;
+  margin-left: auto;
+  flex: none;
+}
+.kpi-ring i { width: 26px; height: 26px; border-radius: 50%; background: var(--card); }
 .kpi-v {
   display: block;
   font-family: var(--font-display);
@@ -181,9 +221,9 @@
   font-weight: 600;
   letter-spacing: -1px;
   line-height: 1.05;
-  margin-top: 7px;
+  margin-top: 8px;
 }
-.kpi-d { display: inline-block; font-size: 10.5px; font-weight: 700; margin-top: 7px; }
+.kpi-d { display: inline-block; font-size: 10.5px; font-weight: 700; margin-top: 8px; }
 
 /* ---------- feedback ---------- */
 .empty {
@@ -275,7 +315,8 @@
 .modal-back {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
   display: grid;
   place-items: center;
   padding: 20px;
@@ -293,6 +334,25 @@
   max-height: 88vh;
   overflow-y: auto;
   box-shadow: var(--shadow);
+  animation: modal-up 0.22s ease;
+}
+@keyframes modal-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+/* On a phone the dialog docks to the bottom edge as a sheet. */
+@media (max-width: 600px) {
+  .modal-back { place-items: end center; padding: 0; }
+  .modal {
+    max-width: none;
+    border-radius: var(--rad) var(--rad) 0 0;
+    border-bottom: 0;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    max-height: 92svh;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal { animation: none; }
 }
 .modal-hd {
   display: flex;
@@ -340,6 +400,89 @@
   overflow: hidden;
 }
 .progress i { display: block; height: 100%; border-radius: 999px; background: var(--acc); }
+
+/* The floating unsaved-changes bar rises into place rather than appearing,
+   so it reads as a response to the edit that summoned it. */
+@keyframes apply-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes apply-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+/* ---------- donut (conic-gradient ring; --p set inline) ---------- */
+.donut {
+  border-radius: 50%;
+  background: conic-gradient(var(--acc) var(--p, 0%), var(--acc-soft) 0);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.donut > i {
+  width: 70%;
+  height: 70%;
+  border-radius: 50%;
+  background: var(--card);
+  display: grid;
+  place-items: center;
+  font-style: normal;
+}
+
+/* ---------- slider (range + synced number input) ---------- */
+.slider { display: flex; align-items: center; gap: 12px; }
+.slider input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--acc-soft); /* overridden inline with the filled gradient */
+  outline: none;
+  cursor: pointer;
+}
+.slider input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--acc);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+  cursor: grab;
+}
+.slider input[type="range"]:active::-webkit-slider-thumb { cursor: grabbing; }
+.slider input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px var(--acc-soft);
+}
+.slider input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--acc);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+  cursor: grab;
+}
+.slider input[type="range"]::-moz-range-progress {
+  background: var(--acc);
+  height: 6px;
+  border-radius: 999px;
+}
+/* The number half stays narrow; the range gets the room. */
+.slider .input {
+  width: 86px;
+  flex: none;
+  padding: 8px 10px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.slider-unit { font-style: normal; font-size: 12px; color: var(--dim); }
 
 /* ---- pagination + filters ---------------------------------------------- */
 

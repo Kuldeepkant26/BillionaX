@@ -194,12 +194,21 @@ export const AurumArt = ({ tier }) => {
         ))}
       </g>
 
+      {/*
+       * The metal frame follows the card's OWN corner radius.
+       *
+       * MembershipCard clips at --rad (18px over a 380px-wide card). Drawing
+       * this frame at a tighter radius made it cross the clip near each
+       * corner, where it was sliced off and the flat fill behind it showed
+       * through as a pale ring — clearly visible on the light theme's white
+       * ground. Inset by half the stroke so the 2px line sits fully inside.
+       */}
       <rect
-        x="1.5"
-        y="1.5"
-        width="377"
-        height="237"
-        rx="13"
+        x="1"
+        y="1"
+        width="378"
+        height="238"
+        rx="17"
         fill="none"
         stroke={`url(#${id.edge})`}
         strokeWidth="2"
@@ -209,7 +218,7 @@ export const AurumArt = ({ tier }) => {
         y="5"
         width="370"
         height="230"
-        rx="10"
+        rx="13"
         fill="none"
         stroke={c.edge}
         strokeOpacity=".25"

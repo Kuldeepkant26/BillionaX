@@ -35,6 +35,11 @@ export const useAppStore = create()(
           // first frame after a reload. Without it every refresh flashes the
           // default design until the memberships call lands.
           cardDesign: state.cardDesign,
+          // Same first-frame rationale as cardDesign: the pre-paint script in
+          // index.html reads this key to set data-accent before React loads.
+          accent: state.accent,
+          accentCustom: state.accentCustom,
+          sidebarCollapsed: state.sidebarCollapsed,
         }),
 
         // Persisted state means the session is already known — skip the

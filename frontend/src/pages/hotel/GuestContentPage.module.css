@@ -1,0 +1,95 @@
+/*
+ * The three-way tab strip.
+ *
+ * Cards rather than a plain underline row: each tab carries a label AND a line
+ * of explanation, because the whole point of this screen is that the three are
+ * different things. An underline row would fit only the labels, which is what
+ * made them look interchangeable in the first place.
+ */
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+  border-radius: var(--rad);
+  border: 1px solid var(--line);
+  background: var(--card);
+  cursor: pointer;
+  text-align: left;
+  color: var(--fg);
+  font: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.tab:hover {
+  border-color: var(--acc);
+}
+
+.tab b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.tab i {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--dim);
+  margin-top: 2px;
+  /* One line: the hint is a reminder, not documentation. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The selected tab is filled, so which section you are in survives a glance.
+   The ring is the second cue, since colour alone is not enough. */
+.on {
+  background: var(--acc-soft);
+  border-color: var(--acc);
+  box-shadow: inset 0 0 0 1px var(--acc);
+}
+.on b {
+  color: var(--acc);
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: currentColor;
+  color: var(--dim);
+}
+.on .icon {
+  color: var(--acc);
+}
+
+/* Below ~700px three cards with descriptions no longer fit side by side, so
+   the hints go and the tabs become a compact row. */
+@media (max-width: 700px) {
+  .tabs {
+    gap: 7px;
+  }
+  .tab {
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 6px;
+    text-align: center;
+  }
+  .tab i {
+    display: none;
+  }
+  .tab b {
+    font-size: 12px;
+  }
+}

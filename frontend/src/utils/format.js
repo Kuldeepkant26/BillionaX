@@ -35,6 +35,56 @@ export const formatDateTime = (value) =>
       })
     : "—";
 
+/**
+ * "Ends today" / "Ends in 3 days" / "Until 14 Mar" — an offer's deadline.
+ *
+ * Day granularity on purpose. useCountdown ticks every second, which is right
+ * for a ten-minute voucher and wrong for a deadline a fortnight out: it would
+ * re-render the whole offers list once a second for weeks. This is a pure
+ * function with no timer, recomputed on whatever render the list already does.
+ */
+export const endsIn = (value) => {
+  if (!value) return "";
+  const ms = new Date(value).getTime() - Date.now();
+  if (Number.isNaN(ms)) return "";
+  if (ms <= 0) return "Ended";
+
+  const hours = ms / (1000 * 60 * 60);
+  if (hours < 1) return "Ends within the hour";
+  if (hours < 24) return "Ends today";
+
+  const days = Math.round(hours / 24);
+  if (days === 1) return "Ends tomorrow";
+  if (days <= 7) return `Ends in ${days} days`;
+
+  return `Until ${formatDate(value)}`;
+};
+
+/**
+ * "just now" / "4h ago" / "12 Mar" — the timestamp style a comment thread
+ * wants, where the exact minute matters far less than the recency.
+ */
+export const timeAgo = (value) => {
+  if (!value) return "";
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return "";
+
+  const seconds = Math.max(0, Math.round((Date.now() - then) / 1000));
+  if (seconds < 60) return "just now";
+
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days}d ago`;
+
+  // Past a week a real date is more useful than "37d ago".
+  return formatDate(value);
+};
+
 export const maskPhone = (phone) => {
   if (!phone) return "—";
   const s = String(phone);

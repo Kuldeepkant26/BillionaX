@@ -3,13 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { listMemberships, getHotelContent } from "../../api/guest.api.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import { useAsync } from "../../hooks/useAsync.js";
-import { ROUTES } from "../../constants/routePaths.js";
+import { ROUTES, offerPath, videoPath } from "../../constants/routePaths.js";
+import { videoPoster } from "../../utils/upload.js";
 import { MembershipCard } from "../../features/guest/MembershipCard.jsx";
 import { HotelSwitcher } from "../../features/guest/HotelSwitcher.jsx";
 import { HotelShowcase } from "../../features/guest/HotelShowcase.jsx";
+import { OfferArt } from "../../features/guest/OfferArt.jsx";
 import { Button, Empty, ErrorState } from "../../components/common/index.jsx";
 import { HomeSkeleton } from "../../features/guest/GuestSkeletons.jsx";
-import { formatCoins } from "../../utils/format.js";
+import { endsIn, formatCoins } from "../../utils/format.js";
 import { avatarUrl } from "../../utils/upload.js";
 import styles from "./GuestHomePage.module.css";
 
@@ -147,7 +149,7 @@ const GuestHomePage = () => {
             {contentData.privileges.slice(0, 8).map((privilege) => (
               <article
                 key={privilege._id}
-                className={`relative overflow-hidden min-h-[92px] flex items-end rounded-token-sm border border-hairline px-[11px] py-2.5 text-white ${styles.priv}`}
+                className={`relative overflow-hidden min-h-[92px] flex items-end rounded-token-sm px-[11px] py-2.5 text-white ${styles.priv}`}
                 style={
                   privilege.imageUrl
                     ? { backgroundImage: `url(${privilege.imageUrl})` }
@@ -168,37 +170,71 @@ const GuestHomePage = () => {
         </section>
       )}
 
-      {contentData?.offers?.length > 0 && (
+      {/* Videos and offers are separate rows, because they are separate
+          things: one is watchable, the other is redeemable. They used to share
+          a row, which is why a promotion with a clip attached showed up
+          looking like a video. */}
+      {contentData?.videos?.length > 0 && (
         <section className="mt-6">
-          {/* Named for the hotel rather than "Offers at …": this row carries
-              whatever the property wants to show — a walkthrough, the rooftop,
-              a promotion — so a heading that says "offers" undersells it. */}
-          <span className="kicker">{hotelHeading(active?.hotelId)}</span>
+          <span className="kicker">Watch</span>
           <div className={`flex flex-nowrap gap-2.5 mt-2.5 pb-1 ${styles.offerRow}`}>
-            {/* One line that scrolls, so the cap is generous rather than a
-                layout constraint. */}
-            {contentData.offers.slice(0, 10).map((offer) => (
-              <article key={offer._id} className="flex-none w-[152px]">
-                <span
-                  className={`block h-[94px] rounded-token-sm relative overflow-hidden ${styles.offerImg}`}
+            {contentData.videos.slice(0, 10).map((video) => (
+              <article key={video._id} className="flex-none w-[152px]">
+                <button
+                  type="button"
+                  onClick={() => navigate(videoPath(video._id))}
+                  aria-label={`Play ${video.title}`}
+                  className={`block h-[94px] w-full rounded-token-sm relative overflow-hidden cursor-pointer p-0 border-0 ${styles.offerImg}`}
                   style={
-                    offer.imageUrl ? { backgroundImage: `url(${offer.imageUrl})` } : undefined
+                    // A video with no cover of its own still gets art: the
+                    // poster is a frame Cloudinary renders from the clip.
+                    video.imageUrl || videoPoster(video.videoUrl, 320)
+                      ? {
+                          backgroundImage: `url(${
+                            video.imageUrl || videoPoster(video.videoUrl, 320)
+                          })`,
+                        }
+                      : undefined
                   }
                 >
-                  {/* A card reads as playable only when it actually has a
-                      video, so the badge never promises something missing. */}
-                  {offer.videoUrl && <i
-                      className={`absolute inset-0 m-auto w-8 h-8 rounded-full bg-white/[0.92] z-[2] ${styles.play}`}
-                      aria-hidden="true"
-                    />}
-                  {offer.videoUrl && offer.duration && (
+                  <i
+                    className={`absolute inset-0 m-auto w-8 h-8 rounded-full bg-white/[0.92] z-[2] ${styles.play}`}
+                    aria-hidden="true"
+                  />
+                  {video.duration && (
                     <em className="absolute right-1.5 bottom-1.5 z-[2] not-italic text-[9px] font-semibold text-white bg-black/55 px-1.5 py-0.5 rounded-full tabular-nums">
-                      {offer.duration}
+                      {video.duration}
                     </em>
                   )}
-                </span>
-                <b className="block text-xs font-semibold mt-[7px]">{offer.title}</b>
-                <u className="block no-underline text-[10px] text-muted">{offer.outlet || "Members only"}</u>
+                </button>
+                <b className="block text-xs font-semibold mt-[7px] text-left">{video.title}</b>
+                <u className="block no-underline text-[10px] text-muted text-left">
+                  {video.outlet || "From the hotel"}
+                </u>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {contentData?.offers?.length > 0 && (
+        <section className="mt-6">
+          <span className="kicker">{hotelHeading(active?.hotelId)}</span>
+          <div className={`flex flex-nowrap gap-2.5 mt-2.5 pb-1 ${styles.offerRow}`}>
+            {contentData.offers.slice(0, 10).map((offer) => (
+              <article key={offer._id} className="flex-none w-[152px]">
+                <button
+                  type="button"
+                  onClick={() => navigate(offerPath(offer._id))}
+                  aria-label={`View ${offer.title}`}
+                  className="block w-full cursor-pointer border-0 p-0 text-left"
+                >
+                  <OfferArt offer={offer} size="tile" />
+                  <b className="mt-[7px] block text-xs font-semibold">{offer.title}</b>
+                  <u className="block text-[10px] text-muted no-underline">
+                    {offer.validTo ? endsIn(offer.validTo) : offer.outlet || "Members only"}
+                  </u>
+                </button>
               </article>
             ))}
           </div>

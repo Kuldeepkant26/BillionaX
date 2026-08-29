@@ -12,6 +12,18 @@ import { formatCoins, maskPhone } from "../../utils/format.js";
 const statLabel = "block no-underline text-[9.5px] tracking-[0.08em] uppercase text-muted";
 const statValue = "block font-display text-[19px] font-semibold mt-1";
 
+/**
+ * Mirrors the server's normalizePhone: keep digits, and when a country code has
+ * been included take the LAST ten. Typing is unaffected; the rule only bites on
+ * a paste like "+91 98765 43210", which must become "9876543210" rather than be
+ * truncated to "9198765432" — a different number entirely, and one that would
+ * link the guest to the wrong account.
+ */
+const normalizeMobile = (raw) => {
+  const digits = String(raw).replace(/\D/g, "");
+  return digits.length > 10 ? digits.slice(-10) : digits;
+};
+
 const ProfilePage = () => {
   const user = useAppStore((s) => s.user);
   const memberships = useAppStore((s) => s.memberships);
@@ -23,7 +35,7 @@ const ProfilePage = () => {
   const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "" });
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -31,7 +43,7 @@ const ProfilePage = () => {
   const totalCoins = memberships.reduce((sum, m) => sum + (m.balance || 0), 0);
 
   const openEdit = () => {
-    setForm({ name: user?.name || "", email: user?.email || "" });
+    setForm({ name: user?.name || "", email: user?.email || "", phone: user?.phone || "" });
     setErrors({});
     setMessage("");
     setOpen(true);
@@ -45,9 +57,21 @@ const ProfilePage = () => {
     setMessage("");
 
     try {
-      const result = await updateProfile({ name: form.name, email: form.email || "" });
+      // Phone is send-once: omitted when already set, so the API's
+      // "already set" guard is never tripped by an unchanged value.
+      const payload = { name: form.name, email: form.email || "" };
+      if (!user?.phone && form.phone.trim()) payload.phone = form.phone.trim();
+
+      const result = await updateProfile(payload);
       setUser(result.user);
-      toastSuccess("Details updated");
+
+      // Linking a number can pull in coins a hotel awarded before this account
+      // existed — worth announcing rather than letting the balance jump.
+      toastSuccess(
+        result.coinsMoved
+          ? `${result.coinsMoved.toLocaleString("en-IN")} coins added from your stays`
+          : "Details updated"
+      );
       setOpen(false);
     } catch (err) {
       setErrors(err.fieldErrors || {});
@@ -176,7 +200,11 @@ const ProfilePage = () => {
           />
         </Field>
 
-        <Field label="Email" hint="Optional — for receipts and updates" error={errors.email}>
+        <Field
+          label="Email"
+          hint="This is how you sign in, so it can't be removed."
+          error={errors.email}
+        >
           <Input
             type="email"
             value={form.email}
@@ -186,12 +214,44 @@ const ProfilePage = () => {
           />
         </Field>
 
-        <Field
-          label="Mobile number"
-          hint="This is how you sign in, so it can't be changed here. Ask the hotel if you need it updated."
-        >
-          <Input value={user?.phone || ""} disabled />
-        </Field>
+        {/*
+          Hotels award coins against a mobile number at checkout, so a guest who
+          has not linked theirs has coins sitting on an account they cannot see.
+          Linking pulls them across — hence the emphasis, and why it is set once
+          rather than freely edited.
+        */}
+        {user?.phone ? (
+          <Field
+            label="Mobile number"
+            hint="Linked. Ask the hotel if you need it changed."
+          >
+            <Input value={user.phone} disabled />
+          </Field>
+        ) : (
+          <Field
+            label="Mobile number"
+            hint="Add the number you give at reception, and any coins earned on it will be added to your account."
+            error={errors.phone}
+          >
+            <Input
+              type="tel"
+              inputMode="numeric"
+              // Indian mobiles are exactly 10 digits. Filtered rather than just
+              // maxLength-capped so a pasted "+91 98765 43210" reduces to the
+              // 10 digits the account is keyed on instead of being cut off
+              // mid-number at "+9198765432".
+              pattern="[0-9]*"
+              maxLength={10}
+              value={form.phone}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, phone: normalizeMobile(e.target.value) }))
+              }
+              error={errors.phone}
+              placeholder="98765 43210"
+              autoComplete="tel"
+            />
+          </Field>
+        )}
       </Modal>
     </div>
   );

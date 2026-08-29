@@ -97,6 +97,59 @@ export const OffersSkeleton = () => (
   </SkeletonScreen>
 );
 
+/**
+ * Mirrors the watch screen: a 16:9 player, the title block, then the up-next
+ * rows. The player block bleeds past the gutter exactly as the real one does,
+ * so nothing shifts sideways when the video lands.
+ */
+export const VideoSkeleton = () => (
+  <SkeletonScreen label="Loading video">
+    <div style={{ marginInline: -18, marginTop: -20 }}>
+      <Skeleton h={0} radius={0} style={{ aspectRatio: "16 / 9", height: "auto" }} />
+    </div>
+    <div style={{ padding: "14px 0 0" }}>
+      <Skeleton w="85%" h={16} />
+      <Skeleton w={150} h={11} style={{ marginTop: 8 }} />
+      <div className="mt-3 flex gap-2">
+        <Skeleton w={84} h={34} radius={999} />
+        <Skeleton w={108} h={34} radius={999} />
+      </div>
+      <Skeleton h={62} radius="var(--rad-sm)" style={{ marginTop: 14 }} />
+      <div className="mt-6 flex flex-col gap-3">
+        {Array.from({ length: 3 }, (_, i) => (
+          <span key={i} className="flex gap-2.5">
+            <Skeleton w={132} h={74} radius="var(--rad-sm)" />
+            <span className="flex-1">
+              <Skeleton w="90%" h={12} />
+              <Skeleton w={90} h={10} style={{ marginTop: 7 }} />
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
+  </SkeletonScreen>
+);
+
+/** Mirrors OfferPage: full-bleed hero, title block, meta row, prose, call-out. */
+export const OfferSkeleton = () => (
+  <SkeletonScreen label="Loading offer">
+    <div style={{ marginInline: -18, marginTop: -20 }}>
+      <Skeleton h={0} radius={0} style={{ aspectRatio: "16 / 10", height: "auto" }} />
+    </div>
+    <div style={{ padding: "16px 0 0" }}>
+      <Skeleton w={120} h={24} />
+      <Skeleton w="80%" h={15} style={{ marginTop: 8 }} />
+      <div className="mt-2.5 flex gap-2">
+        <Skeleton w={72} h={20} radius={999} />
+        <Skeleton w={92} h={20} radius={999} />
+      </div>
+      <Skeleton w="100%" h={11} style={{ marginTop: 18 }} />
+      <Skeleton w="92%" h={11} style={{ marginTop: 7 }} />
+      <Skeleton h={62} radius="var(--rad-sm)" style={{ marginTop: 18 }} />
+    </div>
+  </SkeletonScreen>
+);
+
 export const RedeemSkeleton = () => (
   <SkeletonScreen label="Loading your balance">
     <Skeleton w={150} h={22} />

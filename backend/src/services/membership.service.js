@@ -11,6 +11,8 @@ import { destroyAsset, isOwnCloudinaryUrl, publicIdFromUrl } from "./upload.serv
 import { notify } from "./notification.service.js";
 import { emitToGuest } from "../realtime/emitter.js";
 import { logger } from "../utils/logger.js";
+import { mergeGuestAccounts } from "./accountMerge.service.js";
+import { normalizePhone } from "./otp.service.js";
 
 const buildMemberNo = (hotelSlug, guestId) => {
   const prefix = (hotelSlug || "gw").slice(0, 3).toUpperCase();
@@ -196,13 +198,66 @@ export const retierHotelMembers = async (hotelId) => {
 };
 
 /**
- * Guest edits their own profile.
+ * Adds a mobile number to a guest account that does not have one yet.
  *
- * Phone is deliberately NOT editable: it is their login credential and the key
- * linking them to every hotel membership, so a typo would lock them out of
- * their own coins with no password to fall back on.
+ * This matters more than a profile field normally would. Hotel staff award
+ * coins by typing a phone number at checkout, creating a guest record on the
+ * spot if the number is unknown — so a guest who earns coins before linking
+ * their number has a second account holding them. Linking is the moment the
+ * two are known to be the same person, so it is where they are merged.
+ *
+ * Set once, never edited: it is a login credential and the key to every
+ * membership, so a typo later would lock the guest out of their own coins with
+ * no password to fall back on. Changing it is a support action.
  */
-export const updateGuestProfile = async ({ guestId, name, email, avatarUrl }) => {
+const linkPhone = async (guest, rawPhone) => {
+  const phone = normalizePhone(rawPhone);
+
+  if (!/^[6-9]\d{9}$/.test(phone)) {
+    throw new ApiError(400, "Enter a valid 10-digit mobile number", [
+      { field: "phone", message: "Enter a valid 10-digit mobile number" },
+    ]);
+  }
+
+  if (guest.phone) {
+    if (guest.phone === phone) return { coinsMoved: 0 };
+    throw new ApiError(409, "Your mobile number is already set. Contact the hotel to change it.", [
+      { field: "phone", message: "Already set" },
+    ]);
+  }
+
+  const existing = await User.findOne({ phone });
+
+  // Nobody holds it — the guest simply takes it.
+  if (!existing) {
+    guest.phone = phone;
+    return { coinsMoved: 0 };
+  }
+
+  if (String(existing._id) === String(guest._id)) return { coinsMoved: 0 };
+
+  // Someone holds it. mergeGuestAccounts absorbs it ONLY if it is an unclaimed
+  // shell created by staff; anything else is a real person and it refuses,
+  // rather than handing over their balance.
+  const { coinsMoved } = await mergeGuestAccounts({
+    sourceId: existing._id,
+    targetId: guest._id,
+  });
+
+  // Re-read: the merge may have set welcomeCreditClaimed or the name, and this
+  // in-memory copy would otherwise overwrite that on save.
+  const fresh = await User.findById(guest._id);
+  guest.welcomeCreditClaimed = fresh.welcomeCreditClaimed;
+  guest.name = fresh.name;
+
+  guest.phone = phone;
+  return { coinsMoved };
+};
+
+/**
+ * Guest edits their own profile.
+ */
+export const updateGuestProfile = async ({ guestId, name, email, phone, avatarUrl }) => {
   const guest = await User.findById(guestId);
   if (!guest) throw new ApiError(404, "Account not found");
 
@@ -239,6 +294,15 @@ export const updateGuestProfile = async ({ guestId, name, email, avatarUrl }) =>
 
   if (email !== undefined) {
     const normalized = email ? email.toLowerCase().trim() : undefined;
+
+    // Guests sign in with their email, so clearing it would lock them out of
+    // their own account with no password to fall back on.
+    if (!normalized && guest.email) {
+      throw new ApiError(400, "Your email address is how you sign in and cannot be removed", [
+        { field: "email", message: "Required" },
+      ]);
+    }
+
     if (normalized && (await User.exists({ email: normalized, _id: { $ne: guest._id } }))) {
       throw new ApiError(409, "That email address is already in use", [
         { field: "email", message: "Already in use" },
@@ -247,8 +311,15 @@ export const updateGuestProfile = async ({ guestId, name, email, avatarUrl }) =>
     guest.email = normalized;
   }
 
+  // Last, so a merge cannot run and then be undone by a later validation
+  // failure in this same call.
+  let coinsMoved = 0;
+  if (phone !== undefined && phone !== null && phone !== "") {
+    ({ coinsMoved } = await linkPhone(guest, phone));
+  }
+
   await guest.save();
-  return guest.toSafeObject();
+  return { ...guest.toSafeObject(), coinsMoved };
 };
 
 export const getMembershipsForGuest = async (guestId) =>

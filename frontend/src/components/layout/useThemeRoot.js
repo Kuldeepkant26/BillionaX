@@ -1,11 +1,25 @@
 import { useEffect } from "react";
+import { useAppStore } from "../../store/useAppStore.js";
+import { CUSTOM_ACCENT, deriveCustomTokens } from "../../theme/accentPresets.js";
 
 /** Browser-chrome colour per theme — iOS status bar, Android nav bar. */
 const THEME_COLORS = {
   "emerald-noir": "#0B0A08",
   lumen: "#FFFFFF",
-  "ink-minimal": "#F7F4EC",
+  "ink-minimal": "#F5F6F8",
 };
+
+/** The custom accent's tokens, as CSS custom property names. */
+const CUSTOM_VARS = [
+  "--acc",
+  "--acc-fg",
+  "--acc2",
+  "--acc-soft",
+  "--chart2",
+  "--rail",
+  "--railacttx",
+  "--hero",
+];
 
 /**
  * Mirrors the active theme onto <body>.
@@ -17,8 +31,33 @@ const THEME_COLORS = {
  * body and the theme-color meta in sync afterwards, when the guest toggles.
  */
 export const useThemeRoot = (theme) => {
+  const accent = useAppStore((s) => s.accent);
+  const accentCustom = useAppStore((s) => s.accentCustom);
+
   useEffect(() => {
     document.body.setAttribute("data-theme", theme);
+    // The accent must ride on the SAME element as data-theme: portalled UI
+    // resolves its accent tokens from body, and the dark-mode corrections in
+    // themes.css are compound [data-theme][data-accent] selectors.
+    document.body.setAttribute("data-accent", accent);
+
+    // The custom accent has no static CSS block to live in — its tokens are
+    // derived from one hue at runtime and written straight onto body, where
+    // they inherit into both the app and any portal.
+    if (accent === CUSTOM_ACCENT) {
+      const t = deriveCustomTokens(accentCustom);
+      document.body.style.setProperty("--acc", t.acc);
+      document.body.style.setProperty("--acc-fg", t.accFg);
+      document.body.style.setProperty("--acc2", t.acc2);
+      document.body.style.setProperty("--acc-soft", t.accSoft);
+      document.body.style.setProperty("--chart2", t.chart2);
+      document.body.style.setProperty("--rail", t.rail);
+      document.body.style.setProperty("--railacttx", t.rail);
+      document.body.style.setProperty("--hero", t.hero);
+    } else {
+      // Clear them, or a switch back to a preset would keep the custom hue.
+      CUSTOM_VARS.forEach((name) => document.body.style.removeProperty(name));
+    }
 
     // Left fixed, the status bar would clash the moment the theme flips.
     const meta = document.querySelector('meta[name="theme-color"]');
@@ -27,7 +66,35 @@ export const useThemeRoot = (theme) => {
 
     return () => {
       document.body.removeAttribute("data-theme");
+      document.body.removeAttribute("data-accent");
+      CUSTOM_VARS.forEach((name) => document.body.style.removeProperty(name));
       if (previous) meta?.setAttribute("content", previous);
     };
-  }, [theme]);
+  }, [theme, accent, accentCustom]);
+};
+
+/**
+ * The same derived tokens as inline styles, for the themed root <div>.
+ *
+ * body carries them for portals; the layout root needs its own copy because
+ * the [data-accent="CUSTOM"] block on it would otherwise leave --acc at the
+ * theme's fallback for everything inside.
+ */
+export const useAccentStyle = () => {
+  const accent = useAppStore((s) => s.accent);
+  const accentCustom = useAppStore((s) => s.accentCustom);
+
+  if (accent !== CUSTOM_ACCENT) return undefined;
+
+  const t = deriveCustomTokens(accentCustom);
+  return {
+    "--acc": t.acc,
+    "--acc-fg": t.accFg,
+    "--acc2": t.acc2,
+    "--acc-soft": t.accSoft,
+    "--chart2": t.chart2,
+    "--rail": t.rail,
+    "--railacttx": t.rail,
+    "--hero": t.hero,
+  };
 };

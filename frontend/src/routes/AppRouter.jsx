@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 import { ROUTES } from "../constants/routePaths.js";
 import { ROLES } from "../store/slices/authSlice.js";
 import { RoleRoute, PublicOnlyRoute } from "./guards.jsx";
@@ -11,6 +11,8 @@ import {
   HomeSkeleton,
   ListSkeleton,
   OffersSkeleton,
+  OfferSkeleton,
+  VideoSkeleton,
   ProfileSkeleton,
   RedeemSkeleton,
 } from "../features/guest/GuestSkeletons.jsx";
@@ -29,6 +31,8 @@ const GuestHomePage = lazy(() => import("../pages/guest/GuestHomePage.jsx"));
 const RedeemPage = lazy(() => import("../pages/guest/RedeemPage.jsx"));
 const HistoryPage = lazy(() => import("../pages/guest/HistoryPage.jsx"));
 const OffersPage = lazy(() => import("../pages/guest/OffersPage.jsx"));
+const OfferPage = lazy(() => import("../pages/guest/OfferPage.jsx"));
+const VideoPage = lazy(() => import("../pages/guest/VideoPage.jsx"));
 const NotificationsPage = lazy(() => import("../pages/guest/NotificationsPage.jsx"));
 const ProfilePage = lazy(() => import("../pages/guest/ProfilePage.jsx"));
 
@@ -37,7 +41,7 @@ const VerifyPage = lazy(() => import("../pages/hotel/VerifyPage.jsx"));
 const MembersPage = lazy(() => import("../pages/hotel/MembersPage.jsx"));
 const TransactionsPage = lazy(() => import("../pages/hotel/TransactionsPage.jsx"));
 const CoinsPage = lazy(() => import("../pages/hotel/CoinsPage.jsx"));
-const ContentPage = lazy(() => import("../pages/hotel/ContentPage.jsx"));
+const GuestContentPage = lazy(() => import("../pages/hotel/GuestContentPage.jsx"));
 const PrivilegesPage = lazy(() => import("../pages/hotel/PrivilegesPage.jsx"));
 const StaffPage = lazy(() => import("../pages/hotel/StaffPage.jsx"));
 const HotelSettingsPage = lazy(() => import("../pages/hotel/HotelSettingsPage.jsx"));
@@ -92,6 +96,11 @@ const router = createBrowserRouter([
         ...guestRoute(<HistoryPage />, <ListSkeleton label="Loading your history" />),
       },
       { path: "app/offers", ...guestRoute(<OffersPage />, <OffersSkeleton />) },
+      // Drill-down under the list it came from, so the URL reads as one.
+      { path: "app/offers/:contentId", ...guestRoute(<OfferPage />, <OfferSkeleton />) },
+      // Nested under the guest shell, so the bottom nav stays put while
+      // watching — leaving the video is a back gesture, not a re-navigation.
+      { path: "app/watch/:contentId", ...guestRoute(<VideoPage />, <VideoSkeleton />) },
       {
         path: "app/alerts",
         ...guestRoute(<NotificationsPage />, <ListSkeleton label="Loading your alerts" />),
@@ -141,21 +150,19 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "content",
+        path: "guest-content",
         element: lazyEl(
           <RoleRoute allow={HOTEL_ADMIN_ONLY} loginPath={ROUTES.HOTEL_LOGIN}>
-            <ContentPage kind="content" />
+            <GuestContentPage />
           </RoleRoute>
         ),
       },
-      {
-        path: "offers",
-        element: lazyEl(
-          <RoleRoute allow={HOTEL_ADMIN_ONLY} loginPath={ROUTES.HOTEL_LOGIN}>
-            <ContentPage kind="offers" />
-          </RoleRoute>
-        ),
-      },
+      // The three used to be separate destinations (and "offers" had no nav
+      // entry at all). Kept as redirects so an old bookmark still lands on
+      // the right tab rather than a 404.
+      { path: "content", element: <Navigate to="/hotel/guest-content?tab=slideshow" replace /> },
+      { path: "offers", element: <Navigate to="/hotel/guest-content?tab=offers" replace /> },
+      { path: "videos", element: <Navigate to="/hotel/guest-content?tab=videos" replace /> },
       {
         path: "privileges",
         element: lazyEl(
@@ -188,7 +195,17 @@ const router = createBrowserRouter([
     path: "admin/login",
     element: (
       <PublicOnlyRoute>
-        <StaffLoginPage title="Billionax" subtitle="Platform administration" />
+        <StaffLoginPage
+          title="Platform administration"
+          subtitle="Sign in to the Billionax control panel"
+          headline="The whole network, on one screen."
+          blurb="Every hotel, every guest and every coin issued across Billionax — managed from a single control panel."
+          points={[
+            "Network-wide revenue and commission",
+            "Onboard hotels and their staff",
+            "Set the rules every property runs on",
+          ]}
+        />
       </PublicOnlyRoute>
     ),
   },

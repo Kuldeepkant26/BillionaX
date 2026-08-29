@@ -4,7 +4,7 @@ import { ROUTES } from "../../constants/routePaths.js";
 const NAV = [
   {
     to: ROUTES.ADMIN,
-    label: "Overview",
+    label: "Dashboard",
     end: true,
     icon: "M2.5 2.5h6.5v6.5H2.5zM11 2.5h6.5v4H11zM11 8.5h6.5v9H11zM2.5 11h6.5v6.5H2.5z",
   },

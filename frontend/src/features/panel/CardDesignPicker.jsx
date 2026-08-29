@@ -1,6 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MembershipCard } from "../guest/MembershipCard.jsx";
 import { CARD_DESIGNS, CARD_DESIGN_KEYS } from "../guest/cardDesigns/registry.jsx";
+import styles from "./CardDesignPicker.module.css";
+
+/** The width every card design is laid out against. */
+const DESIGN_WIDTH = 380;
 
 /**
  * Picks the membership-card art used across the whole network.
@@ -14,10 +18,41 @@ const SAMPLE = { balance: 5100, memberNo: "GW-TAJ-3E0832" };
 const TIERS = ["SILVER", "GOLD", "PLATINUM"];
 const TIER_LABEL = { SILVER: "Silver", GOLD: "Gold", PLATINUM: "Platinum" };
 
+/**
+ * The factor that fits a 380px card into the tile it is rendered in.
+ *
+ * Measured rather than expressed in CSS because `transform: scale()` needs a
+ * unitless number, and neither `calc()` on two lengths nor `cqw` units can
+ * produce one. One observer on the grid covers every tile — they are all the
+ * same width.
+ */
+const useCardScale = () => {
+  const ref = useRef(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const measure = () => {
+      const width = el.getBoundingClientRect().width;
+      if (width > 0) setScale(width / DESIGN_WIDTH);
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return [ref, scale];
+};
+
 export const CardDesignPicker = ({ value, onChange }) => {
   // Which tier the previews show. Silver by default because it is the tier
   // most guests are on, so it is the card most of them will actually see.
   const [tier, setTier] = useState("SILVER");
+  const [scaleRef, scale] = useCardScale();
 
   return (
     <div>
@@ -46,8 +81,14 @@ export const CardDesignPicker = ({ value, onChange }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 [@media(min-width:640px)]:grid-cols-2 [@media(min-width:1200px)]:grid-cols-3">
-        {CARD_DESIGN_KEYS.map((key) => {
+      {/* Denser than the previews used to be: at three-up the cards were far
+          larger than they need to be to judge the art, and the grid pushed
+          everything below it off the screen. */}
+      {/* Native md/lg/2xl prefixes, not [@media(...)] arbitrary variants:
+          Tailwind sorts arbitrary variants as strings, so "1100" would sort
+          before "760" and the smaller breakpoint would win at every width. */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+        {CARD_DESIGN_KEYS.map((key, index) => {
           const design = CARD_DESIGNS[key];
           const active = value === key;
 
@@ -57,28 +98,36 @@ export const CardDesignPicker = ({ value, onChange }) => {
               type="button"
               onClick={() => onChange(key)}
               aria-pressed={active}
-              className={`cursor-pointer rounded-token border bg-card p-3 text-left transition-[border-color,box-shadow] duration-150 ${
+              className={`cursor-pointer rounded-token border bg-card p-2 text-left transition-[border-color,box-shadow] duration-150 ${
                 active
                   ? "border-[var(--acc)] shadow-[0_0_0_2px_var(--acc)]"
                   : "border-hairline hover:border-[var(--acc)]"
               }`}
             >
-              <MembershipCard
-                design={key}
-                membership={{ ...SAMPLE, tier }}
-                guestName="Kuldeep Kant"
-                hotelName="Taj Hotel"
-              />
+              {/* The card art is laid out in fixed pixels against a 380px
+                  card (see cardDesigns/registry.jsx), so a narrower box would
+                  overflow its text. Render at the design width and scale the
+                  whole card down with container query units, which keeps every
+                  design pixel-accurate to what guests actually see. */}
+              <span ref={index === 0 ? scaleRef : undefined} className={styles.scaler}>
+                <span className={styles.card} style={{ "--card-scale": scale }}>
+                  <MembershipCard
+                    design={key}
+                    membership={{ ...SAMPLE, tier }}
+                    guestName="Kuldeep Kant"
+                    hotelName="Taj Hotel"
+                  />
+                </span>
+              </span>
 
-              <div className="mt-3 flex items-baseline justify-between gap-2">
-                <b className="font-display text-[14px] font-semibold">{design.label}</b>
+              <div className="mt-2 flex items-baseline justify-between gap-1.5">
+                <b className="truncate font-display text-[12.5px] font-semibold">{design.label}</b>
                 {active && (
-                  <span className="text-[10px] font-bold uppercase tracking-[.12em] text-[var(--acc)]">
-                    In use
+                  <span className="text-[9px] font-bold uppercase tracking-[.1em] text-[var(--acc)]">
+                    On
                   </span>
                 )}
               </div>
-              <p className="mt-1 text-[11.5px] leading-[1.45] text-muted">{design.note}</p>
             </button>
           );
         })}

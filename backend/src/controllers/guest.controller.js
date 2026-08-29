@@ -7,6 +7,8 @@ import * as contentService from "../services/content.service.js";
 import * as reportService from "../services/report.service.js";
 import * as notificationService from "../services/notification.service.js";
 import * as uploadService from "../services/upload.service.js";
+import * as videoService from "../services/video.service.js";
+import * as offerService from "../services/offer.service.js";
 import { getSettings } from "../services/settings.service.js";
 
 export const listMemberships = asyncHandler(async (req, res) => {
@@ -28,6 +30,10 @@ export const listMemberships = asyncHandler(async (req, res) => {
       // design arrives with the data it decorates rather than in a second
       // round trip that would flash the default first.
       cardDesign: settings.cardDesign,
+      // Same reasoning as cardDesign: the admin-chosen colour theme rides
+      // along on the bootstrap call so the app never repaints after load.
+      themePreset: settings.themePreset,
+      themeCustomColor: settings.themeCustomColor,
     })
   );
 });
@@ -52,14 +58,23 @@ export const joinHotel = asyncHandler(async (req, res) => {
 });
 
 export const updateProfile = asyncHandler(async (req, res) => {
-  const { name, email, avatarUrl } = req.body;
-  const user = await membershipService.updateGuestProfile({
+  const { name, email, phone, avatarUrl } = req.body;
+  const { coinsMoved, ...user } = await membershipService.updateGuestProfile({
     guestId: req.user._id,
     name,
     email,
+    phone,
     avatarUrl,
   });
-  res.status(200).json(new ApiResponse(200, { user }, "Details updated"));
+
+  // Linking a number can pull in coins a hotel awarded before the guest had an
+  // account, which is worth saying out loud rather than letting the balance
+  // change silently.
+  const message = coinsMoved
+    ? `Mobile number linked — ${coinsMoved.toLocaleString("en-IN")} coins added to your account`
+    : "Details updated";
+
+  res.status(200).json(new ApiResponse(200, { user, coinsMoved }, message));
 });
 
 /**
@@ -167,16 +182,21 @@ export const getHotelContent = asyncHandler(async (req, res) => {
     hotelId,
   });
 
-  const [content, offers, privileges] = await Promise.all([
+  const [content, offers, privileges, videos] = await Promise.all([
     contentService.listContent({
       hotelId,
       kind: CONTENT_KINDS.CONTENT,
       activeOnly: true,
     }),
+    // An offer is dated and can be tier-targeted, so both gates apply. Without
+    // `currentlyValid` an expired promotion kept showing indefinitely, and
+    // without `tier` a Silver guest could see a Platinum-only deal.
     contentService.listContent({
       hotelId,
       kind: CONTENT_KINDS.OFFER,
       activeOnly: true,
+      currentlyValid: true,
+      tier: membership.tier,
     }),
     // No `currentlyValid`: a privilege is a standing benefit, not a dated
     // promotion, so it has no window to fall outside of.
@@ -186,7 +206,101 @@ export const getHotelContent = asyncHandler(async (req, res) => {
       activeOnly: true,
       tier: membership.tier,
     }),
+    // Videos are their own kind now, so the home screen's video row no longer
+    // has to guess which offers happen to carry a clip.
+    contentService.listContent({
+      hotelId,
+      kind: CONTENT_KINDS.VIDEO,
+      activeOnly: true,
+    }),
   ]);
 
-  res.status(200).json(new ApiResponse(200, { content, offers, privileges }));
+  res.status(200).json(new ApiResponse(200, { content, offers, privileges, videos }));
+});
+
+/* ---------------------------------------------------------------- videos -- */
+
+/**
+ * Every video endpoint re-checks membership rather than trusting the hotelId
+ * in the URL. The membership IS the authorisation: without it a guest could
+ * read, like and comment on any hotel's videos by guessing an id.
+ */
+const assertMember = (req) =>
+  membershipService.getMembershipOrFail({
+    guestId: req.user._id,
+    hotelId: req.params.hotelId,
+  });
+
+/* ---------------------------------------------------------------- offers -- */
+
+export const getOffer = asyncHandler(async (req, res) => {
+  // The membership carries the tier, which is half the visibility gate.
+  const membership = await assertMember(req);
+  const data = await offerService.getOffer({
+    contentId: req.params.contentId,
+    hotelId: req.params.hotelId,
+    tier: membership.tier,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const listVideos = asyncHandler(async (req, res) => {
+  await assertMember(req);
+  const data = await videoService.listVideos({
+    hotelId: req.params.hotelId,
+    guestId: req.user._id,
+    page: req.query.page,
+    limit: req.query.limit,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const getVideo = asyncHandler(async (req, res) => {
+  await assertMember(req);
+  const data = await videoService.getVideo({
+    contentId: req.params.contentId,
+    hotelId: req.params.hotelId,
+    guestId: req.user._id,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const toggleVideoLike = asyncHandler(async (req, res) => {
+  await assertMember(req);
+  const data = await videoService.toggleLike({
+    contentId: req.params.contentId,
+    hotelId: req.params.hotelId,
+    guestId: req.user._id,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const listVideoComments = asyncHandler(async (req, res) => {
+  await assertMember(req);
+  const data = await videoService.listComments({
+    contentId: req.params.contentId,
+    hotelId: req.params.hotelId,
+    page: req.query.page,
+    limit: req.query.limit,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const addVideoComment = asyncHandler(async (req, res) => {
+  await assertMember(req);
+  const comment = await videoService.addComment({
+    contentId: req.params.contentId,
+    hotelId: req.params.hotelId,
+    guestId: req.user._id,
+    body: req.body.body,
+  });
+  res.status(201).json(new ApiResponse(201, { comment }, "Comment posted"));
+});
+
+export const deleteVideoComment = asyncHandler(async (req, res) => {
+  await videoService.deleteComment({
+    commentId: req.params.commentId,
+    guestId: req.user._id,
+  });
+  res.status(200).json(new ApiResponse(200, null, "Comment removed"));
 });

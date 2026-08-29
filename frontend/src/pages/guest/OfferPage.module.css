@@ -1,0 +1,97 @@
+/*
+ * Offer detail. The hero is the header of this screen, so it bleeds past the
+ * app's 18px gutter; everything below returns to it.
+ */
+
+.page {
+  margin-inline: -18px;
+  margin-top: -20px;
+}
+
+.heroWrap {
+  position: relative;
+  background: var(--chip);
+}
+
+/* Floats over the art rather than taking a row of its own. */
+.back {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  border: 0;
+  cursor: pointer;
+}
+.back:hover {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.body {
+  padding: 16px 18px 8px;
+}
+
+/* The last hour gets the accent, because at that point it is the news. */
+.urgent {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--acc);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The actionable line, boxed so it is findable at a glance at the desk.
+ *
+ * The tint is mixed from --acc into the page's OWN ground rather than using
+ * --acc-soft directly: in dark mode --acc-soft is a light wash, so the box
+ * came out near-white while the text inherited the light --fg — an invisible
+ * answer. Mixing into --bg keeps the box just off the background in either
+ * theme, so --fg always reads against it.
+ */
+.redeem {
+  margin-top: 18px;
+  padding: 13px 14px;
+  border-radius: var(--rad-sm);
+  background: color-mix(in srgb, var(--acc) 10%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--acc) 30%, transparent);
+  color: var(--fg);
+}
+
+.terms {
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.terms summary {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dim);
+  cursor: pointer;
+  list-style: none;
+}
+.terms summary::-webkit-details-marker {
+  display: none;
+}
+.terms summary::after {
+  content: " ›";
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+.terms[open] summary::after {
+  transform: rotate(90deg);
+}
+
+.terms p {
+  margin-top: 9px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--dim);
+  white-space: pre-wrap;
+}

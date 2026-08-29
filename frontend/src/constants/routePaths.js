@@ -7,6 +7,8 @@ export const ROUTES = {
   APP_REDEEM: "/app/redeem",
   APP_HISTORY: "/app/history",
   APP_OFFERS: "/app/offers",
+  APP_OFFER: "/app/offers/:contentId",
+  APP_VIDEO: "/app/watch/:contentId",
   APP_ALERTS: "/app/alerts",
   APP_PROFILE: "/app/profile",
 
@@ -17,7 +19,7 @@ export const ROUTES = {
   HOTEL_TRANSACTIONS: "/hotel/transactions",
   HOTEL_MEMBERS: "/hotel/members",
   HOTEL_COINS: "/hotel/coins",
-  HOTEL_CONTENT: "/hotel/content",
+  HOTEL_CONTENT: "/hotel/guest-content",
   HOTEL_PRIVILEGES: "/hotel/privileges",
   HOTEL_STAFF: "/hotel/staff",
   HOTEL_SETTINGS: "/hotel/settings",
@@ -35,6 +37,8 @@ export const ROUTES = {
 
 export const joinPath = (slug) => `/join/${slug}`;
 export const adminHotelPath = (id) => `/admin/hotels/${id}`;
+export const videoPath = (contentId) => `/app/watch/${contentId}`;
+export const offerPath = (contentId) => `/app/offers/${contentId}`;
 
 /** Where each role belongs after signing in. */
 export const homeForRole = (role) =>

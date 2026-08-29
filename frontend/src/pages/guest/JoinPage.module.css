@@ -5,11 +5,70 @@
  * and the travelling shine. Everything else is Tailwind utilities in the JSX.
  */
 
-/* The radial wash is theme-aware via --join-glow, so the hero reads correctly
-   on both the white and near-black grounds. */
-.hero {
-  background: radial-gradient(120% 78% at 50% 0%, var(--join-glow) 0%, transparent 62%),
+/*
+ * The radial wash is theme-aware via --join-glow, so it reads correctly on both
+ * the white and near-black grounds.
+ *
+ * Applied to the PAGE, not just the header, so the tint runs the full height of
+ * the screen instead of stopping under the card stack.
+ *
+ * The negative margins cancel <main>'s px-[18px] pt-5 pb-7 so the wash reaches
+ * the true edges of the viewport. Only the SIDES are padded back: re-adding the
+ * top padding would push the hero down and leave a strip of bare canvas above
+ * it, which is exactly the seam this replaced. The form's own top spacing comes
+ * from the hero's margin-bottom instead.
+ */
+.page {
+  margin: -20px -18px -28px;
+  padding: 0 18px 28px;
+  min-height: 100svh;
+
+  /*
+   * The base wash: --join-glow over --bg2. Every theme gets this much, and on
+   * the dark ground it is the whole effect — there, --acc is CREAM rather than
+   * a hue (a primary button is a cream pill), so tinting with it would lay grey
+   * haze over near-black instead of colour.
+   */
+  background: radial-gradient(120% 42% at 50% 0%, var(--join-glow) 0%, transparent 60%),
     var(--bg2);
+  background-attachment: fixed, scroll;
+}
+
+/*
+ * Light ground only: two soft accent pools carry the hero's colour down the
+ * page. They stand in for the blurred orbs, which are clipped to the hero by
+ * its own overflow and so cannot do this themselves.
+ *
+ * Alphas stay low deliberately — this is a tint behind form fields, and
+ * anything stronger costs input legibility.
+ */
+[data-theme="lumen"] .page,
+[data-theme="ink-minimal"] .page {
+  background:
+    radial-gradient(120% 42% at 50% 0%, var(--join-glow) 0%, transparent 60%),
+    radial-gradient(
+      90% 34% at 12% 4%,
+      color-mix(in srgb, var(--acc) 16%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      80% 46% at 92% 30%,
+      color-mix(in srgb, var(--acc2) 12%, transparent) 0%,
+      transparent 72%
+    ),
+    var(--bg2);
+  background-attachment: fixed, fixed, fixed, scroll;
+}
+
+/*
+ * Full-bleed: the hero spans edge to edge while the form below stays inset.
+ * .page pads the sides, so the hero cancels just that 18px — it must NOT also
+ * repeat .page's own negative margin, or it shifts twice and overflows right.
+ */
+.hero {
+  margin-left: -18px;
+  margin-right: -18px;
+  background: transparent;
 }
 
 .orbA,

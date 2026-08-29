@@ -1,19 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { publicHotel, requestOtp, verifyOtp } from "../../api/auth.api.js";
+import { publicConfig, publicHotel, requestOtp, verifyOtp } from "../../api/auth.api.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import { ROUTES } from "../../constants/routePaths.js";
-import {
-  Button,
-  Field,
-  Input,
-  Loading,
-  PhoneInput,
-} from "../../components/common/index.jsx";
-import { isValidPhone } from "../../utils/format.js";
+import { Button, Field, Input, Loading } from "../../components/common/index.jsx";
 import styles from "./JoinPage.module.css";
 
-const STEP = { PHONE: "phone", OTP: "otp" };
+const STEP = { IDENTIFIER: "identifier", OTP: "otp" };
 
 /**
  * The QR landing screen: guest scans at reception, enters their number, gets a
@@ -31,12 +24,21 @@ const JoinPage = () => {
   const [hotel, setHotel] = useState(null);
   const [loadingHotel, setLoadingHotel] = useState(!!slug);
 
-  const [step, setStep] = useState(STEP.PHONE);
-  const [form, setForm] = useState({ phone: "", name: "", otp: "" });
+  const [step, setStep] = useState(STEP.IDENTIFIER);
+  const [form, setForm] = useState({ email: "", name: "", otp: "" });
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState("");
   const [devOtp, setDevOtp] = useState("");
   const [busy, setBusy] = useState(false);
+  // Seconds until "Resend code" becomes available again. The API allows only a
+  // handful of requests per window, so an impatient tap must not burn them.
+  const [cooldown, setCooldown] = useState(0);
+  /**
+   * How many digits the code has. Read from the server rather than hardcoded,
+   * because OTP_LENGTH is configurable — a hardcoded 4 would silently truncate
+   * the moment anyone raises it. The default matches the server's own.
+   */
+  const [otpLength, setOtpLength] = useState(4);
 
   const setAuth = useAppStore((s) => s.setAuth);
   const setActiveHotel = useAppStore((s) => s.setActiveHotel);
@@ -51,15 +53,37 @@ const JoinPage = () => {
       .finally(() => setLoadingHotel(false));
   }, [slug]);
 
+  useEffect(() => {
+    let cancelled = false;
+    publicConfig()
+      .then((data) => {
+        if (!cancelled && data?.otpLength) setOtpLength(data.otpLength);
+      })
+      // The default already makes the field usable; a failed config fetch must
+      // never block sign-in.
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(id);
+  }, [cooldown]);
+
   const change = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  const sendCode = async (e) => {
-    e.preventDefault();
-
+  /** Shared by the initial "Get my code" submit and the resend button. */
+  const requestCode = async () => {
     // Caught here so the user sees the problem without a network round-trip.
-    // The API enforces the same rule regardless.
-    if (!isValidPhone(form.phone)) {
-      return setErrors({ phone: "Enter a valid 10-digit mobile number" });
+    // The API enforces the same rule regardless. Deliberately loose — the real
+    // test of an address is whether the code arrives.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) {
+      setErrors({ identifier: "Enter a valid email address" });
+      return false;
     }
 
     setBusy(true);
@@ -67,17 +91,32 @@ const JoinPage = () => {
     setMessage("");
 
     try {
-      const data = await requestOtp(form.phone);
+      const data = await requestOtp(form.email.trim());
       // Surfaced only while the dev bypass is on, so the flow is testable
       // without an SMS gateway.
       if (data?.devOtp) setDevOtp(data.devOtp);
-      setStep(STEP.OTP);
+      setCooldown(30);
+      return true;
     } catch (err) {
       setErrors(err.fieldErrors || {});
       setMessage(err.message);
+      return false;
     } finally {
       setBusy(false);
     }
+  };
+
+  const sendCode = async (e) => {
+    e.preventDefault();
+    if (await requestCode()) setStep(STEP.OTP);
+  };
+
+  const resendCode = async () => {
+    if (cooldown > 0 || busy) return;
+    // The old code is dead the moment a new one is issued, so clear the field
+    // rather than leave a stale value that will now be rejected.
+    setForm((f) => ({ ...f, otp: "" }));
+    if (await requestCode()) setMessage("");
   };
 
   const verify = async (e) => {
@@ -88,7 +127,7 @@ const JoinPage = () => {
 
     try {
       const data = await verifyOtp({
-        phone: form.phone,
+        identifier: form.email.trim(),
         otp: form.otp,
         name: form.name || undefined,
         hotelSlug: slug,
@@ -116,8 +155,14 @@ const JoinPage = () => {
   if (loadingHotel) return <Loading />;
 
   return (
-    <div className="pt-1.5">
-      <div className={`relative h-[210px] -mt-5 -mx-[18px] mb-[22px] overflow-hidden ${styles.hero}`}>
+    <div className={styles.page}>
+      {/*
+        No margin escape here any more — .page handles it. The hero used to pull
+        itself out of <main>'s padding with -mt-5 -mx-[18px]; keeping the -mx on
+        top of .page's own negative margin shifted it a second 18px and made the
+        row 36px too wide, which is what pushed the form off the right edge.
+      */}
+      <div className={`relative h-[210px] mb-[22px] overflow-hidden ${styles.hero}`}>
         <span className={styles.orbA} />
         <span className={styles.orbB} />
         <div className="absolute inset-0">
@@ -140,7 +185,7 @@ const JoinPage = () => {
       <p className="text-muted text-[13px] leading-[1.55] mt-[9px] mb-5">
         {hotel
           ? `You're at ${hotel.name}. Turn every bill here into coins you can spend right away.`
-          : "Sign in with your phone number to see your coins."}
+          : "Sign in with your email address to see your coins."}
       </p>
 
       {message && (
@@ -149,13 +194,17 @@ const JoinPage = () => {
         </div>
       )}
 
-      {step === STEP.PHONE ? (
+      {step === STEP.IDENTIFIER ? (
         <form onSubmit={sendCode} className="mt-1">
-          <Field label="Mobile number" error={errors.phone}>
-            <PhoneInput
-              value={form.phone}
-              onChange={change("phone")}
-              error={errors.phone}
+          <Field label="Email address" error={errors.identifier}>
+            <Input
+              type="email"
+              inputMode="email"
+              value={form.email}
+              onChange={change("email")}
+              error={errors.identifier}
+              placeholder="rohan@example.com"
+              autoComplete="email"
               autoFocus
               required
             />
@@ -178,7 +227,7 @@ const JoinPage = () => {
       ) : (
         <form onSubmit={verify} className="mt-1">
           <p className="text-[13px] text-muted mb-3.5">
-            We sent a code to <b className="text-ink">{form.phone}</b>
+            We sent a code to <b className="text-ink">{form.email}</b>
           </p>
 
           {devOtp && (
@@ -191,11 +240,22 @@ const JoinPage = () => {
           <Field label="Verification code" error={errors.otp}>
             <Input
               inputMode="numeric"
+              // Codes are digits only and exactly otpLength long. maxLength
+              // alone would not be enough: a paste of "code: 1234" still lands
+              // non-digits in the field, so the value is filtered on the way in.
+              pattern="[0-9]*"
+              maxLength={otpLength}
               value={form.otp}
-              onChange={change("otp")}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  otp: e.target.value.replace(/\D/g, "").slice(0, otpLength),
+                }))
+              }
               error={errors.otp}
-              placeholder="1234"
+              placeholder={"1".repeat(otpLength)}
               className="font-display text-[22px] tracking-[6px] text-center"
+              autoComplete="one-time-code"
               autoFocus
               required
             />
@@ -207,13 +267,23 @@ const JoinPage = () => {
 
           <button
             type="button"
-            className="block w-full bg-none border-0 text-muted hover:text-ink text-[12.5px] mt-3.5 cursor-pointer underline"
+            className="block w-full bg-none border-0 text-muted enabled:hover:text-ink text-[12.5px] mt-3.5 cursor-pointer underline disabled:cursor-default disabled:opacity-60 disabled:no-underline"
+            onClick={resendCode}
+            disabled={busy || cooldown > 0}
+          >
+            {cooldown > 0 ? `Resend code in ${cooldown}s` : "Didn't get it? Resend code"}
+          </button>
+
+          <button
+            type="button"
+            className="block w-full bg-none border-0 text-muted hover:text-ink text-[12.5px] mt-2.5 cursor-pointer underline"
             onClick={() => {
-              setStep(STEP.PHONE);
+              setStep(STEP.IDENTIFIER);
               setDevOtp("");
+              setCooldown(0);
             }}
           >
-            Use a different number
+            Use a different address
           </button>
         </form>
       )}

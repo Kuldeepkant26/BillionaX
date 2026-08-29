@@ -10,6 +10,21 @@ export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic"];
 
 /**
+ * Videos get their own, much larger cap.
+ *
+ * 100MB is roughly a two-minute clip from a phone at 1080p. Cloudinary's own
+ * limit on a free plan is 100MB per file, so anything above this would fail at
+ * their end after a long upload — better to say so before it starts.
+ */
+export const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+export const ACCEPTED_VIDEO_TYPES = [
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "video/x-m4v",
+];
+
+/**
  * Checked before asking the server for a signature — a 12 MP phone photo
  * should fail here, instantly and with a clear reason, rather than after a
  * long upload.
@@ -29,6 +44,28 @@ export const validateImageFile = (file) => {
 
   if (file.size > MAX_UPLOAD_BYTES) {
     return `That image is ${(file.size / 1024 / 1024).toFixed(1)}MB — keep it under 5MB`;
+  }
+
+  return null;
+};
+
+/**
+ * Same shape as validateImageFile, for video.
+ *
+ * MOV from an iPhone reports `video/quicktime`; some Android recorders send an
+ * empty type, so the extension is the fallback rather than an outright reject.
+ */
+export const validateVideoFile = (file) => {
+  if (!file) return "Choose a video";
+
+  const type = file.type || "";
+  const looksLikeVideo = type.startsWith("video/") || /\.(mp4|mov|webm|m4v)$/i.test(file.name);
+  if (!looksLikeVideo) return "That file is not a video";
+
+  if (type && !type.startsWith("video/")) return "Use an MP4, MOV or WEBM video";
+
+  if (file.size > MAX_VIDEO_BYTES) {
+    return `That video is ${(file.size / 1024 / 1024).toFixed(0)}MB — keep it under 100MB`;
   }
 
   return null;
@@ -78,10 +115,42 @@ export const uploadToCloudinary = (file, signed, onProgress) =>
 
     xhr.onerror = () => reject(new Error("Upload failed — check your connection"));
     xhr.ontimeout = () => reject(new Error("Upload timed out"));
-    xhr.timeout = 60_000;
+    // A 100MB video on hotel wifi takes minutes; the old flat 60s killed every
+    // real video upload just as it was finishing. Images keep the short
+    // timeout, where a stall genuinely means something is wrong.
+    xhr.timeout = signed.resourceType === "video" ? 15 * 60_000 : 60_000;
 
     xhr.send(form);
   });
+
+/**
+ * A poster frame for a video, straight from Cloudinary.
+ *
+ * Cloudinary renders a still from any video by swapping the extension, so a
+ * hotel never has to upload a separate thumbnail — the card art works even
+ * when they only gave us a clip. so_0 takes the first frame; f_auto/q_auto
+ * hand back WebP at a sane weight.
+ */
+export const videoPoster = (url, width = 480) => {
+  if (!url || !url.includes("/video/upload/")) return null;
+  const dpr = Math.min(2, Math.round(globalThis.devicePixelRatio || 1));
+  return url
+    .replace("/video/upload/", `/video/upload/so_0,w_${width * dpr},c_fill,f_auto,q_auto/`)
+    .replace(/\.(mp4|mov|webm|m4v)$/i, ".jpg");
+};
+
+/**
+ * Adaptive streaming URL.
+ *
+ * f_auto on the video pipeline lets Cloudinary pick the codec the browser
+ * actually supports, and q_auto trims the bitrate to the content — together
+ * they are the difference between a clip that starts instantly on hotel wifi
+ * and one that buffers. The original upload is never modified.
+ */
+export const videoStream = (url) => {
+  if (!url || !url.includes("/video/upload/")) return url;
+  return url.replace("/video/upload/", "/video/upload/f_auto,q_auto/");
+};
 
 /**
  * Rewrites a delivery URL to ask Cloudinary for a square, face-cropped,

@@ -24,6 +24,16 @@ export const TX_TYPES = Object.freeze({
   STAY: "STAY",
   REDEEM: "REDEEM",
   ADJUSTMENT: "ADJUSTMENT",
+  /**
+   * The month-end rebate: a share of the coins guests redeemed at a hotel is
+   * credited back to that hotel's inventory. Its own type rather than an
+   * ADJUSTMENT so the rebate is auditable on its own, and so it can never be
+   * confused with coins the hotel actually paid for.
+   *
+   * Carries hotelId but no guestId or membershipId — it moves hotel inventory,
+   * not any guest's balance.
+   */
+  REBATE: "REBATE",
 });
 
 export const TX_TYPE_VALUES = Object.values(TX_TYPES);
@@ -38,14 +48,31 @@ export const VOUCHER_STATUS = Object.freeze({
 export const VOUCHER_STATUS_VALUES = Object.values(VOUCHER_STATUS);
 
 export const CONTENT_KINDS = Object.freeze({
+  // A photo in the hotel's home-screen slideshow. Images only.
   CONTENT: "CONTENT",
   OFFER: "OFFER",
   // A standing benefit of membership ("Breakfast — Included"), optionally
   // restricted to certain tiers. Unlike an OFFER it has no date window.
   PRIVILEGE: "PRIVILEGE",
+  // A video in the guest's video feed.
+  //
+  // Its own kind rather than "any row that happens to have a videoUrl": that
+  // rule quietly made every offer with a clip a video too, so one item showed
+  // up in two places and staff had no single list of their videos. A video is
+  // now a thing you create, not a side effect of filling in a field.
+  VIDEO: "VIDEO",
 });
 
 export const CONTENT_KIND_VALUES = Object.values(CONTENT_KINDS);
+
+/**
+ * How long an expired offer stays visible to STAFF before it is deleted.
+ *
+ * Guests stop seeing it the moment its deadline passes — that is a query
+ * predicate, not this. This is only the window in which a manager can still
+ * review or duplicate the offer before it and its image are gone for good.
+ */
+export const OFFER_GRACE_DAYS = 7;
 
 export const PURCHASE_STATUS = Object.freeze({
   COMPLETED: "COMPLETED",
@@ -108,3 +135,34 @@ export const CARD_DESIGN_VALUES = Object.values(CARD_DESIGNS);
 
 /** Brushed steel is the house default. */
 export const DEFAULT_CARD_DESIGN = CARD_DESIGNS.BRUSHED_STEEL;
+
+/**
+ * Dashboard/app colour theme. The main admin picks one and it applies
+ * network-wide — to the admin panel, the hotel panels, and the guest app's
+ * accent colours (guests keep their own light/dark choice).
+ *
+ * Like CARD_DESIGNS these are KEYS ONLY — every palette is defined in the
+ * frontend's accentPresets registry, so nothing renders admin-supplied CSS.
+ * A key the frontend does not know falls back to the default. Keep the two
+ * lists in step (see tests/themePreset.test.js).
+ */
+export const THEME_PRESETS = Object.freeze({
+  CORAL: "CORAL",
+  SAND: "SAND",
+  INDIGO: "INDIGO",
+  LAVENDER: "LAVENDER",
+  CHAMPAGNE: "CHAMPAGNE",
+  EMERALD: "EMERALD",
+  TEAL: "TEAL",
+  OCEAN: "OCEAN",
+  MIDNIGHT: "MIDNIGHT",
+  ROSE: "ROSE",
+  MONO: "MONO",
+  // The admin's own colour from the wheel. The hue itself rides in
+  // `themeCustomColor` — this key only says "use that colour".
+  CUSTOM: "CUSTOM",
+});
+
+export const THEME_PRESET_VALUES = Object.values(THEME_PRESETS);
+
+export const DEFAULT_THEME_PRESET = THEME_PRESETS.CORAL;

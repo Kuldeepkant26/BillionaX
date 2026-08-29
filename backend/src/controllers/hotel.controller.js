@@ -6,6 +6,7 @@ import * as coinService from "../services/coin.service.js";
 import * as voucherService from "../services/voucher.service.js";
 import * as contentService from "../services/content.service.js";
 import * as reportService from "../services/report.service.js";
+import * as rebateService from "../services/rebate.service.js";
 import * as hotelService from "../services/hotel.service.js";
 import * as membershipService from "../services/membership.service.js";
 import * as uploadService from "../services/upload.service.js";
@@ -19,6 +20,28 @@ const hotelIdFor = (req) => {
 export const dashboard = asyncHandler(async (req, res) => {
   const data = await reportService.hotelDashboard(hotelIdFor(req));
   res.status(200).json(new ApiResponse(200, data));
+});
+
+/**
+ * This hotel's coins redeemed by month, with the rebate credited against each.
+ *
+ * hotelId comes from hotelIdFor(req), never from the query — a hotel must not
+ * be able to read another's figures by passing an id.
+ */
+export const monthlyRedemptions = asyncHandler(async (req, res) => {
+  const { from, to, months } = req.query;
+  const data = await reportService.monthlyRedemptions({
+    hotelId: hotelIdFor(req),
+    from,
+    to,
+    months: months ? Number(months) : undefined,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const listSettlements = asyncHandler(async (req, res) => {
+  const settlements = await rebateService.listSettlements({ hotelId: hotelIdFor(req) });
+  res.status(200).json(new ApiResponse(200, { settlements }));
 });
 
 export const listMembers = asyncHandler(async (req, res) => {
@@ -183,12 +206,14 @@ export const recordStay = asyncHandler(async (req, res) => {
 
 const contentHandlers = (kind) => ({
   list: asyncHandler(async (req, res) => {
-    const { isActive, currentlyValid, page = 1, limit = 25 } = req.query;
+    const { isActive, currentlyValid, expired, scheduled, page = 1, limit = 25 } = req.query;
     const data = await contentService.listContent({
       hotelId: hotelIdFor(req),
       kind,
       isActive,
       currentlyValid,
+      expired,
+      scheduled,
       paginate: true,
       page: Number(page),
       limit: Number(limit),
@@ -219,6 +244,7 @@ const contentHandlers = (kind) => ({
 
 export const content = contentHandlers(CONTENT_KINDS.CONTENT);
 export const offers = contentHandlers(CONTENT_KINDS.OFFER);
+export const videos = contentHandlers(CONTENT_KINDS.VIDEO);
 
 // Note the admin list passes no `tier`, so a manager sees every privilege
 // regardless of who it targets — they are managing them, not consuming them.
@@ -301,6 +327,24 @@ export const createContentUpload = asyncHandler(async (req, res) => {
     publicId: `hotel_${hotelIdFor(req)}_${Date.now().toString(36)}${Math.random()
       .toString(36)
       .slice(2, 8)}`,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+/**
+ * The same one-shot signature, but for Cloudinary's video pipeline.
+ *
+ * A separate endpoint rather than a query flag: the resource type decides the
+ * upload URL and how the asset is later deleted, so making it explicit at the
+ * route keeps a video from ever being signed as an image.
+ */
+export const createContentVideoUpload = asyncHandler(async (req, res) => {
+  const data = uploadService.createUploadSignature({
+    folder: "videos",
+    publicId: `hotel_${hotelIdFor(req)}_${Date.now().toString(36)}${Math.random()
+      .toString(36)
+      .slice(2, 8)}`,
+    resourceType: "video",
   });
   res.status(200).json(new ApiResponse(200, data));
 });

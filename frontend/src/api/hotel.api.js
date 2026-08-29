@@ -1,6 +1,11 @@
 import api, { unwrap } from "./axiosInstance.js";
 
 export const dashboard = () => api.get("/hotel/dashboard").then(unwrap);
+
+/** This hotel's coins redeemed by month, with the rebate credited against each. */
+export const monthlyRedemptions = (params) =>
+  api.get("/hotel/reports/monthly-redemptions", { params }).then(unwrap);
+export const listRebates = () => api.get("/hotel/rebates").then(unwrap);
 export const listMembers = (params) => api.get("/hotel/members", { params }).then(unwrap);
 export const allocate = (payload) => api.post("/hotel/members/allocate", payload).then(unwrap);
 
@@ -19,19 +24,25 @@ export const listPurchases = () => api.get("/hotel/coins/purchases").then(unwrap
 export const listPacks = () => api.get("/hotel/coins/packs").then(unwrap);
 export const buyCoins = (payload) => api.post("/hotel/coins/buy", payload).then(unwrap);
 
-export const listContents = () => api.get("/hotel/contents").then(unwrap);
+// All the list functions forward `params`: usePaginatedList calls
+// fetcher(params), so a signature that ignores its argument silently drops the
+// page, limit and filters on the floor — which is what contents and offers
+// used to do, leaving their filter dropdown and pager inert.
+export const listContents = (params) => api.get("/hotel/contents", { params }).then(unwrap);
 export const createContent = (payload) => api.post("/hotel/contents", payload).then(unwrap);
 export const updateContent = (id, payload) => api.patch(`/hotel/contents/${id}`, payload).then(unwrap);
 export const deleteContent = (id) => api.delete(`/hotel/contents/${id}`).then(unwrap);
 
-export const listOffers = () => api.get("/hotel/offers").then(unwrap);
+export const listOffers = (params) => api.get("/hotel/offers", { params }).then(unwrap);
 export const createOffer = (payload) => api.post("/hotel/offers", payload).then(unwrap);
 export const updateOffer = (id, payload) => api.patch(`/hotel/offers/${id}`, payload).then(unwrap);
 export const deleteOffer = (id) => api.delete(`/hotel/offers/${id}`).then(unwrap);
 
-// Note these DO forward `params`, unlike listContents/listOffers above:
-// usePaginatedList calls fetcher(params), so a signature that ignores its
-// argument silently drops the page, limit and filters on the floor.
+export const listVideos = (params) => api.get("/hotel/videos", { params }).then(unwrap);
+export const createVideo = (payload) => api.post("/hotel/videos", payload).then(unwrap);
+export const updateVideo = (id, payload) => api.patch(`/hotel/videos/${id}`, payload).then(unwrap);
+export const deleteVideo = (id) => api.delete(`/hotel/videos/${id}`).then(unwrap);
+
 export const listPrivileges = (params) => api.get("/hotel/privileges", { params }).then(unwrap);
 export const createPrivilege = (payload) => api.post("/hotel/privileges", payload).then(unwrap);
 export const updatePrivilege = (id, payload) =>
@@ -46,4 +57,6 @@ export const setStaffActive = (id, isActive) =>
 export const getSettings = () => api.get("/hotel/settings").then(unwrap);
 export const createLogoUpload = () => api.post("/hotel/settings/logo-upload").then(unwrap);
 export const createContentUpload = () => api.post("/hotel/content/image-upload").then(unwrap);
+export const createContentVideoUpload = () =>
+  api.post("/hotel/content/video-upload").then(unwrap);
 export const updateSettings = (payload) => api.patch("/hotel/settings", payload).then(unwrap);

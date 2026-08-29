@@ -17,6 +17,8 @@ import {
   txFilterRules,
   guestFilterRules,
   hotelFilterRules,
+  monthlyReportRules,
+  runRebateRules,
 } from "../validators/common.validator.js";
 
 const router = Router();
@@ -24,6 +26,16 @@ const router = Router();
 router.use(protect, requireRole(ROLES.MAIN_ADMIN));
 
 router.get("/dashboard", adminController.dashboard);
+
+// Month-wise redemption reporting and the month-end rebate.
+router.get(
+  "/reports/monthly-redemptions",
+  monthlyReportRules,
+  validate,
+  adminController.monthlyRedemptions
+);
+router.get("/rebates", adminController.listSettlements);
+router.post("/rebates/run", runRebateRules, validate, adminController.runRebate);
 
 router.get("/hotels", paginationRules, hotelFilterRules, validate, adminController.listHotels);
 router.post("/hotels", hotelRules, validate, adminController.createHotel);

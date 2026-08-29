@@ -2,6 +2,12 @@ import api, { unwrap } from "./axiosInstance.js";
 
 export const dashboard = () => api.get("/admin/dashboard").then(unwrap);
 
+/** Coins redeemed by month, optionally scoped to one hotel or a custom range. */
+export const monthlyRedemptions = (params) =>
+  api.get("/admin/reports/monthly-redemptions", { params }).then(unwrap);
+export const listRebates = (params) => api.get("/admin/rebates", { params }).then(unwrap);
+export const runRebate = (payload) => api.post("/admin/rebates/run", payload).then(unwrap);
+
 export const listHotels = (params) => api.get("/admin/hotels", { params }).then(unwrap);
 export const listHotelCities = () => api.get("/admin/hotels/cities").then(unwrap);
 export const createHotel = (payload) => api.post("/admin/hotels", payload).then(unwrap);

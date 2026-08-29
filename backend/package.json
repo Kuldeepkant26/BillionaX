@@ -13,7 +13,10 @@
     "seed:demo": "node scripts/seedDemo.js",
     "reconcile": "node scripts/reconcile.js",
     "backfill:nights": "node scripts/backfillNights.js",
-    "seed:privileges": "node scripts/seedPrivileges.js"
+    "seed:privileges": "node scripts/seedPrivileges.js",
+    "sweep:offers": "node scripts/sweepExpiredOffers.js",
+    "migrate:otp": "node scripts/migrateOtpIdentifier.js",
+    "rebate:month": "node scripts/runMonthlyRebate.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

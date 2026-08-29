@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { getSettings, updateSettings, createLogoUpload } from "../../api/hotel.api.js";
 import { useAsync } from "../../hooks/useAsync.js";
 import { useAppStore } from "../../store/useAppStore.js";
-import { Button, ErrorState, Input, Loading } from "../../components/common/index.jsx";
+import { Button, ErrorState, Input, Loading, Slider } from "../../components/common/index.jsx";
 import { LogoUpload } from "../../features/panel/LogoUpload.jsx";
+import { QrCode } from "../../features/panel/QrCode.jsx";
+import { ApplyBar } from "../../features/panel/ApplyBar.jsx";
 
 const toForm = (hotel) => ({
   name: hotel.name || "",
@@ -63,9 +65,19 @@ const Section = ({ title, description, children, aside }) => (
 );
 
 const SettingsForm = ({ data, reload }) => {
-  const [form, setForm] = useState(() => toForm(data.hotel));
+  const initial = useMemo(() => toForm(data.hotel), [data.hotel]);
+  const [form, setForm] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // Shallow compare over scalar fields: enough to know whether anything is
+  // unsaved, and it clears itself if a value is edited back to the original.
+  const dirty = Object.keys(initial).some((key) => String(form[key]) !== String(initial[key]));
+
+  const discard = () => {
+    setForm(initial);
+    setErrors({});
+  };
 
   const toastSuccess = useAppStore((s) => s.toastSuccess);
   const toastError = useAppStore((s) => s.toastError);
@@ -114,17 +126,11 @@ const SettingsForm = ({ data, reload }) => {
 
   return (
     <div className="max-w-[1040px]">
-      {/* One save for the whole page, pinned to the header — the old layout
-          repeated the same button under three cards, which made it look like
-          each section saved separately. */}
       <header className="static [@media(min-width:901px)]:sticky top-0 z-20 flex items-center justify-between gap-4 pt-1 pb-3.5 mb-1 bg-canvas border-b border-hairline [&>div>h1]:text-[22px] [&>div>h1]:tracking-[-0.4px] [&>div>p]:text-xs [&>div>p]:text-muted [&>div>p]:mt-0.5">
         <div>
           <h1 className="display">Settings</h1>
           <p>Your hotel's details, tiers and guest QR code</p>
         </div>
-        <Button onClick={save} disabled={busy}>
-          {busy ? "Saving…" : "Save changes"}
-        </Button>
       </header>
 
       <div className="grid grid-cols-1 [@media(min-width:901px)]:grid-cols-[1.15fr_1fr] gap-[18px] items-start">
@@ -235,13 +241,13 @@ const SettingsForm = ({ data, reload }) => {
                 hint="Room × nights × this %"
                 error={errors.earnRatePercent}
               >
-                <Input
-                  type="number"
+                <Slider
+                  min={0}
+                  max={100}
+                  unit="%"
                   value={form.earnRatePercent}
                   onChange={change("earnRatePercent")}
                   error={errors.earnRatePercent}
-                  min={0}
-                  max={100}
                 />
               </Row>
             </div>
@@ -251,7 +257,10 @@ const SettingsForm = ({ data, reload }) => {
             title="Guest QR link"
             description="Print this as a QR code for reception, rooms and outlets."
           >
-            <div className="bg-chip rounded-token-sm px-[11px] py-[9px] text-[11.5px] break-all mt-3 mb-2.5 font-mono">
+            <div className="mt-3 mb-2.5">
+              <QrCode value={joinUrl} />
+            </div>
+            <div className="bg-chip rounded-token-sm px-[11px] py-[9px] text-[11.5px] break-all mb-2.5 font-mono">
               {joinUrl}
             </div>
             <Button
@@ -285,6 +294,7 @@ const SettingsForm = ({ data, reload }) => {
           </Section>
         </div>
       </div>
+      <ApplyBar open={dirty} busy={busy} onApply={save} onDiscard={discard} />
     </div>
   );
 };

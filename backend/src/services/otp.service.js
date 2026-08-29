@@ -1,23 +1,14 @@
-import { env, otpDevBypass } from "../config/env.js";
+import { env, otpDevBypass, isSmsConfigured, isEmailConfigured } from "../config/env.js";
 import { logger } from "../utils/logger.js";
 import { ApiError } from "../utils/ApiError.js";
 import { generateOtp, hashToken } from "../utils/token.util.js";
 import { PendingOtp } from "../models/pendingOtp.model.js";
+import { sendSms } from "./sms.service.js";
+import { sendEmail, normalizeEmail } from "./email.service.js";
+import { otpEmailTemplate } from "./emailTemplates.js";
 
-/**
- * SMS providers. Swapping `console` for a real gateway is a drop-in here —
- * no caller changes anywhere else in the codebase.
- */
-const providers = {
-  console: {
-    send: async (phone, otp) => {
-      logger.info(`[OTP] ${phone} -> ${otp}`);
-    },
-  },
-  // twilio: { send: async (phone, otp) => { ... } },
-};
-
-const getProvider = () => providers[env.otp.provider] || providers.console;
+/** The channel guests sign in with, unless a request overrides it. */
+export const defaultChannel = () => env.otp.channel;
 
 /**
  * Reduces any input to the bare 10-digit mobile number, so "+91 98765 43210",
@@ -29,14 +20,66 @@ export const normalizePhone = (raw = "") => {
   return digits.length > 10 ? digits.slice(-10) : digits;
 };
 
-export const requestOtp = async (rawPhone) => {
-  const phone = normalizePhone(rawPhone);
+/** The same idea as normalizePhone, for the email channel. */
+export const normalizeIdentifier = (raw, channel) =>
+  channel === "email" ? normalizeEmail(raw) : normalizePhone(raw);
+
+/** What the guest actually reads. */
+const smsMessage = (otp) =>
+  `${otp} is your BillionaX verification code. It expires in ${env.otp.expiresMinutes} minutes. Do not share it with anyone.`;
+
+/**
+ * Delivery channels. Each takes the normalized identifier and the code.
+ * Swapping a gateway is a drop-in here — no caller changes anywhere else.
+ */
+const channels = {
+  phone: {
+    configured: () => isSmsConfigured,
+    send: async (phone, otp) => {
+      if (env.otp.provider === "console") return logger.info(`[OTP] ${phone} -> ${otp}`);
+      await sendSms(phone, smsMessage(otp));
+    },
+  },
+  email: {
+    configured: () => isEmailConfigured,
+    send: async (email, otp) => {
+      await sendEmail({
+        to: email,
+        subject: `${otp} is your BillionaX verification code`,
+        ...otpEmailTemplate(otp, env.otp.expiresMinutes),
+      });
+    },
+  },
+};
+
+/**
+ * Falls back to logging the code when the selected channel has no credentials,
+ * so a developer without keys still gets a working login instead of a 500.
+ * Production cannot reach this path — validateEnv refuses to boot without them.
+ */
+const logToConsole = async (identifier, otp) => logger.info(`[OTP] ${identifier} -> ${otp}`);
+
+const getSender = (channel) => {
+  const target = channels[channel];
+  if (!target) throw new ApiError(400, "Unsupported verification channel");
+
+  if (!target.configured()) {
+    logger.warn(`[OTP] ${channel} channel is not configured — logging the code instead`);
+    return logToConsole;
+  }
+
+  return target.send;
+};
+
+export const requestOtp = async (rawIdentifier, channel = defaultChannel()) => {
+  const identifier = normalizeIdentifier(rawIdentifier, channel);
   const otp = generateOtp();
 
   await PendingOtp.findOneAndUpdate(
-    { phone, purpose: "GUEST_LOGIN" },
+    { identifier, purpose: "GUEST_LOGIN" },
     {
-      phone,
+      identifier,
+      channel,
       purpose: "GUEST_LOGIN",
       otpHash: hashToken(otp),
       attempts: 0,
@@ -45,16 +88,30 @@ export const requestOtp = async (rawPhone) => {
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 
-  await getProvider().send(phone, otp);
+  try {
+    await getSender(channel)(identifier, otp);
+  } catch (err) {
+    // The challenge is written before the send, so a gateway failure would
+    // otherwise leave a code nobody received sitting in the DB — blocking the
+    // "please request a new code" path until it expires. Drop it.
+    await PendingOtp.deleteOne({ identifier, purpose: "GUEST_LOGIN" });
 
-  // Only surfaced outside production, so the flow is testable without SMS.
-  return { phone, devOtp: otpDevBypass ? otp : undefined };
+    // The gateway's own message can carry account and billing detail, so it
+    // goes to the log, never to the guest.
+    logger.error(`[OTP] delivery failed for ${identifier}: ${err.message}`);
+    throw new ApiError(502, "We could not send your code right now, please try again");
+  }
+
+  // Only surfaced outside production, so the flow is testable without a gateway.
+  return { identifier, channel, devOtp: otpDevBypass ? otp : undefined };
 };
 
-export const verifyOtp = async (rawPhone, otp) => {
-  const phone = normalizePhone(rawPhone);
+export const verifyOtp = async (rawIdentifier, otp, channel = defaultChannel()) => {
+  const identifier = normalizeIdentifier(rawIdentifier, channel);
 
-  const pending = await PendingOtp.findOne({ phone, purpose: "GUEST_LOGIN" }).select("+otpHash");
+  const pending = await PendingOtp.findOne({ identifier, purpose: "GUEST_LOGIN" }).select(
+    "+otpHash"
+  );
 
   // A challenge must exist even in bypass mode, so the real request -> verify
   // sequence is genuinely exercised in development.
@@ -79,5 +136,5 @@ export const verifyOtp = async (rawPhone, otp) => {
   }
 
   await PendingOtp.deleteOne({ _id: pending._id });
-  return { phone };
+  return { identifier, channel: pending.channel };
 };

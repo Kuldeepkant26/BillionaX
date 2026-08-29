@@ -1,0 +1,37 @@
+/*
+ * Scaled card previews.
+ *
+ * Every card design in cardDesigns/registry.jsx positions its text in FIXED
+ * pixels against a 380x240 card. Handing that art a narrower box does not
+ * reflow it — the coin figure and member number simply overflow. So the card
+ * is rendered at its true 380px width and the whole thing is scaled down,
+ * which keeps each preview pixel-accurate to the guest's card.
+ *
+ * The scale factor is measured in JS (see useCardScale in CardDesignPicker):
+ * `transform: scale()` needs a UNITLESS factor, and no CSS expression yields
+ * one from a container's width — dividing two lengths in calc() is invalid,
+ * and cqw units cannot be reduced to a bare number either.
+ */
+
+.scaler {
+  /* A <span> is inline by default, where width and aspect-ratio do not
+     apply — it measured 0x0 until this was set. */
+  display: block;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  /* Reserves the scaled height. MembershipCard is aspect-[380/240], so the
+     scaled card is exactly 240/380 of the container width. */
+  aspect-ratio: 380 / 240;
+}
+
+.card {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 380px;
+  transform-origin: top left;
+  /* --card-scale is set inline from the measured width. */
+  transform: scale(var(--card-scale, 1));
+}

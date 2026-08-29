@@ -1,3 +1,10 @@
+import {
+  DEFAULT_ACCENT,
+  DEFAULT_CUSTOM_COLOR,
+  isValidHex,
+  resolveAccent,
+} from "../../theme/accentPresets.js";
+
 export const GUEST_THEMES = { LIGHT: "lumen", DARK: "emerald-noir" };
 
 /**
@@ -12,6 +19,23 @@ export const GUEST_THEMES = { LIGHT: "lumen", DARK: "emerald-noir" };
  */
 export const createThemeSlice = (set, get) => ({
   guestTheme: GUEST_THEMES.LIGHT,
+
+  // The network-wide colour preset the main admin chose (accent, rail, hero).
+  // Orthogonal to guestTheme: accent picks the hue, guestTheme picks the
+  // light/dark neutrals it sits on. Persisted (see partialize) so reloads
+  // paint in the right colour before the server confirms it.
+  accent: DEFAULT_ACCENT,
+
+  // The hue behind accent === "CUSTOM".
+  accentCustom: DEFAULT_CUSTOM_COLOR,
+
+  // Run through resolveAccent so a key from a newer/older API build can never
+  // put an unpaintable value into the persisted store.
+  setAccent: (accent, accentCustom) =>
+    set({
+      accent: resolveAccent(accent),
+      ...(isValidHex(accentCustom) ? { accentCustom } : null),
+    }),
 
   setGuestTheme: (guestTheme) => set({ guestTheme }),
 

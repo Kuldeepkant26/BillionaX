@@ -1,6 +1,11 @@
 import { ApiError } from "../utils/ApiError.js";
 import { Content } from "../models/content.model.js";
-import { destroyAsset, isOwnCloudinaryUrl, publicIdFromUrl } from "./upload.service.js";
+import {
+  destroyAsset,
+  isOwnCloudinaryUrl,
+  publicIdFromUrl,
+  resourceTypeFromUrl,
+} from "./upload.service.js";
 
 /**
  * Refuses an image that is not on our own Cloudinary account.
@@ -21,7 +26,9 @@ const assertOwnImage = (value, field) => {
 /** Best-effort removal — an orphaned file is cheaper than a failed save. */
 const removeAsset = (url) => {
   const publicId = publicIdFromUrl(url);
-  if (publicId) destroyAsset(publicId).catch(() => {});
+  // Scoped by resource type: destroy on the wrong pipeline reports "not
+  // found" and leaves the file, which for video is an expensive orphan.
+  if (publicId) destroyAsset(publicId, resourceTypeFromUrl(url)).catch(() => {});
 };
 
 /**
@@ -42,12 +49,30 @@ const replaceAsset = (previous, next) => {
  * Returns a bare array by default so the guest-facing content route is
  * unchanged. Pass `paginate: true` for the panel, which needs { items, total }.
  */
+/**
+ * The clauses that decide whether a guest may see a dated, tier-targeted row.
+ *
+ * Exported so the offers list and the single-offer endpoint enforce the SAME
+ * rule — a guest who cannot see an offer in the list must also 404 on its
+ * direct URL, and two hand-written copies of this would eventually disagree.
+ *
+ * Rows with no window are always in-window; rows with no `tiers` key (every
+ * pre-existing offer) are visible to every tier.
+ */
+export const offerVisibilityClauses = (tier, now = new Date()) => [
+  { $or: [{ validFrom: null }, { validFrom: { $lte: now } }] },
+  { $or: [{ validTo: null }, { validTo: { $gte: now } }] },
+  { $or: [{ tiers: { $exists: false } }, { tiers: { $size: 0 } }, { tiers: tier }] },
+];
+
 export const listContent = async ({
   hotelId,
   kind,
   activeOnly = false,
   isActive,
   currentlyValid,
+  expired,
+  scheduled,
   tier,
   paginate = false,
   page = 1,
@@ -66,6 +91,16 @@ export const listContent = async ({
       { $or: [{ validFrom: null }, { validFrom: { $lte: now } }] },
       { $or: [{ validTo: null }, { validTo: { $gte: now } }] },
     ]);
+  }
+
+  // The two other halves of the panel's state filter. Both require a date to
+  // match at all: an offer with no deadline is neither expired nor scheduled,
+  // it is simply always on.
+  if (expired) {
+    filter.$and = (filter.$and || []).concat([{ validTo: { $lt: new Date() } }]);
+  }
+  if (scheduled) {
+    filter.$and = (filter.$and || []).concat([{ validFrom: { $gt: new Date() } }]);
   }
 
   // Tier gate for privileges. A row is visible when it is untargeted — the
@@ -112,14 +147,33 @@ export const updateContent = async ({ id, hotelId, patch }) => {
 
   // Only validate what the caller is actually setting, so editing a title on a
   // legacy row with a pasted URL does not fail on an image nobody touched.
+  //
+  // videoUrl is checked here too: the PATCH routes run no body validators, so
+  // without this a hotel could point a card's video at any host on the
+  // internet by editing an existing row — the create path has always checked.
   if (safePatch.imageUrl !== undefined && safePatch.imageUrl !== existing.imageUrl) {
     assertOwnImage(safePatch.imageUrl, "imageUrl");
+  }
+  if (safePatch.videoUrl !== undefined && safePatch.videoUrl !== existing.videoUrl) {
+    assertOwnImage(safePatch.videoUrl, "videoUrl");
   }
 
   // An empty string means "remove it". $unset rather than undefined: Mongoose
   // silently drops undefined keys, so the old value would survive.
   const unset = {};
-  for (const field of ["imageUrl", "videoUrl"]) {
+  // duration rides along: removing a video must clear its badge too, and an
+  // empty string left in the $set would be stored as a meaningless "".
+  // The offer text fields ride along: clearing a discount or a set of terms in
+  // the panel must remove the field, not store an empty string that every
+  // render site then has to treat as "absent".
+  for (const field of [
+    "imageUrl",
+    "videoUrl",
+    "duration",
+    "discountLabel",
+    "terms",
+    "howToRedeem",
+  ]) {
     if (safePatch[field] === "") {
       delete safePatch[field];
       unset[field] = "";

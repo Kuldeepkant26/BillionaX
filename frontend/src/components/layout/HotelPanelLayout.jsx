@@ -36,8 +36,11 @@ const NAV = [
     icon: "M10 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm.9 12.4v1.1H9.3v-1.1c-1.2-.2-2.2-.9-2.3-2.2h1.7c.1.6.6 1 1.4 1 .8 0 1.3-.4 1.3-1 0-.5-.3-.8-1.5-1.1-1.7-.4-2.7-1-2.7-2.4 0-1.2.9-2 2.1-2.2V5.4h1.6v1.1c1.2.2 2 1 2.1 2.1h-1.7c-.1-.5-.5-.9-1.2-.9-.7 0-1.2.3-1.2.9 0 .5.4.7 1.6 1 1.7.4 2.6 1.1 2.6 2.5 0 1.2-.9 2.1-2.2 2.3z",
   },
   {
+    // One destination for the slideshow, the offers and the videos. They are
+    // three separate things, but they are all "what guests see", and as three
+    // top-level entries they read as unrelated — offers did not even have one.
     to: ROUTES.HOTEL_CONTENT,
-    label: "Content",
+    label: "Guest content",
     roles: ADMIN,
     icon: "M2.5 4.5h15v11h-15zm2 8l3-3 2.5 2.5L14 8l2 2.5v3h-11zM7 6.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z",
   },

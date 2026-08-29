@@ -5,6 +5,7 @@ import { User } from "../models/user.model.js";
 import { Voucher } from "../models/voucher.model.js";
 import { CoinTransaction } from "../models/coinTransaction.model.js";
 import { GuestHotelMembership } from "../models/guestHotelMembership.model.js";
+import { RebateSettlement } from "../models/rebateSettlement.model.js";
 import { searchRegex } from "../utils/regex.util.js";
 
 const startOfToday = () => {
@@ -20,6 +21,10 @@ const daysAgo = (n) => {
 };
 
 const oid = (id) => new mongoose.Types.ObjectId(String(id));
+
+/** Local calendar date as YYYY-MM-DD. See the note in rebate.service.js. */
+const localDate = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 /** Coin flow per day for the last N days, used by the dashboard charts. */
 const dailySeries = async (match, days = 7) => {
@@ -47,6 +52,111 @@ const dailySeries = async (match, days = 7) => {
       revenue: row?.revenue || 0,
     };
   });
+};
+
+/**
+ * Coins redeemed grouped by calendar month, with the rebate settled against
+ * each one.
+ *
+ * Months with no activity are filled in as zeroes rather than omitted, so a
+ * chart or table reads as a continuous timeline instead of silently closing
+ * the gap where a quiet month was.
+ *
+ * `from`/`to` make this serve both the "last N months" default and an
+ * arbitrary custom range from the dashboard filter.
+ */
+export const monthlyRedemptions = async ({ hotelId = null, from, to, months = 12 } = {}) => {
+  const end = to ? new Date(to) : new Date();
+  // Half-open upper bound: include every redemption on the `to` day itself.
+  const rangeEnd = new Date(end.getFullYear(), end.getMonth() + 1, 1);
+
+  const start = from
+    ? new Date(from)
+    : new Date(end.getFullYear(), end.getMonth() - (months - 1), 1);
+  const rangeStart = new Date(start.getFullYear(), start.getMonth(), 1);
+
+  const match = {
+    type: TX_TYPES.REDEEM,
+    createdAt: { $gte: rangeStart, $lt: rangeEnd },
+  };
+  if (hotelId) match.hotelId = oid(hotelId);
+
+  const [rows, settlements] = await Promise.all([
+    CoinTransaction.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+          coinsRedeemed: { $sum: { $abs: "$coins" } },
+          revenue: { $sum: { $ifNull: ["$cashPayable", 0] } },
+          bills: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
+    RebateSettlement.aggregate([
+      {
+        $match: {
+          ...(hotelId ? { hotelId: oid(hotelId) } : {}),
+          periodStart: { $gte: rangeStart, $lt: rangeEnd },
+        },
+      },
+      {
+        $group: {
+          _id: "$period",
+          coinsCredited: { $sum: "$coinsCredited" },
+          ratePercent: { $max: "$ratePercent" },
+        },
+      },
+    ]),
+  ]);
+
+  const byMonth = new Map(rows.map((r) => [r._id, r]));
+  const creditByMonth = new Map(settlements.map((r) => [r._id, r]));
+
+  // Walk the range month by month so gaps become explicit zero rows.
+  const series = [];
+  const cursor = new Date(rangeStart);
+
+  while (cursor < rangeEnd) {
+    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+    const row = byMonth.get(key);
+    const credit = creditByMonth.get(key);
+
+    series.push({
+      month: key,
+      coinsRedeemed: row?.coinsRedeemed || 0,
+      revenue: row?.revenue || 0,
+      bills: row?.bills || 0,
+      coinsCredited: credit?.coinsCredited || 0,
+      // Null rather than 0 so the UI can tell "not settled yet" from "settled
+      // at a rate of zero".
+      ratePercent: credit ? credit.ratePercent : null,
+      settled: Boolean(credit),
+    });
+
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  const totals = series.reduce(
+    (acc, m) => ({
+      coinsRedeemed: acc.coinsRedeemed + m.coinsRedeemed,
+      revenue: acc.revenue + m.revenue,
+      bills: acc.bills + m.bills,
+      coinsCredited: acc.coinsCredited + m.coinsCredited,
+    }),
+    { coinsRedeemed: 0, revenue: 0, bills: 0, coinsCredited: 0 }
+  );
+
+  return {
+    // Local-time formatting, not toISOString(): the boundaries are built with
+    // local-time Date constructors, and UTC conversion would report a range
+    // starting a day early in any positive offset such as IST.
+    from: localDate(rangeStart),
+    to: localDate(new Date(rangeEnd - 1)),
+    series,
+    totals,
+  };
 };
 
 export const hotelDashboard = async (hotelId) => {

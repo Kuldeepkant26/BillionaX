@@ -23,15 +23,22 @@ export const staffLogin = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, data, "Signed in"));
 });
 
+/**
+ * `identifier` is the email address or phone number being verified. The legacy
+ * `phone` body field is still accepted so an older client keeps working.
+ */
+const identifierFrom = (body) => body.identifier ?? body.email ?? body.phone;
+
 export const guestRequestOtp = asyncHandler(async (req, res) => {
-  const result = await requestOtp(req.body.phone);
+  const result = await requestOtp(identifierFrom(req.body), req.body.channel);
   res.status(200).json(new ApiResponse(200, result, "Verification code sent"));
 });
 
 export const guestVerifyOtp = asyncHandler(async (req, res) => {
-  const { phone, otp, hotelSlug, qrToken, name } = req.body;
+  const { otp, channel, hotelSlug, qrToken, name } = req.body;
   const { refreshToken, ...data } = await authService.guestVerify({
-    phone,
+    identifier: identifierFrom(req.body),
+    channel,
     otp,
     hotelSlug,
     qrToken,

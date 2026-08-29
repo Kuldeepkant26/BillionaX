@@ -1,22 +1,40 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getSettings, updateSettings } from "../../api/admin.api.js";
 import { useAsync } from "../../hooks/useAsync.js";
 import { useAppStore } from "../../store/useAppStore.js";
-import { Button, Card, ErrorState, Field, Input, Loading } from "../../components/common/index.jsx";
+import {
+  Card,
+  ErrorState,
+  Field,
+  Input,
+  Loading,
+  Slider,
+} from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
+import { ApplyBar } from "../../features/panel/ApplyBar.jsx";
 import { CardDesignPicker } from "../../features/panel/CardDesignPicker.jsx";
+import { ThemePicker } from "../../features/panel/ThemePicker.jsx";
 import { DEFAULT_CARD_DESIGN } from "../../features/guest/cardDesigns/registry.jsx";
+import {
+  DEFAULT_ACCENT,
+  DEFAULT_CUSTOM_COLOR,
+  isValidHex,
+  resolveAccent,
+} from "../../theme/accentPresets.js";
 
 const toForm = (s) => ({
   welcomeCredit: s.welcomeCredit,
   defaultEarnRatePercent: s.defaultEarnRatePercent,
   platformFeePercent: s.platformFeePercent,
+  redemptionRebatePercent: s.redemptionRebatePercent,
   settlementDays: s.settlementDays,
   voucherTtlMinutes: s.voucherTtlMinutes,
   silver: s.tierCaps?.SILVER,
   gold: s.tierCaps?.GOLD,
   platinum: s.tierCaps?.PLATINUM,
   cardDesign: s.cardDesign || DEFAULT_CARD_DESIGN,
+  themePreset: resolveAccent(s.themePreset || DEFAULT_ACCENT),
+  themeCustomColor: isValidHex(s.themeCustomColor) ? s.themeCustomColor : DEFAULT_CUSTOM_COLOR,
 });
 
 const AdminSettingsPage = () => {
@@ -31,15 +49,43 @@ const AdminSettingsPage = () => {
 };
 
 const RulesForm = ({ settings, reload }) => {
-  const [form, setForm] = useState(() => toForm(settings));
+  const initial = useMemo(() => toForm(settings), [settings]);
+  const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
 
   const toastSuccess = useAppStore((s) => s.toastSuccess);
   const toastError = useAppStore((s) => s.toastError);
+  const setAccent = useAppStore((s) => s.setAccent);
   const run = reload;
 
+  // Every value is a scalar, so a shallow compare is enough to know whether
+  // anything is unsaved — and it stays honest if the admin edits a field back
+  // to its original value.
+  const dirty = Object.keys(initial).some((key) => String(form[key]) !== String(initial[key]));
+
+  // Selecting a theme tile previews it live across the whole panel; leaving
+  // this page (or a save-remount) snaps back to the server's choice, so an
+  // unsaved preview can never stick. The remount after a save runs this
+  // cleanup with the OLD server value and then the new instance's effect with
+  // the NEW one, which lands in the right place.
+  const serverPreset = resolveAccent(settings.themePreset || DEFAULT_ACCENT);
+  const serverCustom = isValidHex(settings.themeCustomColor)
+    ? settings.themeCustomColor
+    : DEFAULT_CUSTOM_COLOR;
+  useEffect(() => {
+    setAccent(serverPreset, serverCustom);
+    return () => setAccent(serverPreset, serverCustom);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const change = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const discard = () => {
+    setForm(initial);
+    setErrors({});
+    setAccent(serverPreset, serverCustom);
+  };
 
   const save = async () => {
     setBusy(true);
@@ -50,6 +96,7 @@ const RulesForm = ({ settings, reload }) => {
         welcomeCredit: Number(form.welcomeCredit),
         defaultEarnRatePercent: Number(form.defaultEarnRatePercent),
         platformFeePercent: Number(form.platformFeePercent),
+        redemptionRebatePercent: Number(form.redemptionRebatePercent),
         settlementDays: Number(form.settlementDays),
         voucherTtlMinutes: Number(form.voucherTtlMinutes),
         tierCaps: {
@@ -58,12 +105,18 @@ const RulesForm = ({ settings, reload }) => {
           PLATINUM: Number(form.platinum),
         },
         cardDesign: form.cardDesign,
+        themePreset: form.themePreset,
+        themeCustomColor: form.themeCustomColor,
       });
       toastSuccess("Settings saved");
       run();
     } catch (err) {
       setErrors(err.fieldErrors || {});
       toastError(err.message);
+      // The save failed, so the server still holds the old theme — put the
+      // preview back rather than leaving the panel painted in a colour that
+      // was never stored.
+      setAccent(serverPreset, serverCustom);
     } finally {
       setBusy(false);
     }
@@ -84,45 +137,76 @@ const RulesForm = ({ settings, reload }) => {
           </Field>
 
           <Field
-            label="Default earn rate (%)"
+            label="Default earn rate"
             hint="Used when a hotel has not set its own"
             error={errors.defaultEarnRatePercent}
           >
-            <Input
-              type="number"
+            <Slider
+              min={0}
+              max={100}
+              unit="%"
               value={form.defaultEarnRatePercent}
               onChange={change("defaultEarnRatePercent")}
+              error={errors.defaultEarnRatePercent}
             />
           </Field>
 
           <Field
-            label="Voucher lifetime (minutes)"
+            label="Voucher lifetime"
             hint="How long a guest's code stays valid"
             error={errors.voucherTtlMinutes}
           >
-            <Input
-              type="number"
+            <Slider
+              min={1}
+              max={120}
+              unit="min"
               value={form.voucherTtlMinutes}
               onChange={change("voucherTtlMinutes")}
+              error={errors.voucherTtlMinutes}
             />
           </Field>
         </Card>
 
         <Card title="Commercials">
           <Field
-            label="Platform fee (%)"
+            label="Platform fee"
             hint="Taken on the cash a guest actually pays"
             error={errors.platformFeePercent}
           >
-            <Input
-              type="number"
+            <Slider
+              min={0}
+              max={100}
+              unit="%"
               value={form.platformFeePercent}
               onChange={change("platformFeePercent")}
+              error={errors.platformFeePercent}
             />
           </Field>
 
-          <Field label="Settlement cycle (days)" error={errors.settlementDays}>
-            <Input type="number" value={form.settlementDays} onChange={change("settlementDays")} />
+          <Field
+            label="Redemption rebate"
+            hint="Share of coins redeemed at a hotel that is credited back to its inventory at month end"
+            error={errors.redemptionRebatePercent}
+          >
+            <Slider
+              min={0}
+              max={100}
+              unit="%"
+              value={form.redemptionRebatePercent}
+              onChange={change("redemptionRebatePercent")}
+              error={errors.redemptionRebatePercent}
+            />
+          </Field>
+
+          <Field label="Settlement cycle" error={errors.settlementDays}>
+            <Slider
+              min={0}
+              max={60}
+              unit="days"
+              value={form.settlementDays}
+              onChange={change("settlementDays")}
+              error={errors.settlementDays}
+            />
           </Field>
         </Card>
       </div>
@@ -133,17 +217,55 @@ const RulesForm = ({ settings, reload }) => {
           discount hotels absorb on every member bill.
         </p>
 
-        <div className="grid grid-cols-1 [@media(min-width:601px)]:grid-cols-3 gap-3">
-          <Field label="Silver (%)" error={errors["tierCaps.SILVER"]}>
-            <Input type="number" value={form.silver} onChange={change("silver")} />
+        {/* Stacked on a shared 0–100 scale so the tier ladder reads at a
+            glance — Platinum's bar should visibly sit above Gold's. */}
+        <div className="flex flex-col gap-1 max-w-[560px]">
+          <Field label="Silver" error={errors["tierCaps.SILVER"]}>
+            <Slider
+              min={0}
+              max={100}
+              unit="%"
+              value={form.silver}
+              onChange={change("silver")}
+              error={errors["tierCaps.SILVER"]}
+            />
           </Field>
-          <Field label="Gold (%)" error={errors["tierCaps.GOLD"]}>
-            <Input type="number" value={form.gold} onChange={change("gold")} />
+          <Field label="Gold" error={errors["tierCaps.GOLD"]}>
+            <Slider
+              min={0}
+              max={100}
+              unit="%"
+              value={form.gold}
+              onChange={change("gold")}
+              error={errors["tierCaps.GOLD"]}
+            />
           </Field>
-          <Field label="Platinum (%)" error={errors["tierCaps.PLATINUM"]}>
-            <Input type="number" value={form.platinum} onChange={change("platinum")} />
+          <Field label="Platinum" error={errors["tierCaps.PLATINUM"]}>
+            <Slider
+              min={0}
+              max={100}
+              unit="%"
+              value={form.platinum}
+              onChange={change("platinum")}
+              error={errors["tierCaps.PLATINUM"]}
+            />
           </Field>
         </div>
+      </Card>
+
+      <Card title="Dashboard & app theme" className="my-4">
+        <ThemePicker
+          value={form.themePreset}
+          customColor={form.themeCustomColor}
+          onChange={(themePreset) => {
+            setForm((f) => ({ ...f, themePreset }));
+            setAccent(themePreset, form.themeCustomColor);
+          }}
+          onCustomColorChange={(themeCustomColor) => {
+            setForm((f) => ({ ...f, themeCustomColor }));
+            setAccent(form.themePreset, themeCustomColor);
+          }}
+        />
       </Card>
 
       <Card title="Membership card design" className="my-4">
@@ -153,9 +275,7 @@ const RulesForm = ({ settings, reload }) => {
         />
       </Card>
 
-      <Button onClick={save} disabled={busy} size="lg">
-        {busy ? "Saving…" : "Save platform rules"}
-      </Button>
+      <ApplyBar open={dirty} busy={busy} onApply={save} onDiscard={discard} />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { useThemeRoot } from "./useThemeRoot.js";
+import { useThemeRoot, useAccentStyle } from "./useThemeRoot.js";
 import { useRealtime } from "../../hooks/useRealtime.js";
+import { useAccentSync } from "../../hooks/useAccentSync.js";
 import { useGuestMemberships } from "../../hooks/useGuestMemberships.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import { ROUTES } from "../../constants/routePaths.js";
@@ -18,7 +19,10 @@ const NAV = [
 
 const GuestLayout = () => {
   const guestTheme = useAppStore((s) => s.guestTheme);
+  const accent = useAppStore((s) => s.accent);
   useThemeRoot(guestTheme);
+  useAccentSync();
+  const accentStyle = useAccentStyle();
   useRealtime();
   useGuestMemberships();
 
@@ -28,7 +32,7 @@ const GuestLayout = () => {
   const showNav = isAuthenticated && pathname.startsWith("/app");
 
   return (
-    <div className="theme-root" data-theme={guestTheme}>
+    <div className="theme-root" data-theme={guestTheme} data-accent={accent} style={accentStyle}>
       {/* The guest app is used on a phone at a reception desk, so it is designed
           mobile-first and simply centres itself on larger screens. */}
       <div className="w-full max-w-[460px] mx-auto min-h-[100svh] flex flex-col relative bg-canvas">

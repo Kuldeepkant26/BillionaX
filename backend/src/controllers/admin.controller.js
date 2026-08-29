@@ -6,10 +6,61 @@ import * as coinService from "../services/coin.service.js";
 import * as reportService from "../services/report.service.js";
 import * as settingsService from "../services/settings.service.js";
 import * as adminUserService from "../services/adminUser.service.js";
+import * as rebateService from "../services/rebate.service.js";
 
 export const dashboard = asyncHandler(async (req, res) => {
   const data = await reportService.adminDashboard();
   res.status(200).json(new ApiResponse(200, data));
+});
+
+/**
+ * Coins redeemed by month across the network, or for one hotel via ?hotelId.
+ * ?from / ?to override the default trailing window.
+ */
+export const monthlyRedemptions = asyncHandler(async (req, res) => {
+  const { hotelId, from, to, months } = req.query;
+  const data = await reportService.monthlyRedemptions({
+    hotelId: hotelId || null,
+    from,
+    to,
+    months: months ? Number(months) : undefined,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const listSettlements = asyncHandler(async (req, res) => {
+  const { hotelId, limit } = req.query;
+  const settlements = await rebateService.listSettlements({
+    hotelId: hotelId || null,
+    limit: limit ? Number(limit) : undefined,
+  });
+  res.status(200).json(new ApiResponse(200, { settlements }));
+});
+
+/**
+ * Runs the month-end rebate on demand.
+ *
+ * Idempotent by construction: a hotel already settled for the period is
+ * skipped, so clicking twice cannot pay twice. Defaults to the previous
+ * calendar month, which is what "run it for last month" means.
+ */
+export const runRebate = asyncHandler(async (req, res) => {
+  const { period, hotelId, dryRun } = req.body;
+
+  const result = await rebateService.runMonthlyRebate({
+    period: period || undefined,
+    hotelId: hotelId || null,
+    runBy: req.user._id,
+    dryRun: Boolean(dryRun),
+  });
+
+  const message = result.dryRun
+    ? `${result.settled.length} hotel(s) would be credited ${result.totalCredited.toLocaleString("en-IN")} coins`
+    : result.settled.length
+      ? `Credited ${result.totalCredited.toLocaleString("en-IN")} coins to ${result.settled.length} hotel(s)`
+      : "Nothing to credit — this period is already settled";
+
+  res.status(200).json(new ApiResponse(200, result, message));
 });
 
 export const listHotels = asyncHandler(async (req, res) => {

@@ -1,0 +1,171 @@
+/*
+ * Offer art — the photo, or the designed fallback when there is none.
+ *
+ * The fallback is built from the theme's own --hero gradient, which every
+ * accent preset defines, so it recolours with the admin's chosen theme rather
+ * than shipping a second palette that could drift out of step.
+ */
+
+.art {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--chip);
+  background-size: cover;
+  background-position: center;
+}
+
+/* ---- sizes ---- */
+
+.tile {
+  height: 94px;
+  border-radius: var(--rad-sm);
+}
+
+.card {
+  height: 132px;
+}
+
+.hero {
+  aspect-ratio: 16 / 10;
+  height: auto;
+}
+
+/* ---- photo case ---- */
+
+/*
+ * A corner chip so the headline value is stated even over a photo.
+ *
+ * Right-aligned, not left: the detail screen floats a back button in the top
+ * LEFT corner, and the two were landing on top of each other — the chip read
+ * as "5% off" with the button covering the 4.
+ */
+.chip {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 2;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--acc-fg);
+  background: var(--acc);
+  padding: 3px 8px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.hero .chip {
+  right: 14px;
+  top: 14px;
+  font-size: 12.5px;
+  padding: 4px 11px;
+}
+
+/* ---- fallback case ---- */
+
+.fallback {
+  background: var(--hero);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: #fff;
+}
+
+/*
+ * The drift. An oversized gradient nudged around its own box, so the light in
+ * the card moves without anything appearing to slide. 26s because a fast
+ * gradient on a promotional card reads as a loading state.
+ */
+.drift {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(70% 60% at 20% 20%, rgba(255, 255, 255, 0.3), transparent 60%),
+    radial-gradient(60% 60% at 85% 80%, rgba(255, 255, 255, 0.16), transparent 62%);
+  background-size: 180% 180%;
+  animation: offer-drift 26s ease-in-out infinite alternate;
+}
+
+@keyframes offer-drift {
+  from {
+    background-position: 0% 0%, 100% 100%;
+  }
+  to {
+    background-position: 40% 30%, 60% 70%;
+  }
+}
+
+/* The gradient IS the design; only the motion is optional. */
+@media (prefers-reduced-motion: reduce) {
+  .drift {
+    animation: none;
+  }
+}
+
+.fallbackInner {
+  position: relative;
+  z-index: 1;
+  display: block;
+  padding: 10px 14px;
+  max-width: 100%;
+}
+
+.value {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  line-height: 1.05;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  overflow-wrap: break-word;
+}
+
+/* Falls back to the title, which is prose and needs to wrap rather than shout. */
+.valueSmall {
+  composes: value;
+  font-size: 15px;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tile .value {
+  font-size: 21px;
+}
+.card .value {
+  font-size: 30px;
+}
+.hero .value {
+  font-size: clamp(30px, 9vw, 46px);
+}
+
+.tile .valueSmall {
+  font-size: 12.5px;
+}
+.hero .valueSmall {
+  font-size: 22px;
+}
+
+.kicker {
+  display: block;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin-top: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hero .kicker {
+  font-size: 11.5px;
+  margin-top: 9px;
+}
