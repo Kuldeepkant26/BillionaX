@@ -1,0 +1,370 @@
+/**
+ * Settled-bill history: filter bar, row list, detail dialog.
+ *
+ * The rows deliberately echo the pending list they sit under (same avatar,
+ * same body/amount/badge rhythm) so the two read as one continuous record of a
+ * bill's life rather than two unrelated widgets.
+ */
+
+/*
+ * The filter bar: one compact line.
+ *
+ * The shared .input class is width:100% with 11px/13px form padding — right
+ * for a form field, wrong for a toolbar, where it makes every control fight
+ * for the full width and wraps the bar onto three rows. These controls are
+ * sized locally instead of changing .input, which every real form depends on.
+ */
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 13px;
+}
+
+/* Shared sizing for the selects and the date inputs: auto width, denser
+   padding, and a floor that keeps a native select's arrow from crowding its
+   label. */
+.control {
+  flex: none;
+  width: auto;
+  min-width: 0;
+  max-width: 160px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 11px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.control:focus-visible {
+  outline: none;
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px var(--acc-soft);
+}
+
+/* The search box is the only control that should grow, and it collapses
+   first — a 90px floor still shows a name being typed. */
+.searchWrap {
+  position: relative;
+  flex: 1 1 160px;
+  min-width: 90px;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  color: var(--dim);
+  pointer-events: none;
+}
+
+.search {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 11px 6px 28px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--fg);
+}
+
+.search::placeholder {
+  color: var(--dim);
+}
+
+.search:focus {
+  outline: none;
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px var(--acc-soft);
+}
+
+/* Safari renders a proprietary clear button that sits on top of ours. */
+.search::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.clear {
+  flex: none;
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  color: var(--acc);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 2px;
+  white-space: nowrap;
+}
+
+/* The custom range, on its own row — only when Custom is chosen. */
+.customRange {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: -4px 0 13px;
+  padding: 9px 11px;
+  border-radius: var(--rad-sm);
+  background: var(--soft);
+}
+
+.customRange label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.customRange span {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--dim);
+}
+
+/*
+ * Below ~640px the bar becomes a 2x2 grid with search across the top.
+ * Left as one flex line it wrapped into a ragged stack whose controls each
+ * took a different width, which read as broken rather than responsive.
+ */
+@media (max-width: 640px) {
+  .filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+  }
+
+  .searchWrap {
+    grid-column: 1 / -1;
+  }
+
+  .control {
+    max-width: none;
+    width: 100%;
+  }
+
+  .clear {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+/* ---------------------------------------------------------------- list -- */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list li + li {
+  border-top: 1px solid var(--line);
+}
+
+.rowBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 6px;
+  border: 0;
+  border-radius: var(--rad-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.rowBtn:hover {
+  background: var(--soft);
+}
+
+.avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--dim);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.body b {
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.body i {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.amount {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+/* -------------------------------------------------------------- detail -- */
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.detailHead {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--line);
+}
+
+.detailHead > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+}
+
+.detailHead b {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.detailHead i {
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.items {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.items td {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.items tr:last-child td {
+  border-bottom: 0;
+}
+
+.qty {
+  width: 44px;
+  color: var(--dim);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.amt {
+  width: 88px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.totals,
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 11px;
+  border-radius: var(--rad-sm);
+  background: var(--soft);
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+}
+
+.row > span {
+  color: var(--dim);
+}
+
+.row > b {
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.grand {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.grand span {
+  font-size: 12.5px;
+  color: var(--dim);
+}
+
+.grand b {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Wraps rather than overflowing: a gateway reference is long, and a staff
+   member reading it back needs all of it. */
+.ref {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  word-break: break-all;
+}

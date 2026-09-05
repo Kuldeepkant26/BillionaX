@@ -5,6 +5,7 @@ import {
   OUTLETS,
   TX_TYPE_VALUES,
   PURCHASE_STATUS_VALUES,
+  BILL_STATUS_VALUES,
   CARD_DESIGN_VALUES,
   THEME_PRESET_VALUES,
   FONT_PRESET_VALUES,
@@ -37,6 +38,23 @@ export const txFilterRules = [
   query("hotelId").optional({ values: "falsy" }).isMongoId(),
   query("minCoins").optional({ values: "falsy" }).isInt({ min: 0 }).toInt(),
   query("minBillAmount").optional({ values: "falsy" }).isInt({ min: 0 }).toInt(),
+  ...dateRangeRules,
+];
+
+/**
+ * Filters for the panel's bill history.
+ *
+ * `status` is checked with a wildcard so it validates whether express parsed
+ * one value or several — the history view sends all three terminal states.
+ * NOT marked optional for the same reason the content validator records: a
+ * wildcard only runs against elements that exist, so an absent param produces
+ * zero checks anyway, and marking it optional would let a [null] through.
+ */
+export const billFilterRules = [
+  searchRule,
+  query("status").optional({ values: "falsy" }).toArray(),
+  query("status.*").isIn(BILL_STATUS_VALUES).withMessage("Unknown bill status"),
+  query("outlet").optional({ values: "falsy" }).isIn(OUTLETS),
   ...dateRangeRules,
 ];
 

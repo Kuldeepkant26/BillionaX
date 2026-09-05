@@ -82,17 +82,30 @@ export const allocate = asyncHandler(async (req, res) => {
 
 export const listTransactions = asyncHandler(async (req, res) => {
   const { type, outlet, minCoins, from, to, page = 1, limit = 25 } = req.query;
-  const data = await reportService.listTransactions({
-    hotelId: hotelIdFor(req),
-    type,
-    outlet,
-    minCoins,
-    from,
-    to,
-    page: Number(page),
-    limit: Number(limit),
-  });
-  res.status(200).json(new ApiResponse(200, data));
+
+  // Bills that moved no coins (cancelled, expired, cash-only) ride along on
+  // the unfiltered first page, for the reasons set out in the guest
+  // controller's copy of this: they are not coin-ledger rows, and a filtered
+  // or paged view must not gain rows the filter excludes.
+  const wantsBills = !type && !outlet && !minCoins && !from && !to && Number(page) === 1;
+
+  const [data, bills] = await Promise.all([
+    reportService.listTransactions({
+      hotelId: hotelIdFor(req),
+      type,
+      outlet,
+      minCoins,
+      from,
+      to,
+      page: Number(page),
+      limit: Number(limit),
+    }),
+    wantsBills
+      ? billService.listBillHistory({ hotelId: hotelIdFor(req), limit: Number(limit) })
+      : Promise.resolve({ items: [] }),
+  ]);
+
+  res.status(200).json(new ApiResponse(200, { ...data, bills: bills.items }));
 });
 
 export const coinBalance = asyncHandler(async (req, res) => {
@@ -427,13 +440,50 @@ export const createBill = asyncHandler(async (req, res) => {
   res.status(201).json(new ApiResponse(201, { bill }, "Bill sent"));
 });
 
-/** This hotel's bills, for the live status list beside the composer. */
+/**
+ * Voids a pending bill from the panel.
+ *
+ * The service decides whether this user may: an admin can void any of their
+ * hotel's bills, a staff member only one they sent. Passing the role rather
+ * than gating the route lets both cases share one endpoint.
+ */
+export const cancelBill = asyncHandler(async (req, res) => {
+  const data = await billService.cancelBillByStaff({
+    billId: req.params.billId,
+    hotelId: hotelIdFor(req),
+    staffId: req.user._id,
+    isAdmin: req.user.role === ROLES.HOTEL_ADMIN,
+  });
+  res.status(200).json(new ApiResponse(200, data, "Bill cancelled"));
+});
+
+/**
+ * This hotel's bills — the live pending list AND the history view.
+ *
+ * `status` may repeat (?status=PAID&status=CANCELLED), which express parses
+ * into an array; the history tab uses that to ask for the three terminal
+ * states in one query. A single value still works, so the pending list is
+ * unchanged.
+ */
 export const listBills = asyncHandler(async (req, res) => {
   const data = await billService.listHotelBills({
     hotelId: hotelIdFor(req),
     status: req.query.status,
+    q: req.query.q,
+    outlet: req.query.outlet,
+    from: req.query.from,
+    to: req.query.to,
     page: Number(req.query.page) || 1,
     limit: Number(req.query.limit) || 20,
   });
   res.status(200).json(new ApiResponse(200, data));
+});
+
+/** One bill in full, for the panel's detail view. */
+export const getBill = asyncHandler(async (req, res) => {
+  const bill = await billService.getBillForHotel({
+    billId: req.params.billId,
+    hotelId: hotelIdFor(req),
+  });
+  res.status(200).json(new ApiResponse(200, { bill }));
 });

@@ -1,11 +1,14 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
+  cancelBill,
   createBill,
   listBills,
   revealGuestEmail,
   searchGuests,
 } from "../../api/hotel.api.js";
 import { useAsync } from "../../hooks/useAsync.js";
+import { useHotelBillRealtime } from "../../hooks/useBillRealtime.js";
+import { invalidateCache } from "../../hooks/asyncCache.js";
 import { useDebounced } from "../../hooks/useDebounced.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import {
@@ -17,6 +20,7 @@ import {
   Skeleton,
 } from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
+import { BillHistory } from "../../features/panel/BillHistory.jsx";
 import { formatCoins, formatPaise, initials, rupeesToPaise, timeAgo } from "../../utils/format.js";
 import styles from "./BillPage.module.css";
 
@@ -112,13 +116,32 @@ const BillPage = () => {
   const [taxPercent, setTaxPercent] = useState("");
   const [outlet, setOutlet] = useState("");
   const [sending, setSending] = useState(false);
+  // The bill currently being voided, so only its own row shows a busy state
+  // rather than every button in the list going dead at once.
+  const [cancelling, setCancelling] = useState(null);
 
-  // The hotel's own bills, so staff watch them settle. Refreshed live by the
-  // socket in useBillRealtime; this is the initial read and the reconnect path.
+  // The hotel's own bills, so staff watch them settle. This is the initial
+  // read and the reconnect path; the socket subscription below is what keeps
+  // it current while the page is open.
   const { data: billsData, run: reloadBills } = useAsync(
     () => listBills({ status: "PENDING", limit: 10 }),
     []
   );
+
+  /*
+   * Subscribes to this hotel's bill events.
+   *
+   * Without this the list only ever changed when staff sent a bill: the server
+   * emitted bill:paid and bill:cancelled to the hotel room, and nothing in the
+   * panel was listening, so a guest could pay at the desk and the screen would
+   * still show the bill as pending until a manual reload.
+   *
+   * useCallback so the identity is stable — the hook re-subscribes whenever
+   * `onChange` changes, and an inline arrow would tear down and re-open the
+   * listeners on every render.
+   */
+  const onBillChange = useCallback(() => reloadBills(), [reloadBills]);
+  useHotelBillRealtime(onBillChange);
 
   const term = debouncedQ.trim();
   const active = term.length >= 2;
@@ -194,6 +217,37 @@ const BillPage = () => {
       toastError(err.message || "Could not send that bill");
     } finally {
       setSending(false);
+    }
+  };
+
+  /**
+   * Voids a bill from the panel — the mis-typed-total case, which previously
+   * had no fix at all: staff could only tell the guest to ignore it, leaving
+   * it pending until it expired.
+   *
+   * No confirm dialog: the bill is unpaid by definition, voiding is logged
+   * with the staff id, and a second one can be sent in seconds. A modal here
+   * would cost more at a busy desk than the mistake it prevents.
+   */
+  const voidBill = async (bill) => {
+    if (cancelling) return;
+    setCancelling(bill.id);
+
+    try {
+      await cancelBill(bill.id);
+      toastSuccess("Bill cancelled");
+      // The bill's own detail is cached (a settled bill is immutable), and
+      // cancelling is the one thing that changes its status after the fact —
+      // so drop it, or the history dialog would still call it pending.
+      invalidateCache("hotel.bill");
+      // The socket also fires bill:cancelled for everyone else in this hotel;
+      // this reload is what updates the staff member who pressed the button,
+      // whose own action does not come back to them as a push.
+      reloadBills();
+    } catch (err) {
+      toastError(err.message || "Could not cancel that bill");
+    } finally {
+      setCancelling(null);
     }
   };
 
@@ -484,10 +538,49 @@ const BillPage = () => {
                 </span>
                 <span className={styles.billAmount}>{formatPaise(bill.totalPaise)}</span>
                 <Badge tone={STATUS_TONE[bill.status]}>{bill.status}</Badge>
+                <button
+                  type="button"
+                  className={styles.voidBtn}
+                  onClick={() => voidBill(bill)}
+                  disabled={cancelling === bill.id}
+                  title="Cancel this bill"
+                >
+                  {cancelling === bill.id ? "…" : "Cancel"}
+                </button>
               </li>
             ))}
           </ul>
         )}
+      </section>
+
+      {/*
+        Settled bills, under the live list.
+        The pane above answers "what is outstanding"; this answers "what
+        happened to that charge" — the question staff get asked at the desk,
+        usually with the guest standing there. Same page because it is the same
+        object at a different point in its life.
+      */}
+      <section className={styles.pane} style={{ marginTop: 14 }}>
+        <header className={styles.paneHead}>
+          <span className={styles.stepNo} aria-hidden="true">
+            <svg viewBox="0 0 20 20" width="13" height="13" fill="none" aria-hidden="true">
+              <circle cx="10" cy="10" r="7.2" stroke="currentColor" strokeWidth="1.7" />
+              <path
+                d="M10 6v4.3l2.7 1.6"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <div>
+            <b>History</b>
+            <i>Every settled bill. Click one to see the full record.</i>
+          </div>
+        </header>
+
+        <BillHistory />
       </section>
     </div>
   );

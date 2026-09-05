@@ -505,6 +505,35 @@
   color: var(--dim);
 }
 
+/*
+ * Void action on a pending bill.
+ *
+ * Deliberately quiet — a bordered ghost rather than a red button. It sits in a
+ * list staff scan while a guest waits, and a destructive-looking control there
+ * invites the mis-tap it is meant to fix. It only turns red on hover, once the
+ * pointer is already on it.
+ */
+.voidBtn {
+  flex: none;
+  cursor: pointer;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dim);
+  font-size: 11px;
+  font-weight: 600;
+  transition: color 0.15s, border-color 0.15s;
+}
+.voidBtn:hover:not(:disabled) {
+  color: var(--bad);
+  border-color: var(--bad);
+}
+.voidBtn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .billAmount {
   font-size: 13px;
   font-weight: 650;

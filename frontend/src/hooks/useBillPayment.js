@@ -96,6 +96,9 @@ export const useBillPayment = ({ onSettled } = {}) => {
       try {
         await cancelBill(bill.id);
         removeBill(bill.id);
+        // A cancelled bill is now part of the guest's history, so the cached
+        // History tab would otherwise not show it until the entry aged out.
+        invalidateCache("guest.transactions");
         onSettled?.(bill.id);
       } catch (err) {
         toastError(err.message || "Could not cancel that bill");

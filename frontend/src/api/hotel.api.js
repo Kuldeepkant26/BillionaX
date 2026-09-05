@@ -84,4 +84,21 @@ export const priceBill = (payload) => api.post("/hotel/bills/price", payload).th
 
 export const createBill = (payload) => api.post("/hotel/bills", payload).then(unwrap);
 
+/**
+ * This hotel's bills. `status` may be a string or an array — the history view
+ * asks for the three terminal states at once.
+ */
 export const listBills = (params) => api.get("/hotel/bills", { params }).then(unwrap);
+
+/** One bill in full, for the detail dialog. */
+export const getBill = (billId) => api.get(`/hotel/bills/${billId}`).then(unwrap);
+
+/**
+ * Voids a pending bill from the panel.
+ *
+ * The server decides whether this user may — an admin any bill at their hotel,
+ * a staff member only one they sent — so a 403 here is a real answer to show,
+ * not a bug to hide.
+ */
+export const cancelBill = (billId) =>
+  api.post(`/hotel/bills/${billId}/cancel`).then(unwrap);

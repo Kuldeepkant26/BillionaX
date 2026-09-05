@@ -10,6 +10,7 @@ import {
 } from "../utils/coinMath.js";
 import { maskEmail } from "../utils/mask.util.js";
 import { searchRegex } from "../utils/regex.util.js";
+import { endOfDay } from "../utils/date.util.js";
 import { logger } from "../utils/logger.js";
 import { Bill } from "../models/bill.model.js";
 import { Hotel } from "../models/hotel.model.js";
@@ -287,32 +288,149 @@ export const listGuestBills = async ({ guestId, status, limit = 20 }) => {
   };
 };
 
-/** This hotel's bills, for the staff panel. */
-export const listHotelBills = async ({ hotelId, status, page = 1, limit = 20 }) => {
+/**
+ * This hotel's bills, for the staff panel — the live list and the history view.
+ *
+ * One function rather than two because they differ only in the filter: the
+ * pending list is `status=PENDING`, the history view is everything else with a
+ * date range and a search box on top. Splitting them would duplicate the
+ * shaping, the pagination and the tenant scoping for no gain.
+ *
+ * `q` matches the GUEST's name or email, which needs a join. It is done with
+ * an aggregation that starts from this hotel's bills and looks users up from
+ * there — never the reverse. That ordering is the tenant boundary and the
+ * performance story both, the same reasoning searchGuests records: a regex
+ * over `users` first would scan every guest on the platform.
+ *
+ * `status` accepts an array, so the history view can ask for the three
+ * terminal states in one query instead of three round trips.
+ */
+export const listHotelBills = async ({
+  hotelId,
+  status,
+  q,
+  outlet,
+  from,
+  to,
+  page = 1,
+  limit = 20,
+}) => {
   const safeLimit = Math.min(50, Math.max(1, Number(limit) || 20));
   const safePage = Math.max(1, Number(page) || 1);
 
-  const query = { hotelId };
-  if (status) query.status = status;
+  const match = { hotelId: new mongoose.Types.ObjectId(String(hotelId)) };
+  if (status) match.status = Array.isArray(status) ? { $in: status } : status;
+  if (outlet) match.outlet = outlet;
 
-  const [bills, total] = await Promise.all([
-    Bill.find(query)
-      .sort({ createdAt: -1 })
-      .skip((safePage - 1) * safeLimit)
-      .limit(safeLimit)
-      .populate("guestId", "name")
-      .lean(),
-    Bill.countDocuments(query),
+  if (from || to) {
+    match.createdAt = {};
+    if (from) match.createdAt.$gte = new Date(from);
+    // The end of the chosen day, not its midnight: a staff member picking
+    // today as the "to" date means "up to now", and an exclusive midnight
+    // would silently drop everything they did today.
+    if (to) match.createdAt.$lte = endOfDay(to);
+  }
+
+  const rx = q ? searchRegex(q) : null;
+
+  const [result] = await Bill.aggregate([
+    { $match: match },
+    {
+      $lookup: {
+        from: "users",
+        localField: "guestId",
+        foreignField: "_id",
+        as: "guest",
+        pipeline: [{ $project: { name: 1, email: 1 } }],
+      },
+    },
+    // preserveNull so a bill whose guest was deleted still appears — it is
+    // financial history, and dropping it would silently change the totals.
+    { $unwind: { path: "$guest", preserveNullAndEmptyArrays: true } },
+    ...(rx ? [{ $match: { $or: [{ "guest.name": rx }, { "guest.email": rx }] } }] : []),
+    { $sort: { createdAt: -1 } },
+    {
+      $facet: {
+        items: [{ $skip: (safePage - 1) * safeLimit }, { $limit: safeLimit }],
+        meta: [{ $count: "total" }],
+      },
+    },
   ]);
 
   return {
-    items: bills.map((bill) => ({
+    items: (result?.items || []).map((bill) => ({
       ...shapeBill(bill),
-      guestName: bill.guestId?.name || "Guest",
+      guestName: bill.guest?.name || "Guest",
+      // MASKED, like every other list that shows an address: staff use it to
+      // tell two guests of the same name apart, not to read it out.
+      guestMaskedEmail: maskEmail(bill.guest?.email),
+      staffName: null,
     })),
-    total,
+    total: result?.meta?.[0]?.total || 0,
     page: safePage,
     limit: safeLimit,
+  };
+};
+
+/**
+ * One bill in full, for the panel's detail view.
+ *
+ * hotelId in the filter is the tenant boundary — a bill at another hotel is
+ * not found rather than forbidden, so the response cannot confirm it exists.
+ *
+ * Returns more than the list does: who sent it, who cancelled it, the coin
+ * split, and the provider reference. Staff open this to answer "what actually
+ * happened to this charge?", and every one of those is part of the answer.
+ */
+export const getBillForHotel = async ({ billId, hotelId }) => {
+  if (!mongoose.isValidObjectId(billId)) throw new ApiError(404, "Bill not found");
+
+  const bill = await Bill.findOne({ _id: billId, hotelId })
+    .populate("guestId", "name email phone avatarUrl")
+    .populate("staffId", "name role")
+    .populate("cancelledBy", "name role")
+    .lean();
+
+  if (!bill) throw new ApiError(404, "Bill not found");
+
+  const membership = await GuestHotelMembership.findById(bill.membershipId)
+    .select("balance tier memberNo")
+    .lean();
+
+  return {
+    ...shapeBill(bill),
+
+    guest: {
+      name: bill.guestId?.name || "Guest",
+      // Masked here too. The detail view is opened at a desk with people
+      // behind it, and there is already a deliberate reveal action elsewhere
+      // for when staff genuinely need the address.
+      maskedEmail: maskEmail(bill.guestId?.email),
+      avatarUrl: bill.guestId?.avatarUrl || null,
+      tier: bill.tierAtBill || membership?.tier || null,
+      memberNo: membership?.memberNo || null,
+      balance: membership?.balance ?? null,
+    },
+
+    // A bill is somebody's action; a disputed charge needs a name on it.
+    staffName: bill.staffId?.name || null,
+    cancelledByName: bill.cancelledBy?.name || null,
+    cancelledByRole: bill.cancelledBy?.role || null,
+    cancelledAt: bill.cancelledAt || null,
+
+    /**
+     * The commercial split, shown only once the bill is PAID. On a pending
+     * bill these are still zero — the guest has not chosen their coins yet —
+     * and displaying zeros would read as "this hotel earns nothing".
+     */
+    platformCommissionPaise: bill.platformCommissionPaise,
+    hotelAmountPaise: bill.hotelAmountPaise,
+    platformFeePercent: bill.platformFeePercent,
+
+    // For reconciling against the gateway when a guest disputes a charge.
+    paymentRef: bill.razorpayPaymentId || null,
+    orderRef: bill.razorpayOrderId || null,
+    isDemo: bill.isDemo,
   };
 };
 
@@ -355,6 +473,61 @@ export const cancelBill = async ({ billId, guestId }) => {
   emitToHotel(bill.hotelId, "bill:cancelled", { ...payload, guestId: String(guestId) });
 
   logger.info(`Bill ${bill._id} cancelled by guest ${guestId}`);
+  return payload;
+};
+
+/**
+ * Hotel staff void a bill they sent. Only a PENDING one, and only their own
+ * hotel's.
+ *
+ * Same mutex as the guest's cancelBill — the status filter in the update is
+ * what makes this single-shot, so a bill the guest paid a moment ago cannot be
+ * voided out from under a completed payment.
+ *
+ * WHO MAY CANCEL: a HOTEL_ADMIN may void any pending bill at their hotel; a
+ * HOTEL_STAFF may void only one they raised themselves. A mistyped bill is
+ * usually caught by the person who typed it, with the guest still standing
+ * there, and making them find a manager for every typo would push staff back
+ * to telling the guest to "just ignore it" — which leaves the bill pending and
+ * the desk out of step with the app.
+ */
+export const cancelBillByStaff = async ({ billId, hotelId, staffId, isAdmin }) => {
+  if (!mongoose.isValidObjectId(billId)) throw new ApiError(404, "Bill not found");
+
+  // hotelId in the filter is the tenant boundary: a bill at another hotel is
+  // not "forbidden", it is simply not found by this query.
+  const existing = await Bill.findOne({ _id: billId, hotelId }).lean();
+  if (!existing) throw new ApiError(404, "Bill not found");
+
+  if (!isAdmin && String(existing.staffId) !== String(staffId)) {
+    throw new ApiError(403, "You can only cancel a bill you sent yourself");
+  }
+
+  const bill = await Bill.findOneAndUpdate(
+    { _id: billId, hotelId, status: BILL_STATUS.PENDING },
+    { $set: { status: BILL_STATUS.CANCELLED, cancelledAt: new Date(), cancelledBy: staffId } },
+    { new: true }
+  );
+
+  // Covers the paid/expired/already-cancelled cases in one answer: whatever it
+  // is now, it is no longer a bill anyone can void.
+  if (!bill) throw new ApiError(400, "This bill can no longer be cancelled");
+
+  const payload = { billId: String(bill._id), status: bill.status };
+
+  /*
+   * The guest is told too — their Pay screen is holding this bill open, and
+   * leaving it there would let them pay something the desk has just voided.
+   *
+   * `byStaff` marks it as somebody else's action. The guest's own cancel emits
+   * the same event back to them, so without this flag the app could not tell
+   * "the hotel withdrew your bill" (worth a notice) from the echo of a button
+   * the guest just pressed themselves (not worth one).
+   */
+  emitToGuest(bill.guestId, "bill:cancelled", { ...payload, byStaff: true });
+  emitToHotel(bill.hotelId, "bill:cancelled", { ...payload, guestId: String(bill.guestId) });
+
+  logger.info(`Bill ${bill._id} cancelled by staff ${staffId} at hotel ${hotelId}`);
   return payload;
 };
 
@@ -620,6 +793,70 @@ export const markBillPaid = async ({ billId, guestId, providerPaymentId, signatu
   }
 
   return result;
+};
+
+/**
+ * Bill activity for a history view — settled, voided and lapsed bills alike.
+ *
+ * WHY THIS IS NOT THE COIN LEDGER. CoinTransaction is append-only and every
+ * row is a coin movement: `coins` and `balanceAfter` are required, and
+ * `sum(coins) === membership.balance` is the integrity check the model
+ * documents. Two things people expect to see in "history" move no coins at
+ * all — a cancelled bill, and a bill paid entirely in cash — so writing them
+ * into that ledger would mean inventing zero-coin rows and teaching every
+ * revenue and rebate aggregate to filter them out again. The bills collection
+ * already holds these facts; this reads them, and the clients merge the two
+ * feeds for display.
+ *
+ * PENDING is excluded deliberately: it is a live bill, not history, and it is
+ * already on the guest's Pay screen and the panel's pending list.
+ */
+const HISTORY_STATUSES = [BILL_STATUS.PAID, BILL_STATUS.CANCELLED, BILL_STATUS.EXPIRED];
+
+export const listBillHistory = async ({ hotelId, guestId, limit = 50 }) => {
+  const query = { status: { $in: HISTORY_STATUSES } };
+  if (hotelId) query.hotelId = hotelId;
+  if (guestId) query.guestId = guestId;
+
+  const bills = await Bill.find(query)
+    .sort({ createdAt: -1 })
+    .limit(Math.min(100, Math.max(1, Number(limit) || 50)))
+    .populate("hotelId", "name logoUrl")
+    .populate("guestId", "name")
+    .populate("cancelledBy", "name role")
+    .lean();
+
+  return {
+    items: bills.map((bill) => ({
+      id: String(bill._id),
+      status: bill.status,
+      outlet: bill.outlet || null,
+      totalPaise: bill.totalPaise,
+      coinsApplied: bill.coinsApplied,
+      payablePaise: bill.payablePaise,
+      hotelName: bill.hotelId?.name || null,
+      guestName: bill.guestId?.name || null,
+      /**
+       * Who voided it, so a guest can tell "I declined this" from "the desk
+       * withdrew it" — the two look identical otherwise and the second one
+       * reads as the app losing their bill.
+       */
+      cancelledByRole: bill.cancelledBy?.role || null,
+      cancelledByName: bill.cancelledBy?.name || null,
+      /**
+       * Whether this bill has a REDEEM row in the coin ledger. The clients
+       * merge these two feeds, and without this flag a coin-paid bill would
+       * appear twice — once as the ledger row, once as the bill.
+       */
+      hasLedgerRow: Boolean(bill.transactionId),
+      paidAt: bill.paidAt || null,
+      cancelledAt: bill.cancelledAt || null,
+      createdAt: bill.createdAt,
+      // The timestamp a merged feed should sort on: when the bill reached the
+      // state being shown, not when it was composed.
+      at: bill.paidAt || bill.cancelledAt || bill.createdAt,
+    })),
+  };
 };
 
 /**

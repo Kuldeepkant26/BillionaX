@@ -59,6 +59,10 @@ export const usePaginatedList = (
   return {
     items,
     total,
+    // The whole response, for callers that need a field beyond the paged list
+    // — the transactions view reads `bills` off it to merge non-coin bill
+    // activity into the same table.
+    data,
     page: data?.page ?? page,
     limit: data?.limit ?? limit,
     loading,

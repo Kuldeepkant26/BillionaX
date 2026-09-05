@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useAppStore } from "../store/useAppStore.js";
 import { connectSocket, getSocket } from "../realtime/socket.js";
 import { listBills } from "../api/guest.api.js";
+import { invalidateCache } from "./asyncCache.js";
 
 /**
  * Keeps a guest's bills live.
@@ -41,12 +42,33 @@ export const useBillRealtime = () => {
 
     const onNew = ({ bill }) => bill && receiveBill(bill);
 
-    const onPaid = ({ billId }) => removeBill(billId);
+    /*
+     * Each of these ends a bill's life, which makes it history — and the
+     * History tab is cached, so without dropping that entry the guest would
+     * navigate there and not find the bill that just settled.
+     *
+     * These fire for changes made ELSEWHERE too: the desk voiding a bill
+     * reaches this guest only as a socket event, so this is the only place
+     * that case can invalidate anything.
+     */
+    const settled = () => invalidateCache("guest.transactions");
 
-    const onCancelled = ({ billId }) => removeBill(billId);
+    const onPaid = ({ billId }) => {
+      removeBill(billId);
+      settled();
+    };
+
+    const onCancelled = ({ billId, byStaff }) => {
+      removeBill(billId);
+      settled();
+      // Only when the DESK voided it. The guest's own decline echoes back here
+      // too, and toasting that would announce an action they just took.
+      if (byStaff) toast("The hotel cancelled your bill");
+    };
 
     const onExpired = ({ billId }) => {
       removeBill(billId);
+      settled();
       toast("A bill expired before it was paid");
     };
 

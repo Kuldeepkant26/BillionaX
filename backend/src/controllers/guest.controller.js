@@ -104,14 +104,41 @@ export const getMembership = asyncHandler(async (req, res) => {
 
 export const getMembershipTransactions = asyncHandler(async (req, res) => {
   const { type, page = 1, limit = 25 } = req.query;
-  const data = await reportService.listTransactions({
-    hotelId: req.params.hotelId,
-    guestId: req.user._id,
-    type,
-    page: Number(page),
-    limit: Number(limit),
-  });
-  res.status(200).json(new ApiResponse(200, data));
+
+  /**
+   * Two feeds, one response: the coin ledger, plus the bills that moved no
+   * coins (cancelled, expired, or paid entirely in cash). Those cannot live in
+   * the ledger — see listBillHistory — but the guest still expects to see what
+   * happened to a bill they were sent, so the client merges them.
+   *
+   * Sent together rather than as a second request because the History screen
+   * needs both to render one list, and two round trips would let it paint a
+   * half-complete history first.
+   *
+   * Only on the unfiltered first page: `type` filters the coin ledger, and
+   * bills have no coin type to filter by, so mixing them into a filtered or
+   * paged view would put rows on screen the filter says are excluded.
+   */
+  const wantsBills = !type && Number(page) === 1;
+
+  const [data, bills] = await Promise.all([
+    reportService.listTransactions({
+      hotelId: req.params.hotelId,
+      guestId: req.user._id,
+      type,
+      page: Number(page),
+      limit: Number(limit),
+    }),
+    wantsBills
+      ? billService.listBillHistory({
+          hotelId: req.params.hotelId,
+          guestId: req.user._id,
+          limit: Number(limit),
+        })
+      : Promise.resolve({ items: [] }),
+  ]);
+
+  res.status(200).json(new ApiResponse(200, { ...data, bills: bills.items }));
 });
 
 // ---- notifications ----

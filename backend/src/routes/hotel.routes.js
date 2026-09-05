@@ -8,6 +8,7 @@ import { ROLES } from "../config/constants.js";
 import {
   objectIdParam,
   paginationRules,
+  billFilterRules,
   allocateRules,
   createBillRules,
   guestSearchRules,
@@ -50,7 +51,17 @@ router.post("/bills/price", createBillRules, validate, hotelController.priceBill
 // Rate-limited like the redeem path it replaces: this is the endpoint that
 // puts a charge in front of a guest.
 router.post("/bills", redeemLimiter, createBillRules, validate, hotelController.createBill);
-router.get("/bills", paginationRules, validate, hotelController.listBills);
+router.get("/bills", paginationRules, billFilterRules, validate, hotelController.listBills);
+router.get("/bills/:billId", objectIdParam("billId"), validate, hotelController.getBill);
+// Voiding is open to both hotel roles; WHO may void WHICH bill is decided in
+// the service (an admin any, a staff member only one they sent), because the
+// rule depends on the bill's own staffId and a route guard cannot see it.
+router.post(
+  "/bills/:billId/cancel",
+  objectIdParam("billId"),
+  validate,
+  hotelController.cancelBill
+);
 
 router.get("/transactions", paginationRules, txFilterRules, validate, hotelController.listTransactions);
 router.get("/members", paginationRules, memberFilterRules, validate, hotelController.listMembers);
