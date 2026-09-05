@@ -16,7 +16,10 @@ const OffersPage = () => {
 
   const { data, loading, error, run } = useAsync(
     () => (activeHotelId ? getHotelContent(activeHotelId) : Promise.resolve(null)),
-    [activeHotelId]
+    [activeHotelId],
+    // Cached per hotel, so returning to this tab paints the offers already
+    // known and refreshes them behind the content rather than over it.
+    { cacheKey: "guest.content" }
   );
 
   if (loading) return <OffersSkeleton />;

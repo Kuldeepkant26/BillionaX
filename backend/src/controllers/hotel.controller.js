@@ -3,13 +3,14 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ROLES, CONTENT_KINDS } from "../config/constants.js";
 import * as coinService from "../services/coin.service.js";
-import * as voucherService from "../services/voucher.service.js";
 import * as contentService from "../services/content.service.js";
 import * as reportService from "../services/report.service.js";
 import * as rebateService from "../services/rebate.service.js";
 import * as hotelService from "../services/hotel.service.js";
 import * as membershipService from "../services/membership.service.js";
 import * as uploadService from "../services/upload.service.js";
+import * as videoService from "../services/video.service.js";
+import * as billService from "../services/bill.service.js";
 
 /** Main admin must target a hotel explicitly; staff are pinned to their own. */
 const hotelIdFor = (req) => {
@@ -77,33 +78,6 @@ export const allocate = asyncHandler(async (req, res) => {
   res
     .status(201)
     .json(new ApiResponse(201, result, `${result.coinsAllocated} coins added to the guest`));
-});
-
-export const verifyVoucher = asyncHandler(async (req, res) => {
-  const { code, billAmount } = req.body;
-  const data = await voucherService.verifyVoucher({
-    code,
-    hotelId: hotelIdFor(req),
-    billAmount: billAmount ? Number(billAmount) : 0,
-  });
-  res.status(200).json(new ApiResponse(200, data, "Code is valid"));
-});
-
-export const redeemVoucher = asyncHandler(async (req, res) => {
-  const { code, billAmount, outlet, idempotencyKey } = req.body;
-
-  const result = await voucherService.redeemVoucher({
-    code,
-    hotelId: hotelIdFor(req),
-    billAmount: Number(billAmount),
-    outlet,
-    performedBy: req.user._id,
-    idempotencyKey,
-  });
-
-  res
-    .status(200)
-    .json(new ApiResponse(200, result, `${result.coinsApplied} coins applied to the bill`));
 });
 
 export const listTransactions = asyncHandler(async (req, res) => {
@@ -377,4 +351,89 @@ export const updateSettings = asyncHandler(async (req, res) => {
   res
     .status(200)
     .json(new ApiResponse(200, { hotel, retiered }, "Settings saved"));
+});
+
+/* ------------------------------------------------------- video comments -- */
+
+/**
+ * The comment thread on one of this hotel's videos, for the panel's preview.
+ *
+ * hotelId comes from the session, never the query — the same rule as every
+ * other read here.
+ */
+export const videoComments = asyncHandler(async (req, res) => {
+  const data = await videoService.listCommentsForHotel({
+    contentId: req.params.contentId,
+    hotelId: hotelIdFor(req),
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+/** Moderation: a hotel removes a comment posted on its own video. */
+export const deleteVideoComment = asyncHandler(async (req, res) => {
+  const { removed } = await videoService.deleteCommentAsHotel({
+    commentId: req.params.commentId,
+    hotelId: hotelIdFor(req),
+  });
+  res.status(200).json(new ApiResponse(200, { removed }, "Comment removed"));
+});
+
+/* ----------------------------------------------------------------- bills -- */
+
+/**
+ * Guests at THIS hotel, for the bill screen's search.
+ *
+ * hotelId comes from hotelIdFor(req) and nowhere else, so a staff member
+ * cannot search another property's guests by passing an id. The response
+ * carries masked email addresses only.
+ */
+export const searchGuests = asyncHandler(async (req, res) => {
+  const data = await billService.searchGuests({
+    hotelId: hotelIdFor(req),
+    q: req.query.q,
+    page: Number(req.query.page) || 1,
+    limit: Number(req.query.limit) || 10,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+/** The full email, for the identity check before a bill is sent. */
+export const revealGuestEmail = asyncHandler(async (req, res) => {
+  const data = await billService.revealGuestEmail({
+    hotelId: hotelIdFor(req),
+    guestId: req.params.guestId,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+/** The running total in the composer, priced by the same code that stores it. */
+export const priceBill = asyncHandler(async (req, res) => {
+  const data = billService.priceBill({
+    lineItems: req.body.lineItems,
+    taxPercent: req.body.taxPercent,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const createBill = asyncHandler(async (req, res) => {
+  const bill = await billService.createBill({
+    hotelId: hotelIdFor(req),
+    guestId: req.body.guestId,
+    staffId: req.user._id,
+    lineItems: req.body.lineItems,
+    taxPercent: req.body.taxPercent,
+    outlet: req.body.outlet,
+  });
+  res.status(201).json(new ApiResponse(201, { bill }, "Bill sent"));
+});
+
+/** This hotel's bills, for the live status list beside the composer. */
+export const listBills = asyncHandler(async (req, res) => {
+  const data = await billService.listHotelBills({
+    hotelId: hotelIdFor(req),
+    status: req.query.status,
+    page: Number(req.query.page) || 1,
+    limit: Number(req.query.limit) || 20,
+  });
+  res.status(200).json(new ApiResponse(200, data));
 });

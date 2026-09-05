@@ -15,8 +15,8 @@ const NAV = [
     icon: "M2.5 2.5h6.5v6.5H2.5zM11 2.5h6.5v4H11zM11 8.5h6.5v9H11zM2.5 11h6.5v6.5H2.5z",
   },
   {
-    to: ROUTES.HOTEL_VERIFY,
-    label: "Verify code",
+    to: ROUTES.HOTEL_BILL,
+    label: "Bill a guest",
     icon: "M9 3a6 6 0 1 0 3.4 10.9l3.9 3.9 1.4-1.4-3.9-3.9A6 6 0 0 0 9 3zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z",
   },
   {
@@ -64,8 +64,10 @@ const NAV = [
   },
 ];
 
+// showHotel swaps the static brand line for this hotel's own logo and name;
+// "Hotel panel" stays as the fallback until the hotel loads.
 const HotelPanelLayout = () => (
-  <PanelLayout brand="Hotel panel" subtitle="Billionax" nav={NAV} />
+  <PanelLayout brand="Hotel panel" subtitle="Billionax" nav={NAV} showHotel />
 );
 
 export default HotelPanelLayout;

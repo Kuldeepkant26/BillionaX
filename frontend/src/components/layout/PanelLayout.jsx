@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useThemeRoot, useAccentStyle } from "./useThemeRoot.js";
+import { useThemeRoot, useAccentStyle, useFontRoot } from "./useThemeRoot.js";
 import { useAccentSync } from "../../hooks/useAccentSync.js";
+import { useRealtime } from "../../hooks/useRealtime.js";
 import { useAppStore } from "../../store/useAppStore.js";
-import { logout as logoutApi } from "../../api/auth.api.js";
+import { logout as logoutApi, me as fetchMe } from "../../api/auth.api.js";
 import { initials } from "../../utils/format.js";
 import { Button, Modal, Toasts } from "../common/index.jsx";
 import styles from "./PanelLayout.module.css";
@@ -22,10 +23,14 @@ import styles from "./PanelLayout.module.css";
  */
 const burgerBar = "block w-[18px] h-0.5 bg-ink rounded-[2px]";
 
-const PanelLayout = ({ brand, subtitle, nav }) => {
+const PanelLayout = ({ brand, subtitle, nav, showHotel = false }) => {
   useThemeRoot("ink-minimal");
   useAccentSync();
+  // The panel had no socket at all before bills: staff need to see a payment
+  // land while they are looking at the guest, not on the next refresh.
+  useRealtime();
   const accentStyle = useAccentStyle();
+  const font = useFontRoot();
 
   const user = useAppStore((s) => s.user);
   const accent = useAppStore((s) => s.accent);
@@ -33,7 +38,10 @@ const PanelLayout = ({ brand, subtitle, nav }) => {
   const collapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const navigate = useNavigate();
+  const staffHotel = useAppStore((s) => s.staffHotel);
+  const setStaffHotel = useAppStore((s) => s.setStaffHotel);
   const [open, setOpen] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -51,10 +59,40 @@ const PanelLayout = ({ brand, subtitle, nav }) => {
     navigate("/", { replace: true });
   };
 
+  /**
+   * Loads the hotel for the brand line.
+   *
+   * Only for the hotel panel (showHotel), and only when it is not already in
+   * the store — it is persisted, so a reload paints the right brand on the
+   * first frame and this refresh just catches a rename or a new logo.
+   */
+  useEffect(() => {
+    if (!showHotel || !user?.hotelId) return;
+    let cancelled = false;
+
+    fetchMe()
+      .then((res) => {
+        if (!cancelled && res?.hotel) setStaffHotel(res.hotel);
+      })
+      .catch(() => {
+        // The panel is perfectly usable with the fallback brand line.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showHotel, user?.hotelId, setStaffHotel]);
+
+  // The hotel wins over the static brand when we have it; `brand` stays the
+  // fallback so the rail is never blank while the first request is in flight.
+  const title = (showHotel && staffHotel?.name) || brand;
+  const kicker = showHotel && staffHotel?.name ? "Hotel panel" : subtitle;
+  const logo = showHotel && !logoBroken ? staffHotel?.logoUrl : null;
+
   const visible = nav.filter((item) => !item.roles || item.roles.includes(user?.role));
 
   return (
-    <div className="theme-root" data-theme="ink-minimal" data-accent={accent} style={accentStyle}>
+    <div className="theme-root" data-theme="ink-minimal" data-accent={accent} data-font={font} style={accentStyle}>
       <div
         className={`grid grid-cols-1 ${
           collapsed
@@ -77,13 +115,34 @@ const PanelLayout = ({ brand, subtitle, nav }) => {
                 : ""
             }`}
           >
-            <span className="w-10 h-10 rounded-full bg-white grid place-items-center flex-none shadow-[0_2px_10px_rgba(0,0,0,0.18)]">
-              <img src="/logo.png" alt={brand} className="w-[26px] h-[26px] object-contain" />
+            {/* The hotel's own logo when we have one, the app mark otherwise.
+                object-cover on a hotel logo so a rectangular crest fills the
+                circle; the app mark stays contained, since it is drawn to sit
+                inside one. */}
+            <span className="w-10 h-10 rounded-full bg-white grid place-items-center flex-none shadow-[0_2px_10px_rgba(0,0,0,0.18)] overflow-hidden">
+              {logo ? (
+                <img
+                  src={logo}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  onError={() => setLogoBroken(true)}
+                />
+              ) : (
+                <img src="/logo.png" alt="" className="w-[26px] h-[26px] object-contain" />
+              )}
             </span>
             <span className={`min-w-0 ${collapsed ? "[@media(min-width:901px)]:hidden" : ""}`}>
-              <b className="block font-display text-[15px] font-semibold leading-[1.2]">{brand}</b>
+              {/* Two lines rather than truncate: a hotel's name is the brand
+                  here, and "The Chandratal…" is not a name. Past two lines it
+                  clamps, with the full name on hover. */}
+              <b
+                className="block font-display text-[14.5px] font-semibold leading-[1.25] line-clamp-2"
+                title={title}
+              >
+                {title}
+              </b>
               <i className="not-italic text-[9.5px] tracking-[0.12em] uppercase text-[var(--raildim)] font-bold">
-                {subtitle}
+                {kicker}
               </i>
             </span>
             <button

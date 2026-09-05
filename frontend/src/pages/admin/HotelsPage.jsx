@@ -39,7 +39,10 @@ const HotelsPage = () => {
     filters: { isActive: "", city: "", lowInventory: "" },
   });
 
-  const { data: cityData } = useAsync(() => listHotelCities(), []);
+  // Reference data for the filter dropdown — changes rarely, read often.
+  const { data: cityData } = useAsync(() => listHotelCities(), [], {
+    cacheKey: "admin.hotelCities",
+  });
   const cities = cityData?.cities || [];
 
   const change = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));

@@ -5,6 +5,8 @@ import {
   DEFAULT_CARD_DESIGN,
   THEME_PRESET_VALUES,
   DEFAULT_THEME_PRESET,
+  FONT_PRESET_VALUES,
+  DEFAULT_FONT_PRESET,
 } from "../config/constants.js";
 
 /** Platform-wide configuration. Singleton, enforced by the unique `key`. */
@@ -60,6 +62,15 @@ const platformSettingsSchema = new mongoose.Schema(
       default: DEFAULT_THEME_PRESET,
     },
 
+    // Which typeface pairing every surface uses. Network-wide for the same
+    // reason as themePreset: type is part of the brand, so one choice sets the
+    // panels and the guest app together.
+    fontPreset: {
+      type: String,
+      enum: FONT_PRESET_VALUES,
+      default: DEFAULT_FONT_PRESET,
+    },
+
     // The hue behind themePreset: "CUSTOM". Stored as a plain hex string and
     // pattern-validated, because this value ends up inside a CSS custom
     // property in every client — anything that is not a colour is rejected
@@ -69,6 +80,30 @@ const platformSettingsSchema = new mongoose.Schema(
       default: "#5b6474",
       match: [/^#[0-9a-fA-F]{6}$/, "Enter a 6-digit hex colour"],
     },
+
+    /**
+     * Razorpay credentials, entered in the admin panel.
+     *
+     * The secrets are stored ENCRYPTED (see utils/crypto.util.js) and are never
+     * returned to the browser — the panel shows a masked value and a Replace
+     * action. Environment variables take precedence over these: a
+     * deployment-level key must not be overridable from a web form.
+     *
+     * The presence of a usable key pair is what selects the live payment
+     * provider. There is no "demo mode" boolean, deliberately — a flag can
+     * disagree with the credentials, and then nobody can say which is true.
+     */
+    razorpay: {
+      keyId: { type: String, trim: true, default: null },
+      keySecretEncrypted: { type: String, default: null },
+      webhookSecretEncrypted: { type: String, default: null },
+      routeEnabled: { type: Boolean, default: false },
+      // Set when the key pair last passed a live call against Razorpay.
+      verifiedAt: { type: Date, default: null },
+    },
+
+    /** Hours a Route transfer is held before release, covering refunds. */
+    transferHoldHours: { type: Number, default: 48, min: 0, max: 720 },
 
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },

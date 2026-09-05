@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { staffLogin } from "../../api/auth.api.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import { homeForRole } from "../../constants/routePaths.js";
-import { useThemeRoot, useAccentStyle } from "../../components/layout/useThemeRoot.js";
+import { useThemeRoot, useAccentStyle, useFontRoot } from "../../components/layout/useThemeRoot.js";
 import { useAccentSync } from "../../hooks/useAccentSync.js";
 import { Button, Field, Input, PasswordInput, Spinner } from "../../components/common/index.jsx";
 import styles from "./StaffLoginPage.module.css";
@@ -46,6 +46,7 @@ const StaffLoginPage = ({
   // public config endpoint; the persisted store value covers repeat visits.
   useAccentSync();
   const accentStyle = useAccentStyle();
+  const font = useFontRoot();
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [remember, setRemember] = useState(true);
@@ -81,7 +82,7 @@ const StaffLoginPage = ({
   };
 
   return (
-    <div className="theme-root" data-theme="ink-minimal" data-accent={accent} style={accentStyle}>
+    <div className="theme-root" data-theme="ink-minimal" data-accent={accent} data-font={font} style={accentStyle}>
       <div className={styles.wrap}>
         <aside className={styles.brand}>
           <span className={styles.streaks} aria-hidden="true">

@@ -78,6 +78,10 @@ export const redeemedByHotel = async ({ periodStart, periodEnd, hotelId = null }
   const match = {
     type: TX_TYPES.REDEEM,
     createdAt: { $gte: periodStart, $lt: periodEnd },
+    // Demo redemptions must never be settled: this credits REAL coin inventory
+    // to a hotel, and a demonstration would otherwise pay them for it.
+    // `$ne: true` because rows written before demo mode existed have no field.
+    isDemo: { $ne: true },
   };
   if (hotelId) match.hotelId = new mongoose.Types.ObjectId(String(hotelId));
 

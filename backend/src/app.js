@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 
 import { env, isProduction } from "./config/env.js";
 import routes from "./routes/index.js";
+import webhookRoutes from "./routes/webhook.routes.js";
 import { notFound, errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -38,6 +39,15 @@ export const corsOrigin = (origin, callback) => {
 };
 
 app.use(cors({ origin: corsOrigin, credentials: true }));
+/**
+ * Webhooks mount BEFORE express.json().
+ *
+ * Their signature is an HMAC over the exact bytes the provider sent, and a
+ * parsed-then-reserialised body no longer matches it. The route uses
+ * express.raw() to keep the original buffer.
+ */
+app.use("/api/v1/webhooks", webhookRoutes);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

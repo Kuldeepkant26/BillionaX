@@ -2,6 +2,7 @@ import { useState } from "react";
 import { listMembers, allocate, creditMember, recordStay, getSettings } from "../../api/hotel.api.js";
 import { usePaginatedList } from "../../hooks/usePaginatedList.js";
 import { useAsync } from "../../hooks/useAsync.js";
+import { invalidateCache } from "../../hooks/asyncCache.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import {
   Badge,
@@ -80,7 +81,9 @@ const MembersPage = ({ canAllocate }) => {
 
   // This hotel's own tier rules, so the stay modal can preview the exact coins
   // and any promotion. Falls back to the model defaults until it resolves.
-  const { data: settings } = useAsync(getSettings, []);
+  // The hotel's own settings: read by several panel screens and changed
+  // rarely, so this is cached and shared with them.
+  const { data: settings } = useAsync(getSettings, [], { cacheKey: "hotel.settings" });
   const tierEarnRates = settings?.hotel?.tierEarnRates || DEFAULT_TIER_EARN_RATES;
   const nightThresholds = settings?.hotel?.tierNightThresholds || DEFAULT_NIGHT_THRESHOLDS;
 
@@ -114,6 +117,10 @@ const MembersPage = ({ canAllocate }) => {
       setForm({ phone: "", name: "", roomAmount: "", nights: "1" });
       setIdemKey(newIdempotencyKey());
       run();
+      // The allocation moved coins, so the dashboard's cached totals are now
+      // wrong. Dropping the entry means the next visit refetches rather than
+      // painting stale figures.
+      invalidateCache("hotel.dashboard");
     } catch (err) {
       setErrors(err.fieldErrors || {});
       setMessage(err.message);

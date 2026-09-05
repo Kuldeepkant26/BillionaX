@@ -10,8 +10,18 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      Every font preset's faces, in one request.
+
+      All of them rather than just the active one, for two reasons: the admin's
+      font picker previews each option in its OWN typeface, and switching
+      presets is then instant with no flash of fallback text. `display=swap`
+      keeps text visible while the faces download. Keep this list in step with
+      theme/fontPresets.js — FONT_STYLESHEET_HREF there builds the same URL,
+      and tests/fontPreset.test.js asserts the two agree.
+    -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Schibsted+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&family=Lato:wght@400;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Jost:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Nunito+Sans:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
 
@@ -44,8 +54,11 @@
           // step with theme/accentPresets.js.
           var accent = state.accent;
           var accents = [
-            "CORAL", "SAND", "INDIGO", "LAVENDER", "CHAMPAGNE", "EMERALD",
-            "TEAL", "OCEAN", "MIDNIGHT", "ROSE", "MONO", "CUSTOM"
+            "SAND", "LAVENDER", "TEAL", "ROSE", "SAGE", "CLAY",
+            "CHAMPAGNE", "EMERALD", "OBSIDIAN", "BURGUNDY", "ONYX_JADE", "PLUM",
+            "LINEN", "MIST", "BLUSH", "MEADOW",
+            "CORAL", "INDIGO", "SAFFRON", "FUCHSIA", "VIRIDIAN",
+            "OCEAN", "MIDNIGHT", "MONO", "SLATE", "FOREST", "CUSTOM"
           ];
           if (accents.indexOf(accent) === -1) accent = "CORAL";
 
@@ -59,8 +72,17 @@
             path.indexOf("/join") === 0 ||
             path === "/login";
 
+          // The admin-chosen typeface. Same hardcoded-allowlist reasoning as
+          // the accent above. Keep in step with theme/fontPresets.js.
+          var font = state.font;
+          var fonts = [
+            "EDITORIAL", "MODERN", "CLASSIC", "LUXE", "SOFT", "TECHNICAL", "SYSTEM"
+          ];
+          if (fonts.indexOf(font) === -1) font = "EDITORIAL";
+
           document.body.setAttribute("data-theme", isGuest ? theme : "ink-minimal");
           document.body.setAttribute("data-accent", accent);
+          document.body.setAttribute("data-font", font);
 
           var meta = document.querySelector('meta[name="theme-color"]');
           if (meta && isGuest) {

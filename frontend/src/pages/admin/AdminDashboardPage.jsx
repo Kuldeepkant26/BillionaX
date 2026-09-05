@@ -9,16 +9,11 @@ import { PageHead } from "../../features/panel/PageHead.jsx";
 import MonthlyRedemptions from "../../features/panel/MonthlyRedemptions.jsx";
 import RebateRunner from "../../features/panel/RebateRunner.jsx";
 import { ROUTES } from "../../constants/routePaths.js";
-import { formatCoinsCompact, formatCompact } from "../../utils/format.js";
+import { formatCoinsCompact, formatCompact, greeting } from "../../utils/format.js";
 
 // Shared by the liability figures below.
 const liabLabel = "block no-underline text-[9.5px] tracking-[0.09em] uppercase text-muted font-bold";
 const liabValue = "block font-display text-2xl font-semibold mt-1";
-
-const greeting = () => {
-  const h = new Date().getHours();
-  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-};
 
 const icon = (d) => (
   <svg viewBox="0 0 20 20" aria-hidden="true">
@@ -36,7 +31,9 @@ const ICONS = {
 };
 
 const AdminDashboardPage = () => {
-  const { data, loading, error, run } = useAsync(dashboard, []);
+  const { data, loading, error, run } = useAsync(dashboard, [], {
+    cacheKey: "admin.dashboard",
+  });
   const user = useAppStore((s) => s.user);
 
   if (loading) return <Loading />;

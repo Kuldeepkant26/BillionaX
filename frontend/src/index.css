@@ -104,3 +104,63 @@ body[data-theme="ink-minimal"] {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Scrollbars.
+ *
+ * The default macOS/Windows bar is a grey slab that cuts across a card's
+ * rounded corner and never matches the theme. These rules give every scroll
+ * region the same slim, themed bar: a rounded thumb on a transparent track,
+ * visible enough to say "there is more here" and quiet enough to disappear
+ * into the surface.
+ *
+ * Unlayered on purpose — the same reason the element resets sit in @layer
+ * base. These must win over a utility that sets overflow, and a layered rule
+ * would lose to it.
+ *
+ * Firefox gets the two-keyword `scrollbar-*` properties; WebKit and Blink get
+ * the pseudo-elements. Both are needed, neither is a fallback for the other.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line, rgba(0, 0, 0, 0.18)) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line, rgba(0, 0, 0, 0.18));
+  border-radius: 999px;
+  /* Inset from the edge so the thumb never touches a card's rounded corner. */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--dim, rgba(0, 0, 0, 0.34));
+  background-clip: padding-box;
+}
+
+/* The corner where two bars meet, which otherwise renders as a grey square. */
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/*
+ * Opt-in for regions where the bar is pure noise — a horizontal filter rail,
+ * a snap carousel — because the content itself already shows it can move.
+ */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

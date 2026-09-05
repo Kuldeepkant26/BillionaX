@@ -1,19 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  addVideoComment,
-  deleteVideoComment,
-  getVideo,
-  listVideoComments,
-  toggleVideoLike,
-} from "../../api/guest.api.js";
+import { getVideo, toggleVideoLike } from "../../api/guest.api.js";
 import { useAsync } from "../../hooks/useAsync.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import { ErrorState, Empty } from "../../components/common/index.jsx";
 import { VideoPlayer } from "../../features/guest/VideoPlayer.jsx";
+import { VideoComments } from "../../features/guest/VideoComments.jsx";
 import { VideoSkeleton } from "../../features/guest/GuestSkeletons.jsx";
 import { videoPath } from "../../constants/routePaths.js";
-import { initials, timeAgo } from "../../utils/format.js";
+import { timeAgo } from "../../utils/format.js";
 import { videoPoster } from "../../utils/upload.js";
 import styles from "./VideoPage.module.css";
 
@@ -26,22 +21,10 @@ import styles from "./VideoPage.module.css";
  * only the palette and the typography.
  */
 
-const COMMENT_PAGE = 20;
-
-const Avatar = ({ name, url }) =>
-  url ? (
-    <img src={url} alt="" className="h-8 w-8 flex-none rounded-full object-cover" />
-  ) : (
-    <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-chip text-[11px] font-bold text-muted">
-      {initials(name)}
-    </span>
-  );
-
 const WatchScreen = ({ contentId }) => {
   const navigate = useNavigate();
 
   const activeHotelId = useAppStore((s) => s.activeHotelId);
-  const user = useAppStore((s) => s.user);
   const toastError = useAppStore((s) => s.toastError);
 
   const { data, loading, error, run, setData } = useAsync(
@@ -49,18 +32,17 @@ const WatchScreen = ({ contentId }) => {
     [activeHotelId, contentId]
   );
 
-  // Comments are their own request: the video should paint the moment its
-  // metadata lands rather than waiting on a thread nobody has scrolled to.
+  // The hotel behind this video, for the logo beside its own comments. Read
+  // from the memberships already in the store rather than fetched: the guest
+  // cannot reach this screen without being a member here.
   //
-  // No reset effect here — the whole page is keyed on contentId (see the
-  // default export), so navigating to another video remounts this component
-  // with fresh state instead of clearing eight pieces of it by hand.
-  const [comments, setComments] = useState([]);
-  const [commentsPage, setCommentsPage] = useState(1);
-  const [hasMoreComments, setHasMoreComments] = useState(false);
-  const [loadingComments, setLoadingComments] = useState(true);
-  const [draft, setDraft] = useState("");
-  const [posting, setPosting] = useState(false);
+  // Selects the memberships ARRAY and finds in render, rather than returning
+  // `membership.hotelId` from the selector — the latter is a fresh object on
+  // every store change and would re-render this screen on each one.
+  const memberships = useAppStore((s) => s.memberships);
+  const hotel =
+    memberships.find((m) => String(m.hotelId?._id) === String(activeHotelId))?.hotelId || null;
+
   const [expanded, setExpanded] = useState(false);
 
   // A remount does not move the window, so a guest who tapped an up-next row
@@ -70,39 +52,20 @@ const WatchScreen = ({ contentId }) => {
     window.scrollTo({ top: 0 });
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    listVideoComments(activeHotelId, contentId, { limit: COMMENT_PAGE })
-      .then((res) => {
-        if (cancelled) return;
-        setComments(res.items || []);
-        setHasMoreComments(Boolean(res.hasMore));
-      })
-      .catch(() => {
-        // The video is still watchable without its comments.
-      })
-      .finally(() => !cancelled && setLoadingComments(false));
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeHotelId, contentId]);
-
-  const loadMoreComments = async () => {
-    try {
-      const next = commentsPage + 1;
-      const res = await listVideoComments(activeHotelId, contentId, {
-        page: next,
-        limit: COMMENT_PAGE,
-      });
-      setComments((list) => [...list, ...(res.items || [])]);
-      setCommentsPage(next);
-      setHasMoreComments(Boolean(res.hasMore));
-    } catch {
-      // Swallowed so the button stays retryable.
-    }
-  };
+  /**
+   * Keeps the header's comment count in step with the thread.
+   *
+   * The thread owns its own list; this is the one number that lives outside it,
+   * so it takes a delta rather than the whole list being lifted up here.
+   */
+  const bumpCommentCount = (delta) =>
+    setData((current) => ({
+      ...current,
+      video: {
+        ...current.video,
+        commentCount: Math.max(0, (current.video.commentCount || 0) + delta),
+      },
+    }));
 
   const like = async () => {
     if (!data?.video) return;
@@ -125,42 +88,6 @@ const WatchScreen = ({ contentId }) => {
     } catch (err) {
       setData({ ...data, video });
       toastError(err.message || "Could not save that");
-    }
-  };
-
-  const submitComment = async (event) => {
-    event.preventDefault();
-    const body = draft.trim();
-    if (!body || posting) return;
-
-    setPosting(true);
-    try {
-      const res = await addVideoComment(activeHotelId, contentId, body);
-      setComments((list) => [res.comment, ...list]);
-      setDraft("");
-      setData((current) => ({
-        ...current,
-        video: { ...current.video, commentCount: (current.video.commentCount || 0) + 1 },
-      }));
-    } catch (err) {
-      toastError(err.message || "Could not post that comment");
-    } finally {
-      setPosting(false);
-    }
-  };
-
-  const removeComment = async (id) => {
-    const previous = comments;
-    setComments((list) => list.filter((c) => c.id !== id));
-    try {
-      await deleteVideoComment(id);
-      setData((current) => ({
-        ...current,
-        video: { ...current.video, commentCount: Math.max(0, (current.video.commentCount || 1) - 1) },
-      }));
-    } catch (err) {
-      setComments(previous);
-      toastError(err.message || "Could not remove that comment");
     }
   };
 
@@ -187,7 +114,12 @@ const WatchScreen = ({ contentId }) => {
           </svg>
         </button>
 
-        <VideoPlayer src={video.videoUrl} poster={video.imageUrl} title={video.title} />
+        <VideoPlayer
+          src={video.videoUrl}
+          poster={video.imageUrl}
+          title={video.title}
+          fallbackDuration={video.duration}
+        />
       </div>
 
       <div className={styles.body}>
@@ -250,93 +182,13 @@ const WatchScreen = ({ contentId }) => {
           </div>
         )}
 
-        {/* ---- comments ---- */}
-        <section id="comments" className="mt-6">
-          <h2 className="kicker mb-2.5">
-            {video.commentCount > 0 ? `${video.commentCount} comments` : "Comments"}
-          </h2>
-
-          <form onSubmit={submitComment} className="mb-4 flex items-start gap-2.5">
-            <Avatar name={user?.name} url={user?.avatarUrl} />
-            <div className="min-w-0 flex-1">
-              <textarea
-                className={styles.composer}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Add a comment…"
-                rows={1}
-                maxLength={600}
-                onInput={(e) => {
-                  // Grows with the text instead of scrolling inside a fixed
-                  // box, which on a phone hides what you just typed.
-                  e.currentTarget.style.height = "auto";
-                  e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
-                }}
-              />
-              {draft.trim() && (
-                <div className="mt-2 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => setDraft("")}
-                    disabled={posting}
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-sm" disabled={posting}>
-                    {posting ? "Posting…" : "Comment"}
-                  </button>
-                </div>
-              )}
-            </div>
-          </form>
-
-          {loadingComments ? (
-            <p className="py-4 text-center text-[12px] text-muted">Loading comments…</p>
-          ) : comments.length === 0 ? (
-            <p className="py-4 text-center text-[12.5px] text-muted">
-              No comments yet — say something first.
-            </p>
-          ) : (
-            <ul className="flex flex-col gap-3.5">
-              {comments.map((comment) => (
-                <li key={comment.id} className="flex items-start gap-2.5">
-                  <Avatar name={comment.author?.name} url={comment.author?.avatarUrl} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2">
-                      <b className="text-[12px] font-semibold">{comment.author?.name}</b>
-                      <i className="not-italic text-[10.5px] text-muted">
-                        {timeAgo(comment.createdAt)}
-                      </i>
-                    </div>
-                    <p className="mt-0.5 whitespace-pre-wrap break-words text-[12.5px] leading-[1.5]">
-                      {comment.body}
-                    </p>
-                    {comment.author?.id === String(user?.id || user?._id) && (
-                      <button
-                        type="button"
-                        className="mt-1 text-[11px] font-semibold text-muted hover:text-[var(--bad)]"
-                        onClick={() => removeComment(comment.id)}
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {hasMoreComments && (
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm btn-block mt-4"
-              onClick={loadMoreComments}
-            >
-              Load more comments
-            </button>
-          )}
-        </section>
+        <VideoComments
+          hotelId={activeHotelId}
+          contentId={contentId}
+          hotel={hotel}
+          total={video.commentCount}
+          onCountChange={bumpCommentCount}
+        />
 
         {/* ---- up next ---- */}
         {related?.length > 0 && (

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useAppStore } from "../../store/useAppStore.js";
 import { CUSTOM_ACCENT, deriveCustomTokens } from "../../theme/accentPresets.js";
+import { resolveFont } from "../../theme/fontPresets.js";
 
 /** Browser-chrome colour per theme — iOS status bar, Android nav bar. */
 const THEME_COLORS = {
@@ -33,6 +34,7 @@ const CUSTOM_VARS = [
 export const useThemeRoot = (theme) => {
   const accent = useAppStore((s) => s.accent);
   const accentCustom = useAppStore((s) => s.accentCustom);
+  const font = useAppStore((s) => s.font);
 
   useEffect(() => {
     document.body.setAttribute("data-theme", theme);
@@ -40,6 +42,9 @@ export const useThemeRoot = (theme) => {
     // resolves its accent tokens from body, and the dark-mode corrections in
     // themes.css are compound [data-theme][data-accent] selectors.
     document.body.setAttribute("data-accent", accent);
+    // And the font, for the same reason: a modal rendered through a portal
+    // would otherwise fall back to the theme's default pairing.
+    document.body.setAttribute("data-font", resolveFont(font));
 
     // The custom accent has no static CSS block to live in — its tokens are
     // derived from one hue at runtime and written straight onto body, where
@@ -67,10 +72,11 @@ export const useThemeRoot = (theme) => {
     return () => {
       document.body.removeAttribute("data-theme");
       document.body.removeAttribute("data-accent");
+      document.body.removeAttribute("data-font");
       CUSTOM_VARS.forEach((name) => document.body.style.removeProperty(name));
       if (previous) meta?.setAttribute("content", previous);
     };
-  }, [theme, accent, accentCustom]);
+  }, [theme, accent, accentCustom, font]);
 };
 
 /**
@@ -98,3 +104,16 @@ export const useAccentStyle = () => {
     "--hero": t.hero,
   };
 };
+
+/**
+ * The resolved font-preset key for the themed root <div>.
+ *
+ * body carries it for portals (see useThemeRoot); the layout root needs its
+ * own copy because the font tokens are declared per [data-theme] block, and a
+ * root without [data-font] would resolve them to the theme's default pairing
+ * for everything inside it.
+ *
+ * A hook rather than a store read in each of the four roots, so resolveFont
+ * cannot be forgotten at one of them and leave a stale key painting nothing.
+ */
+export const useFontRoot = () => resolveFont(useAppStore((s) => s.font));

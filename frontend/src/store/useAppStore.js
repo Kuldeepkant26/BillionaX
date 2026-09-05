@@ -5,6 +5,7 @@ import { createHotelSlice } from "./slices/hotelSlice.js";
 import { createUiSlice } from "./slices/uiSlice.js";
 import { createThemeSlice } from "./slices/themeSlice.js";
 import { createNotificationSlice } from "./slices/notificationSlice.js";
+import { createBillSlice } from "./slices/billSlice.js";
 
 export const useAppStore = create()(
   devtools(
@@ -15,6 +16,7 @@ export const useAppStore = create()(
         ...createUiSlice(...args),
         ...createThemeSlice(...args),
         ...createNotificationSlice(...args),
+        ...createBillSlice(...args),
       }),
       {
         name: "gw-storage",
@@ -29,6 +31,10 @@ export const useAppStore = create()(
           user: state.user,
           accessToken: state.accessToken,
           isAuthenticated: state.isAuthenticated,
+          // Persisted for the same first-frame reason as cardDesign: without
+          // it every reload of the panel flashes the fallback brand line
+          // before the hotel lands.
+          staffHotel: state.staffHotel,
           activeHotelId: state.activeHotelId,
           guestTheme: state.guestTheme,
           // Persisted so the card paints in the admin's chosen design on the
@@ -39,6 +45,10 @@ export const useAppStore = create()(
           // index.html reads this key to set data-accent before React loads.
           accent: state.accent,
           accentCustom: state.accentCustom,
+          // Same again for the typeface: the pre-paint script reads this key
+          // to set data-font, so without it every cold load renders one frame
+          // in the default pairing before switching.
+          font: state.font,
           sidebarCollapsed: state.sidebarCollapsed,
         }),
 

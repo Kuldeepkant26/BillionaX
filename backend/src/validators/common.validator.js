@@ -7,6 +7,7 @@ import {
   PURCHASE_STATUS_VALUES,
   CARD_DESIGN_VALUES,
   THEME_PRESET_VALUES,
+  FONT_PRESET_VALUES,
 } from "../config/constants.js";
 
 export const objectIdParam = (name) =>
@@ -96,21 +97,58 @@ export const allocateRules = [
   body("idempotencyKey").optional().isString().trim(),
 ];
 
-export const verifyVoucherRules = [
-  body("code").isString().trim().notEmpty().withMessage("Enter the guest's code"),
-  body("billAmount").optional().isInt({ min: 0 }).toInt(),
+/* ---- bills ---- */
+
+/**
+ * Composing a bill.
+ *
+ * Prices are integers in PAISE, matching the Bill model. isInt is doing real
+ * work here: a float would carry a fraction of a paisa into the payment path,
+ * and a string "1000" would concatenate rather than add when the line total is
+ * computed.
+ */
+export const createBillRules = [
+  body("guestId").isMongoId().withMessage("Choose a guest"),
+  body("lineItems")
+    .isArray({ min: 1, max: 50 })
+    .withMessage("Add between 1 and 50 items"),
+  body("lineItems.*.description")
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 120 })
+    .withMessage("Every item needs a description"),
+  body("lineItems.*.qty")
+    .isInt({ min: 1, max: 999 })
+    .withMessage("Quantity must be between 1 and 999")
+    .toInt(),
+  body("lineItems.*.unitPricePaise")
+    .isInt({ min: 0 })
+    .withMessage("Price must be a whole number of paise")
+    .toInt(),
+  body("taxPercent").optional({ values: "falsy" }).isFloat({ min: 0, max: 100 }).toFloat(),
+  body("outlet").optional({ values: "falsy" }).isIn(OUTLETS).withMessage("Choose a valid outlet"),
 ];
 
-export const redeemVoucherRules = [
-  body("code").isString().trim().notEmpty().withMessage("Enter the guest's code"),
-  body("billAmount").isInt({ min: 1 }).withMessage("Enter the bill amount").toInt(),
-  body("outlet").optional().isIn(OUTLETS).withMessage("Choose a valid outlet"),
-  body("idempotencyKey").optional().isString().trim(),
+/** Guest search on the bill screen. Two characters minimum, capped at 64. */
+export const guestSearchRules = [
+  query("q")
+    .isString()
+    .trim()
+    .isLength({ min: 2, max: 64 })
+    .withMessage("Type at least 2 characters"),
 ];
 
-export const createVoucherRules = [
-  body("hotelId").isMongoId().withMessage("Choose a hotel"),
-  body("coins").isInt({ min: 1 }).withMessage("Enter how many coins to use").toInt(),
+/**
+ * Starting a payment.
+ *
+ * coins is optional and defaults to none. It is re-clamped server-side against
+ * the balance and the tier cap regardless of what arrives here — this rule only
+ * rejects values that are not a coin count at all.
+ */
+export const payBillRules = [
+  body("coins").optional({ values: "falsy" }).isInt({ min: 0 }).toInt(),
+  body("providerPaymentId").optional().isString().trim(),
+  body("signature").optional().isString().trim(),
 ];
 
 export const joinHotelRules = [
@@ -255,6 +293,9 @@ export const commentRules = [
     .trim()
     .isLength({ min: 1, max: 600 })
     .withMessage("Write something first (600 characters max)"),
+  // Present only on a reply. `values: "falsy"` so the composer may post
+  // parentId: null for a top-level comment without tripping the id check.
+  body("parentId").optional({ values: "falsy" }).isMongoId().withMessage("Invalid comment id"),
 ];
 
 export const settingsRules = [
@@ -278,6 +319,10 @@ export const settingsRules = [
     .optional()
     .isIn(THEME_PRESET_VALUES)
     .withMessage("Unknown theme"),
+  body("fontPreset")
+    .optional()
+    .isIn(FONT_PRESET_VALUES)
+    .withMessage("Unknown font"),
   // Strict hex only: the value is interpolated into a CSS custom property on
   // every dashboard, so anything else is refused rather than sanitised.
   body("themeCustomColor")
@@ -445,3 +490,80 @@ export const guestUpdateRules = [
 ];
 
 export const tierValues = TIER_VALUES;
+
+/**
+ * Razorpay credentials from the admin panel.
+ *
+ * Every field is optional because this is a PATCH: an admin replacing only the
+ * webhook secret must not have to re-enter the key secret, and requiring it
+ * would mean the secret travelling to the browser first so the form could
+ * pre-fill it — exactly what must never happen.
+ */
+export const paymentSettingsRules = [
+  body("keyId").optional({ values: "falsy" }).isString().trim().isLength({ max: 80 }),
+  body("keySecret").optional({ values: "falsy" }).isString().trim().isLength({ max: 200 }),
+  body("webhookSecret").optional({ values: "falsy" }).isString().trim().isLength({ max: 200 }),
+  body("routeEnabled").optional().isBoolean().toBoolean(),
+  body("transferHoldHours").optional({ values: "falsy" }).isInt({ min: 0, max: 720 }).toInt(),
+];
+
+/* ---- hotel onboarding ---- */
+
+/**
+ * KYC details. Everything optional because the form saves as it is filled in —
+ * an admin gathering documents over a phone call should not lose what they
+ * already typed. The checks that actually gate activation live in
+ * onboarding.service.js, where the whole record can be judged at once.
+ */
+export const onboardingRules = [
+  body("business.legalName").optional({ values: "falsy" }).isString().trim().isLength({ max: 160 }),
+  body("business.type").optional({ values: "falsy" }).isString().trim().isLength({ max: 60 }),
+  body("business.pan")
+    .optional({ values: "falsy" })
+    .matches(/^[A-Za-z]{5}[0-9]{4}[A-Za-z]$/)
+    .withMessage("Enter a valid 10-character PAN"),
+  body("business.gstin")
+    .optional({ values: "falsy" })
+    .isString()
+    .trim()
+    .isLength({ min: 15, max: 15 })
+    .withMessage("A GSTIN is 15 characters"),
+  body("business.registeredAddress").optional({ values: "falsy" }).isString().trim(),
+  body("business.city").optional({ values: "falsy" }).isString().trim(),
+  body("business.state").optional({ values: "falsy" }).isString().trim(),
+  body("business.pincode")
+    .optional({ values: "falsy" })
+    .matches(/^[1-9][0-9]{5}$/)
+    .withMessage("Enter a valid 6-digit pincode"),
+  body("stakeholder.name").optional({ values: "falsy" }).isString().trim().isLength({ max: 120 }),
+  body("stakeholder.pan")
+    .optional({ values: "falsy" })
+    .matches(/^[A-Za-z]{5}[0-9]{4}[A-Za-z]$/)
+    .withMessage("Enter a valid 10-character PAN"),
+  body("stakeholder.email").optional({ values: "falsy" }).isEmail().normalizeEmail(),
+  body("stakeholder.phone").optional({ values: "falsy" }).isString().trim(),
+  body("stakeholder.address").optional({ values: "falsy" }).isString().trim(),
+  body("agreement.accepted").optional().isBoolean().toBoolean(),
+];
+
+/**
+ * The account to penny-drop.
+ *
+ * Required here, unlike the KYC fields: there is nothing to verify without
+ * them, and the IFSC shape is worth catching before a network call.
+ */
+export const bankVerificationRules = [
+  body("accountNumber")
+    .isString()
+    .trim()
+    .isLength({ min: 5, max: 24 })
+    .withMessage("Enter the account number"),
+  body("ifsc")
+    .matches(/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/)
+    .withMessage("Enter a valid 11-character IFSC"),
+  body("beneficiaryName")
+    .isString()
+    .trim()
+    .isLength({ min: 2, max: 160 })
+    .withMessage("Enter the account holder's name"),
+];

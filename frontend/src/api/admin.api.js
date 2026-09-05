@@ -36,3 +36,26 @@ export const deleteAdmin = (id) => api.delete(`/admin/admins/${id}`).then(unwrap
 
 export const getSettings = () => api.get("/admin/settings").then(unwrap);
 export const updateSettings = (payload) => api.patch("/admin/settings", payload).then(unwrap);
+
+/* ---- payments -------------------------------------------------------- */
+
+/** Credential status and the live payment mode. Never includes a secret. */
+export const getPaymentSettings = () => api.get("/admin/payments").then(unwrap);
+
+export const savePaymentSettings = (payload) =>
+  api.patch("/admin/payments", payload).then(unwrap);
+
+export const clearPaymentSettings = () => api.delete("/admin/payments").then(unwrap);
+
+/* ---- hotel onboarding ------------------------------------------------- */
+
+export const saveOnboarding = (hotelId, payload) =>
+  api.patch(`/admin/hotels/${hotelId}/onboarding`, payload).then(unwrap);
+
+/** Starts a reverse penny drop; returns a UPI link for the owner to pay ₹1. */
+export const verifyBank = (hotelId, payload) =>
+  api.post(`/admin/hotels/${hotelId}/bank-verification`, payload).then(unwrap);
+
+/** Creates the Route payout account from the VERIFIED bank details. */
+export const createLinkedAccount = (hotelId, payload) =>
+  api.post(`/admin/hotels/${hotelId}/linked-account`, payload).then(unwrap);

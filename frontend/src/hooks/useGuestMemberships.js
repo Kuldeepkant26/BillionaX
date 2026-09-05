@@ -19,6 +19,7 @@ export const useGuestMemberships = () => {
   const setTierThresholds = useAppStore((s) => s.setTierThresholds);
   const setCardDesign = useAppStore((s) => s.setCardDesign);
   const setAccent = useAppStore((s) => s.setAccent);
+  const setFont = useAppStore((s) => s.setFont);
 
   useEffect(() => {
     if (!isAuthenticated || role !== "GUEST") return;
@@ -31,6 +32,7 @@ export const useGuestMemberships = () => {
         if (data.tierThresholds) setTierThresholds(data.tierThresholds);
         if (data.cardDesign) setCardDesign(data.cardDesign);
         if (data.themePreset) setAccent(data.themePreset, data.themeCustomColor);
+        if (data.fontPreset) setFont(data.fontPreset);
       })
       .catch(() => {
         // Each page still renders from whatever the store already holds.

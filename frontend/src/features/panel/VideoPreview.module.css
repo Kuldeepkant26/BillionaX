@@ -1,0 +1,169 @@
+/*
+ * The panel's video preview: the guest's player, then the conversation.
+ * Theme tokens throughout, so it follows the panel's ink-minimal neutrals.
+ */
+
+.player {
+  border-radius: var(--rad-sm);
+  overflow: hidden;
+  background: #000;
+  margin-bottom: 12px;
+}
+
+.desc {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--dim);
+  background: var(--soft);
+  border-radius: var(--rad-sm);
+  padding: 10px 12px;
+  margin: 0 0 14px;
+  white-space: pre-wrap;
+}
+
+.heading {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 0 0 10px;
+}
+
+.list,
+.bare,
+.replies {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* The thread scrolls inside the modal so the player stays put while a
+     manager reads down a long conversation. */
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+.bare {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* One level of indentation with a rule, matching the guest thread. */
+.replies {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-left: 12px;
+  padding-left: 12px;
+  border-left: 1.5px solid var(--line);
+}
+
+.comment,
+.reply {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+
+.avatar {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--chip);
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar i {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--dim);
+}
+
+.body {
+  min-width: 0;
+  flex: 1;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.head b {
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.head i {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--dim);
+}
+
+.host {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--acc);
+  background: var(--acc-soft);
+  border-radius: 999px;
+  padding: 1px 5px;
+}
+
+.likes {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.body p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Moderation is deliberately quiet until hovered — it is destructive, and the
+   manager is usually here to watch, not to prune. */
+.remove {
+  margin-top: 3px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 650;
+  color: var(--dim);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.remove:hover:not(:disabled) {
+  color: var(--bad);
+}
+.remove:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

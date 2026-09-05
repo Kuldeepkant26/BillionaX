@@ -52,6 +52,17 @@ export const HotelShowcase = ({ slides, hotelName }) => {
   const [rawIndex, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const trackRef = useRef(null);
+  /*
+   * Set while the track is being scrolled BY US rather than by the guest.
+   *
+   * A smooth scrollTo fires a stream of scroll events on the way, and partway
+   * through the animation `scrollLeft / clientWidth` still rounds to the slide
+   * we are leaving. Without this guard the handler below read that as "the
+   * guest went back", reset the index, and the [index] effect then scrolled
+   * back to the previous slide — so an autoplay tick undid itself and the
+   * carousel sat still.
+   */
+  const animating = useRef(false);
 
   const count = items.length;
 
@@ -70,17 +81,34 @@ export const HotelShowcase = ({ slides, hotelName }) => {
 
   // Keeps the dots honest when the guest swipes the track directly, rather
   // than letting the indicator drift out of step with what is on screen.
+  // Ignored while we are the ones scrolling — see `animating`.
   const onScroll = () => {
     const track = trackRef.current;
-    if (!track) return;
+    if (!track || animating.current) return;
     const nearest = Math.round(track.scrollLeft / track.clientWidth);
     setIndex((current) => (nearest === current ? current : nearest));
   };
 
   useEffect(() => {
     const track = trackRef.current;
-    if (!track) return;
-    track.scrollTo({ left: index * track.clientWidth, behavior: "smooth" });
+    if (!track) return undefined;
+
+    const target = index * track.clientWidth;
+    // Already there (the guest just swiped here) — scrolling again would fight
+    // the snap they are still settling into.
+    if (Math.abs(track.scrollLeft - target) < 2) return undefined;
+
+    animating.current = true;
+    track.scrollTo({ left: target, behavior: "smooth" });
+
+    // scrollend is the honest signal but is not in Safari yet, so a timer
+    // closes the guard: long enough for a smooth scroll to land, short enough
+    // that a swipe right after a tick is still tracked.
+    const done = setTimeout(() => {
+      animating.current = false;
+    }, 600);
+
+    return () => clearTimeout(done);
   }, [index]);
 
   if (!count) return null;
@@ -90,8 +118,17 @@ export const HotelShowcase = ({ slides, hotelName }) => {
       className="relative mt-4 rounded-token overflow-hidden shadow-[var(--shadow)]"
       aria-roledescription="carousel"
       aria-label={hotelName ? `${hotelName} gallery` : "Hotel gallery"}
-      onPointerEnter={() => setPaused(true)}
-      onPointerLeave={() => setPaused(false)}
+      /*
+       * Pause on hover only where hovering is a deliberate act. On a phone a
+       * tap fires pointerenter and nothing ever fires pointerleave, so the
+       * carousel would stop for good the first time a guest touched it — the
+       * pointer query keeps the pause for mice and leaves touch alone.
+       *
+       * Focus always pauses: someone tabbing through the dots is reading.
+       */
+      onPointerEnter={(e) => e.pointerType === "mouse" && setPaused(true)}
+      onPointerLeave={(e) => e.pointerType === "mouse" && setPaused(false)}
+      onPointerCancel={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >

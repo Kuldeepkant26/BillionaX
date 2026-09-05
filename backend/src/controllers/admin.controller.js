@@ -7,6 +7,8 @@ import * as reportService from "../services/report.service.js";
 import * as settingsService from "../services/settings.service.js";
 import * as adminUserService from "../services/adminUser.service.js";
 import * as rebateService from "../services/rebate.service.js";
+import * as paymentSettingsService from "../services/paymentSettings.service.js";
+import * as onboardingService from "../services/onboarding.service.js";
 
 export const dashboard = asyncHandler(async (req, res) => {
   const data = await reportService.adminDashboard();
@@ -247,4 +249,78 @@ export const getSettings = asyncHandler(async (req, res) => {
 export const updateSettings = asyncHandler(async (req, res) => {
   const settings = await settingsService.updateSettings(req.body, req.user._id);
   res.status(200).json(new ApiResponse(200, { settings }, "Settings saved"));
+});
+
+/* -------------------------------------------------------------- payments -- */
+
+/** Credential status for the panel. Never includes a secret. */
+export const getPaymentSettings = asyncHandler(async (req, res) => {
+  const data = await paymentSettingsService.getPaymentSettings();
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+/**
+ * Saves Razorpay credentials.
+ *
+ * The key pair is checked against Razorpay before anything is stored, so a
+ * typo cannot leave the platform believing it is live when it is not.
+ */
+export const savePaymentSettings = asyncHandler(async (req, res) => {
+  const data = await paymentSettingsService.savePaymentSettings({
+    keyId: req.body.keyId,
+    keySecret: req.body.keySecret,
+    webhookSecret: req.body.webhookSecret,
+    routeEnabled: req.body.routeEnabled,
+    transferHoldHours: req.body.transferHoldHours,
+    userId: req.user._id,
+  });
+  res.status(200).json(new ApiResponse(200, data, "Payment settings saved"));
+});
+
+/** Removes stored credentials; the platform returns to demo on next restart. */
+export const clearPaymentSettings = asyncHandler(async (req, res) => {
+  const data = await paymentSettingsService.clearPaymentSettings(req.user._id);
+  res.status(200).json(new ApiResponse(200, data, "Payment credentials removed"));
+});
+
+/* ------------------------------------------------------------ onboarding -- */
+
+/** Saves a hotel's KYC details and terms acceptance. */
+export const saveOnboarding = asyncHandler(async (req, res) => {
+  const hotel = await onboardingService.saveOnboarding({
+    hotelId: req.params.hotelId,
+    business: req.body.business,
+    stakeholder: req.body.stakeholder,
+    agreement: req.body.agreement,
+    userId: req.user._id,
+    // Recorded with the acceptance, since "they agreed" needs a where.
+    ip: req.ip,
+  });
+  res.status(200).json(new ApiResponse(200, { hotel }, "Onboarding saved"));
+});
+
+/**
+ * Starts a reverse penny drop.
+ *
+ * Returns a UPI link for the owner to pay ₹1 from their own app, which is what
+ * proves they control the account.
+ */
+export const verifyBank = asyncHandler(async (req, res) => {
+  const data = await onboardingService.startBankVerification({
+    hotelId: req.params.hotelId,
+    ifsc: req.body.ifsc,
+    accountNumber: req.body.accountNumber,
+    beneficiaryName: req.body.beneficiaryName,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+/** Creates the Route linked account from the VERIFIED bank details. */
+export const createLinkedAccount = asyncHandler(async (req, res) => {
+  const data = await onboardingService.createLinkedAccount({
+    hotelId: req.params.hotelId,
+    // An admin may override a name mismatch, but only deliberately.
+    force: Boolean(req.body.force),
+  });
+  res.status(200).json(new ApiResponse(200, data, "Payout account created"));
 });

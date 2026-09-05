@@ -2,7 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { CONTENT_KINDS } from "../config/constants.js";
 import * as membershipService from "../services/membership.service.js";
-import * as voucherService from "../services/voucher.service.js";
+import * as billService from "../services/bill.service.js";
 import * as contentService from "../services/content.service.js";
 import * as reportService from "../services/report.service.js";
 import * as notificationService from "../services/notification.service.js";
@@ -34,6 +34,7 @@ export const listMemberships = asyncHandler(async (req, res) => {
       // along on the bootstrap call so the app never repaints after load.
       themePreset: settings.themePreset,
       themeCustomColor: settings.themeCustomColor,
+      fontPreset: settings.fontPreset,
     })
   );
 });
@@ -133,41 +134,6 @@ export const notificationCount = asyncHandler(async (req, res) => {
 export const markNotificationsRead = asyncHandler(async (req, res) => {
   const data = await notificationService.markAllRead(req.user._id);
   res.status(200).json(new ApiResponse(200, data, "Marked as read"));
-});
-
-export const createVoucher = asyncHandler(async (req, res) => {
-  const { hotelId, coins } = req.body;
-  const voucher = await voucherService.issueVoucher({
-    guestId: req.user._id,
-    hotelId,
-    coins: Number(coins),
-  });
-
-  res.status(201).json(
-    new ApiResponse(
-      201,
-      {
-        id: voucher._id,
-        code: voucher.code,
-        coinsRequested: voucher.coinsRequested,
-        expiresAt: voucher.expiresAt,
-      },
-      "Show this code at the desk"
-    )
-  );
-});
-
-export const getActiveVoucher = asyncHandler(async (req, res) => {
-  const voucher = await voucherService.getActiveVoucher({
-    guestId: req.user._id,
-    hotelId: req.query.hotelId,
-  });
-  res.status(200).json(new ApiResponse(200, { voucher }));
-});
-
-export const cancelVoucher = asyncHandler(async (req, res) => {
-  await voucherService.cancelVoucher({ voucherId: req.params.id, guestId: req.user._id });
-  res.status(200).json(new ApiResponse(200, null, "Voucher cancelled"));
 });
 
 export const getHotelContent = asyncHandler(async (req, res) => {
@@ -280,8 +246,19 @@ export const listVideoComments = asyncHandler(async (req, res) => {
   const data = await videoService.listComments({
     contentId: req.params.contentId,
     hotelId: req.params.hotelId,
+    guestId: req.user._id,
     page: req.query.page,
     limit: req.query.limit,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const listVideoCommentReplies = asyncHandler(async (req, res) => {
+  await assertMember(req);
+  const data = await videoService.listReplies({
+    commentId: req.params.commentId,
+    hotelId: req.params.hotelId,
+    guestId: req.user._id,
   });
   res.status(200).json(new ApiResponse(200, data));
 });
@@ -293,14 +270,86 @@ export const addVideoComment = asyncHandler(async (req, res) => {
     hotelId: req.params.hotelId,
     guestId: req.user._id,
     body: req.body.body,
+    parentId: req.body.parentId || null,
   });
   res.status(201).json(new ApiResponse(201, { comment }, "Comment posted"));
 });
 
+export const toggleVideoCommentLike = asyncHandler(async (req, res) => {
+  await assertMember(req);
+  const data = await videoService.toggleCommentLike({
+    commentId: req.params.commentId,
+    hotelId: req.params.hotelId,
+    guestId: req.user._id,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
 export const deleteVideoComment = asyncHandler(async (req, res) => {
-  await videoService.deleteComment({
+  const { removed } = await videoService.deleteComment({
     commentId: req.params.commentId,
     guestId: req.user._id,
   });
-  res.status(200).json(new ApiResponse(200, null, "Comment removed"));
+  res.status(200).json(new ApiResponse(200, { removed }, "Comment removed"));
+});
+
+/* ----------------------------------------------------------------- bills -- */
+
+/**
+ * The guest's own bills.
+ *
+ * Scoped by req.user._id, never a query parameter — a guest must only ever see
+ * their own. This is also what a reconnecting socket calls to pick up anything
+ * pushed while it was away.
+ */
+export const listBills = asyncHandler(async (req, res) => {
+  const data = await billService.listGuestBills({
+    guestId: req.user._id,
+    status: req.query.status,
+    limit: Number(req.query.limit) || 20,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const getBill = asyncHandler(async (req, res) => {
+  const bill = await billService.getBillForGuest({
+    billId: req.params.billId,
+    guestId: req.user._id,
+  });
+  res.status(200).json(new ApiResponse(200, { bill }));
+});
+
+/**
+ * Opens a payment for a bill, applying the coins the guest chose.
+ *
+ * The coin figure is re-clamped server-side against the live balance and the
+ * tier cap on the bill; the slider is a convenience, never the authority.
+ */
+export const payBill = asyncHandler(async (req, res) => {
+  const data = await billService.startBillPayment({
+    billId: req.params.billId,
+    guestId: req.user._id,
+    coinsRequested: req.body.coins || 0,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+/** Confirms a payment and settles the bill. */
+export const confirmBill = asyncHandler(async (req, res) => {
+  const data = await billService.markBillPaid({
+    billId: req.params.billId,
+    guestId: req.user._id,
+    providerPaymentId: req.body.providerPaymentId,
+    signature: req.body.signature,
+  });
+  res.status(200).json(new ApiResponse(200, data, "Payment complete"));
+});
+
+/** The guest declines a bill. Staff are told immediately. */
+export const cancelBill = asyncHandler(async (req, res) => {
+  const data = await billService.cancelBill({
+    billId: req.params.billId,
+    guestId: req.user._id,
+  });
+  res.status(200).json(new ApiResponse(200, data, "Bill cancelled"));
 });

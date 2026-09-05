@@ -14,7 +14,7 @@ import {
   OfferSkeleton,
   VideoSkeleton,
   ProfileSkeleton,
-  RedeemSkeleton,
+  PaySkeleton,
 } from "../features/guest/GuestSkeletons.jsx";
 
 import GuestLayout from "../components/layout/GuestLayout.jsx";
@@ -28,7 +28,7 @@ const HotelPanelLayout = lazy(() => import("../components/layout/HotelPanelLayou
 const AdminPanelLayout = lazy(() => import("../components/layout/AdminPanelLayout.jsx"));
 
 const GuestHomePage = lazy(() => import("../pages/guest/GuestHomePage.jsx"));
-const RedeemPage = lazy(() => import("../pages/guest/RedeemPage.jsx"));
+const PayPage = lazy(() => import("../pages/guest/PayPage.jsx"));
 const HistoryPage = lazy(() => import("../pages/guest/HistoryPage.jsx"));
 const OffersPage = lazy(() => import("../pages/guest/OffersPage.jsx"));
 const OfferPage = lazy(() => import("../pages/guest/OfferPage.jsx"));
@@ -37,7 +37,7 @@ const NotificationsPage = lazy(() => import("../pages/guest/NotificationsPage.js
 const ProfilePage = lazy(() => import("../pages/guest/ProfilePage.jsx"));
 
 const HotelDashboardPage = lazy(() => import("../pages/hotel/HotelDashboardPage.jsx"));
-const VerifyPage = lazy(() => import("../pages/hotel/VerifyPage.jsx"));
+const BillPage = lazy(() => import("../pages/hotel/BillPage.jsx"));
 const MembersPage = lazy(() => import("../pages/hotel/MembersPage.jsx"));
 const TransactionsPage = lazy(() => import("../pages/hotel/TransactionsPage.jsx"));
 const CoinsPage = lazy(() => import("../pages/hotel/CoinsPage.jsx"));
@@ -53,6 +53,7 @@ const GuestsPage = lazy(() => import("../pages/admin/GuestsPage.jsx"));
 const AdminsPage = lazy(() => import("../pages/admin/AdminsPage.jsx"));
 const AdminTransactionsPage = lazy(() => import("../pages/admin/AdminTransactionsPage.jsx"));
 const AdminSettingsPage = lazy(() => import("../pages/admin/AdminSettingsPage.jsx"));
+const AdminPaymentsPage = lazy(() => import("../pages/admin/AdminPaymentsPage.jsx"));
 
 const lazyEl = (node) => <Suspense fallback={<Loading />}>{node}</Suspense>;
 
@@ -90,7 +91,11 @@ const router = createBrowserRouter([
       { path: "join/:slug", element: <JoinPage /> },
       { path: "login", element: <JoinPage /> },
       { path: "app", ...guestRoute(<GuestHomePage />, <HomeSkeleton />) },
-      { path: "app/redeem", ...guestRoute(<RedeemPage />, <RedeemSkeleton />) },
+      { path: "app/pay", ...guestRoute(<PayPage />, <PaySkeleton />) },
+      // The Redeem tab became Pay when billing moved into the app. Kept as a
+      // redirect: guests have it bookmarked, and historical notification
+      // hrefs still point at it.
+      { path: "app/redeem", element: <Navigate to="/app/pay" replace /> },
       {
         path: "app/history",
         ...guestRoute(<HistoryPage />, <ListSkeleton label="Loading your history" />),
@@ -135,7 +140,10 @@ const router = createBrowserRouter([
           </RoleRoute>
         ),
       },
-      { path: "verify", element: lazyEl(<VerifyPage />) },
+      { path: "bill", element: lazyEl(<BillPage />) },
+      // /hotel/verify was every staff account's landing page, so it must not
+      // 404 — the same reason the three content redirects below exist.
+      { path: "verify", element: <Navigate to="/hotel/bill" replace /> },
       { path: "transactions", element: lazyEl(<TransactionsPage />) },
       {
         path: "members",
@@ -224,6 +232,7 @@ const router = createBrowserRouter([
       { path: "guests", element: lazyEl(<GuestsPage />) },
       { path: "admins", element: lazyEl(<AdminsPage />) },
       { path: "transactions", element: lazyEl(<AdminTransactionsPage />) },
+      { path: "payments", element: lazyEl(<AdminPaymentsPage />) },
       { path: "settings", element: lazyEl(<AdminSettingsPage />) },
     ],
   },

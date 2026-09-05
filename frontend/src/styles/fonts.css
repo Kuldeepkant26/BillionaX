@@ -1,0 +1,79 @@
+/**
+ * FONT LAYER — the admin-chosen typeface pairing, one block per preset.
+ *
+ * A THIRD axis alongside the two in themes.css:
+ *   - [data-theme]  — the neutrals.
+ *   - [data-accent] — the colour.
+ *   - [data-font]   — the typefaces, set here.
+ *
+ * Every block redefines only --font-display and --font-ui. Both are already
+ * declared by each theme, so a build with no [data-font] attribute (or an
+ * unknown one) keeps the house pairing rather than falling back to unstyled
+ * text — the same fail-safe as the accent layer.
+ *
+ * This file is imported AFTER themes.css. Each theme sets the two font tokens
+ * in its own block, so these rules must come later to win at equal
+ * specificity; [data-font] sits on the same elements as [data-theme] (the
+ * .theme-root div and <body>), exactly like [data-accent].
+ *
+ * --font-mono is deliberately untouched here. See the note in
+ * theme/fontPresets.js: the card numerals depend on a fixed advance width.
+ *
+ * Keys mirror backend FONT_PRESETS — see theme/fontPresets.js, and
+ * backend/tests/fontPreset.test.js which asserts the two lists match.
+ */
+
+[data-font="EDITORIAL"] {
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-ui: "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+[data-font="MODERN"] {
+  --font-display: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+[data-font="CLASSIC"] {
+  --font-display: "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-ui: "Lato", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/*
+ * Cormorant Garamond runs small and light for its point size — it is a display
+ * face at heart. The size bump below keeps headings at the same optical weight
+ * as the other presets instead of looking under-set.
+ */
+[data-font="LUXE"] {
+  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-ui: "Jost", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+[data-font="LUXE"] h1,
+[data-font="LUXE"] h2,
+[data-font="LUXE"] h3 {
+  letter-spacing: 0.01em;
+}
+
+[data-font="SOFT"] {
+  --font-display: "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-ui: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+[data-font="TECHNICAL"] {
+  --font-display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* No webfont at all — whatever the device uses for its own UI. */
+[data-font="SYSTEM"] {
+  --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/*
+ * body's font-family is a literal stack in index.css (it has to be, to cover
+ * the pre-paint window before any attribute is set). Once the attribute IS
+ * set, body should follow the chosen preset like everything else.
+ */
+body[data-font] {
+  font-family: var(--font-ui);
+}

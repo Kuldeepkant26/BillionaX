@@ -5,6 +5,9 @@ import { createRoot } from 'react-dom/client'
 import './styles/tailwind.css'
 import './index.css'
 import './styles/themes.css'
+// After themes.css: each theme block declares the two font tokens, so the
+// font layer has to come later to win at equal specificity.
+import './styles/fonts.css'
 import './styles/components.css'
 import App from './App.jsx'
 

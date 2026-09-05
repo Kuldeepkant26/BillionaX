@@ -23,6 +23,7 @@ import { User } from "../src/models/user.model.js";
 import { Hotel } from "../src/models/hotel.model.js";
 import { Content } from "../src/models/content.model.js";
 import { Voucher } from "../src/models/voucher.model.js";
+import { Bill } from "../src/models/bill.model.js";
 import { PendingOtp } from "../src/models/pendingOtp.model.js";
 import { CoinPurchase } from "../src/models/coinPurchase.model.js";
 import { CoinTransaction } from "../src/models/coinTransaction.model.js";
@@ -32,7 +33,7 @@ import { PlatformSettings } from "../src/models/platformSettings.model.js";
 import * as hotelService from "../src/services/hotel.service.js";
 import * as coinService from "../src/services/coin.service.js";
 import * as contentService from "../src/services/content.service.js";
-import * as voucherService from "../src/services/voucher.service.js";
+import * as billService from "../src/services/bill.service.js";
 import { joinHotel } from "../src/services/membership.service.js";
 
 const HELP = `
@@ -229,13 +230,14 @@ const wipe = async () => {
     );
   }
 
-  const [users, hotels, memberships, txs, purchases, vouchers, contents] = await Promise.all([
+  const [users, hotels, memberships, txs, purchases, vouchers, bills, contents] = await Promise.all([
     User.countDocuments(),
     Hotel.countDocuments(),
     GuestHotelMembership.countDocuments(),
     CoinTransaction.countDocuments(),
     CoinPurchase.countDocuments(),
     Voucher.countDocuments(),
+    Bill.countDocuments(),
     Content.countDocuments(),
   ]);
 
@@ -244,7 +246,7 @@ const wipe = async () => {
   logger.warn(`  ${users - 1} users (keeping ${keeper.email})`);
   logger.warn(`  ${hotels} hotels, ${memberships} memberships`);
   logger.warn(`  ${txs} ledger rows, ${purchases} purchases`);
-  logger.warn(`  ${vouchers} vouchers, ${contents} content items`);
+  logger.warn(`  ${vouchers} vouchers, ${bills} bills, ${contents} content items`);
   logger.warn("=".repeat(64));
 
   if (process.stdin.isTTY) {
@@ -264,6 +266,7 @@ const wipe = async () => {
     CoinTransaction.deleteMany({}),
     CoinPurchase.deleteMany({}),
     Voucher.deleteMany({}),
+    Bill.deleteMany({}),
     Content.deleteMany({}),
     PendingOtp.deleteMany({}),
   ]);
@@ -423,32 +426,48 @@ const seed = async (keeper) => {
   }
   logger.info(`${STAYS.length} stays allocated`);
 
-  // ---- redemptions (issue a voucher, then redeem it) ----
+  // ---- redemptions (staff send a bill, the guest pays it with coins) ----
+  //
+  // Seeded through the real bill flow rather than by inserting ledger rows, so
+  // the demo data exercises the same code the product does — including the
+  // paise-to-rupees conversion, which a hand-written fixture would quietly get
+  // to skip.
   let redeemed = 0;
   for (const [gi, hi, coins, billAmount, outlet, daysAgo] of REDEMPTIONS) {
     try {
-      const voucher = await voucherService.issueVoucher({
+      const bill = await billService.createBill({
+        hotelId: hotels[hi]._id,
         guestId: guests[gi]._id,
-        hotelId: hotels[hi]._id,
-        coins,
-      });
-      const result = await voucherService.redeemVoucher({
-        code: voucher.code,
-        hotelId: hotels[hi]._id,
-        billAmount,
+        staffId: keeper._id,
         outlet: OUTLETS.includes(outlet) ? outlet : "Other",
-        performedBy: keeper._id,
+        taxPercent: 0,
+        // billAmount is in rupees in this fixture; the Bill model is paise.
+        lineItems: [{ description: outlet, qty: 1, unitPricePaise: billAmount * 100 }],
       });
+
+      await billService.startBillPayment({
+        billId: bill.id,
+        guestId: guests[gi]._id,
+        coinsRequested: coins,
+      });
+
+      const paid = await billService.markBillPaid({
+        billId: bill.id,
+        guestId: guests[gi]._id,
+        providerPaymentId: `seed_${bill.id}`,
+        signature: "seed",
+      });
+
       const membership = await GuestHotelMembership.findOne({
         guestId: guests[gi]._id,
         hotelId: hotels[hi]._id,
       });
-      const row = await CoinTransaction.findOne({ voucherId: voucher._id ?? result?.voucherId });
+      const row = await CoinTransaction.findOne({ idempotencyKey: `bill:${bill.id}` });
       if (row) await backdate(row._id, membership?._id, daysAgo);
-      redeemed += 1;
+      if (paid) redeemed += 1;
     } catch (error) {
-      // A redemption can legitimately fail the tier cap (a SILVER member can
-      // only spend 10% of the bill). Skip rather than abort the whole seed.
+      // A redemption can legitimately apply zero coins against the tier cap (a
+      // SILVER member can only spend 10% of the bill). Skip rather than abort.
       logger.warn(`Redemption skipped for ${GUESTS[gi].name}: ${error.message}`);
     }
   }

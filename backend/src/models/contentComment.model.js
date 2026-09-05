@@ -24,6 +24,17 @@ const contentCommentSchema = new mongoose.Schema(
 
     body: { type: String, required: true, trim: true, maxlength: 600 },
 
+    // One level of threading, and deliberately only one: null for a top-level
+    // comment, the id of a top-level comment for a reply. A reply can never
+    // itself be replied to, which is what keeps the read path a single query
+    // per level instead of a recursive walk, and keeps the UI from indenting
+    // off the side of a phone.
+    parentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ContentComment",
+      default: null,
+    },
+
     // Soft-delete: a removed comment leaves a tombstone so the reply count and
     // any future threading stay stable. Filtered out of every read path.
     isDeleted: { type: Boolean, default: false },
@@ -31,7 +42,12 @@ const contentCommentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// The feed under a video: newest first.
-contentCommentSchema.index({ contentId: 1, isDeleted: 1, createdAt: -1 });
+// The feed under a video: top-level comments, newest first. parentId is in the
+// key because every read path filters on it — the thread asks for parentId:null
+// and a reply list asks for one specific parent.
+contentCommentSchema.index({ contentId: 1, parentId: 1, isDeleted: 1, createdAt: -1 });
+
+// Replies belonging to a set of parents, for the per-comment reply counts.
+contentCommentSchema.index({ parentId: 1, isDeleted: 1, createdAt: 1 });
 
 export const ContentComment = mongoose.model("ContentComment", contentCommentSchema);

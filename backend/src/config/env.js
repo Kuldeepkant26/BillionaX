@@ -102,6 +102,36 @@ export const env = {
     folder: process.env.CLOUDINARY_FOLDER || "billionax",
   },
 
+  /**
+   * Payments. Deliberately NOT in REQUIRED, for a stronger reason than
+   * Cloudinary's: without a key pair the platform does not lose payments, it
+   * runs them against the DEMO provider — bills are composed, "paid" and
+   * recorded exactly as they would be live, with no network call and no money
+   * moving. That is what lets the product be demonstrated before any Razorpay
+   * account exists.
+   *
+   * The key secret signs orders and can move money, so it is server-side only.
+   * The key ID is public — it appears in the browser's checkout — and is
+   * handed to the client per-order rather than baked in at build time.
+   */
+  razorpay: {
+    keyId: process.env.RAZORPAY_KEY_ID,
+    keySecret: process.env.RAZORPAY_KEY_SECRET,
+    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
+    // The platform's own Route source account, which transfers are made from.
+    accountNumber: process.env.RAZORPAY_ACCOUNT_NUMBER,
+    baseUrl: process.env.RAZORPAY_BASE_URL || "https://api.razorpay.com/v1",
+    timeoutMs: toInt(process.env.RAZORPAY_TIMEOUT_MS, 15_000),
+  },
+
+  /**
+   * Encrypts hotel bank credentials at rest. 32 bytes as 64 hex characters.
+   *
+   * Read from the environment and never from the database: a key stored beside
+   * the ciphertext it protects is not encryption, it is obfuscation.
+   */
+  credentialKey: process.env.CREDENTIAL_ENCRYPTION_KEY,
+
   seed: {
     adminName: process.env.SEED_ADMIN_NAME || "Platform Owner",
     adminEmail: process.env.SEED_ADMIN_EMAIL || "admin@billionax.com",
@@ -126,6 +156,22 @@ export const isSmsConfigured = Boolean(env.smsmode.apiKey);
 /** True once all three Cloudinary credentials are present. */
 export const isUploadConfigured = Boolean(
   env.cloudinary.cloudName && env.cloudinary.apiKey && env.cloudinary.apiSecret
+);
+
+/**
+ * True once Razorpay can be called at all. This — never NODE_ENV — is what
+ * selects the live provider over the demo one, so a staging deployment with
+ * real keys behaves like production, and production without keys degrades to
+ * demo instead of failing every payment.
+ */
+export const isRazorpayConfigured = Boolean(env.razorpay.keyId && env.razorpay.keySecret);
+
+/** True once webhook signatures can be verified. */
+export const isWebhookConfigured = Boolean(env.razorpay.webhookSecret);
+
+/** A usable AES-256 key is exactly 32 bytes, written as 64 hex characters. */
+export const isCredentialVaultConfigured = Boolean(
+  env.credentialKey && /^[0-9a-f]{64}$/i.test(env.credentialKey)
 );
 
 const REQUIRED = [
@@ -176,5 +222,30 @@ export const validateEnv = () => {
         throw new Error("OTP_PROVIDER=smsmode requires SMSMODE_API_KEY to be set.");
       }
     }
+
+    /**
+     * Live keys with no webhook secret means every webhook is either
+     * unverifiable or blindly trusted, and the webhook is the source of truth
+     * for whether a payment succeeded. Fail at boot rather than on the first
+     * callback, when money is already in flight.
+     */
+    if (isRazorpayConfigured && !isWebhookConfigured) {
+      throw new Error(
+        "RAZORPAY_KEY_ID/SECRET are set, so RAZORPAY_WEBHOOK_SECRET is required: " +
+          "an unverifiable webhook cannot be trusted to confirm a payment."
+      );
+    }
+  }
+
+  /**
+   * A wrong-length key would encrypt happily and then fail to decrypt, so the
+   * damage would only surface when a stored credential is next read — by which
+   * point the plaintext is gone.
+   */
+  if (env.credentialKey && !isCredentialVaultConfigured) {
+    throw new Error(
+      "CREDENTIAL_ENCRYPTION_KEY must be 64 hex characters (32 bytes). " +
+        'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+    );
   }
 };

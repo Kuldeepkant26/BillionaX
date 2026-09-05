@@ -1,6 +1,8 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { useThemeRoot, useAccentStyle } from "./useThemeRoot.js";
+import { useThemeRoot, useAccentStyle, useFontRoot } from "./useThemeRoot.js";
 import { useRealtime } from "../../hooks/useRealtime.js";
+import { useBillRealtime } from "../../hooks/useBillRealtime.js";
+import { BillPopup } from "../../features/guest/BillPopup.jsx";
 import { useAccentSync } from "../../hooks/useAccentSync.js";
 import { useGuestMemberships } from "../../hooks/useGuestMemberships.js";
 import { useAppStore } from "../../store/useAppStore.js";
@@ -10,7 +12,7 @@ import styles from "./GuestLayout.module.css";
 
 const NAV = [
   { to: ROUTES.APP, label: "Home", end: true, icon: "M3 8.5L10 3l7 5.5V17a1 1 0 0 1-1 1h-3v-5H7v5H4a1 1 0 0 1-1-1z" },
-  { to: ROUTES.APP_REDEEM, label: "Redeem", icon: "M3 6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1H5a2 2 0 0 0 0 4h12v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" },
+  { to: ROUTES.APP_PAY, label: "Pay", icon: "M3 6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1H5a2 2 0 0 0 0 4h12v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" },
   { to: ROUTES.APP_OFFERS, label: "Offers", icon: "M10 2l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4L5.5 15.8l.9-5L2.8 7.3l5-.7z" },
   // Hand-written path, matching the other icons — the app ships no icon library.
   { to: ROUTES.APP_ALERTS, label: "Alerts", badge: true, icon: "M10 2.6a4.6 4.6 0 0 0-4.6 4.6c0 3.5-1.2 4.6-1.2 4.6h11.6s-1.2-1.1-1.2-4.6A4.6 4.6 0 0 0 10 2.6zM8.4 14.4a1.7 1.7 0 0 0 3.2 0z" },
@@ -23,7 +25,10 @@ const GuestLayout = () => {
   useThemeRoot(guestTheme);
   useAccentSync();
   const accentStyle = useAccentStyle();
+  const font = useFontRoot();
   useRealtime();
+  // Bills must reach the guest on any screen, so this lives in the shell.
+  useBillRealtime();
   useGuestMemberships();
 
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
@@ -32,7 +37,7 @@ const GuestLayout = () => {
   const showNav = isAuthenticated && pathname.startsWith("/app");
 
   return (
-    <div className="theme-root" data-theme={guestTheme} data-accent={accent} style={accentStyle}>
+    <div className="theme-root" data-theme={guestTheme} data-accent={accent} data-font={font} style={accentStyle}>
       {/* The guest app is used on a phone at a reception desk, so it is designed
           mobile-first and simply centres itself on larger screens. */}
       <div className="w-full max-w-[460px] mx-auto min-h-[100svh] flex flex-col relative bg-canvas">
@@ -79,6 +84,8 @@ const GuestLayout = () => {
       </div>
 
       <div id="modal-root" />
+      {/* Over every guest screen, so a bill reaches them wherever they are. */}
+      <BillPopup />
       <Toasts />
     </div>
   );

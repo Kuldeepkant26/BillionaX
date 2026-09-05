@@ -1,0 +1,91 @@
+/*
+ * The bill popup.
+ *
+ * Theme tokens throughout, so it follows the guest's own light or dark choice.
+ * A payment moment is the wrong place to be the one surface in the app that
+ * ignores it.
+ */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  /*
+   * Above the guest tab bar, which is z-60 and fixed to the bottom.
+   * Below it the nav floated over the dialog, covering the Cancel action on a
+   * phone — the one control that must always be reachable, since this popup is
+   * deliberately not dismissible any other way.
+   */
+  z-index: 120;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  animation: fade 0.2s ease;
+  /* No pointer handler on the backdrop: this dialog is deliberately not
+     dismissible by clicking outside it. */
+}
+
+@media (min-width: 640px) {
+  .backdrop {
+    align-items: center;
+    padding: 20px;
+  }
+}
+
+/*
+ * Scale plus fade on a spring curve. The overshoot is what makes it read as
+ * arriving rather than merely appearing — this is the most important thing
+ * that happens in the product, and it should feel like it.
+ */
+.sheet {
+  width: 100%;
+  max-width: 440px;
+  max-height: 92vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: var(--rad) var(--rad) 0 0;
+  padding: 18px;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.28);
+  animation: arrive 0.34s cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+
+@media (min-width: 640px) {
+  .sheet {
+    border-radius: var(--rad);
+    padding: 22px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.kicker {
+  margin: 0 0 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--acc);
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes arrive {
+  from {
+    transform: translateY(18px) scale(0.97);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .sheet {
+    animation: none;
+  }
+}

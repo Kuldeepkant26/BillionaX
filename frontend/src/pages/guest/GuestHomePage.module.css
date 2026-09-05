@@ -121,3 +121,95 @@
   /* Nudged right so the triangle looks centred inside the circle. */
   margin-left: 13px;
 }
+
+/* ---- quick actions ----------------------------------------------------
+ *
+ * Icon-led rather than a row of text buttons, the way a payments app opens:
+ * four fixed targets a thumb learns the position of, so Pay is muscle memory
+ * rather than something to read for.
+ */
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 13px 4px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--rad-sm);
+  background: var(--card);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.12s ease, background 0.15s ease;
+}
+.action:hover {
+  border-color: var(--acc);
+  background: var(--soft);
+}
+/* A small press, so a tap feels answered on a phone where there is no hover. */
+.action:active {
+  transform: scale(0.97);
+}
+
+.action b {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+}
+
+.actionIcon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: var(--chip);
+  color: var(--fg);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+/* Pay is the primary action and wears the accent, so the eye lands on it
+   first without the other three needing to shout. */
+.actionPay {
+  background: var(--acc);
+  color: var(--acc-fg);
+}
+
+.action:hover .actionIcon {
+  background: var(--acc-soft);
+  color: var(--acc);
+}
+.action:hover .actionPay {
+  background: var(--acc);
+  color: var(--acc-fg);
+}
+
+/* Count of bills waiting. Sits on the icon so it reads as "there is something
+   here", not as decoration. */
+.actionBadge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--bad);
+  color: #fff;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  border: 2px solid var(--bg);
+}

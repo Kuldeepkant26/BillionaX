@@ -4,6 +4,28 @@ export const formatCoins = (n) => inr.format(Math.round(n || 0));
 
 export const formatCurrency = (n) => `₹${inr.format(Math.round(n || 0))}`;
 
+/**
+ * Money that arrived in paise — bills and payments.
+ *
+ * Separate from formatCurrency, which takes rupees, because the two units
+ * coexist: the coin ledger is rupees and the bill/payment path is paise.
+ * Passing one to the other is a 100x error, so each has its own function and
+ * every call site has to say which it means.
+ *
+ * Whole rupees are printed without decimals, since most bills are round and
+ * "₹5,900.00" is noisier than "₹5,900".
+ */
+export const formatPaise = (paise) => {
+  const value = Math.round(Number(paise) || 0);
+  const rupees = value / 100;
+  return value % 100 === 0
+    ? `₹${inr.format(rupees)}`
+    : `₹${rupees.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+/** "5900" (rupees, as typed by staff) -> 590000 paise. */
+export const rupeesToPaise = (rupees) => Math.round((Number(rupees) || 0) * 100);
+
 /** Compact Indian notation (lakh/crore) for dashboard tiles. */
 export const formatCompact = (n) => {
   const v = Math.round(n || 0);
@@ -83,6 +105,23 @@ export const timeAgo = (value) => {
 
   // Past a week a real date is more useful than "37d ago".
   return formatDate(value);
+};
+
+/**
+ * "Good morning" / "Good afternoon" / "Good evening" for the current hour.
+ *
+ * Takes an optional Date so it can be tested at a fixed hour rather than only
+ * at whatever time the suite happens to run.
+ *
+ * Boundaries are the conventional ones: morning until noon, afternoon until
+ * 5pm, evening after. Uses the DEVICE clock, which is the one the guest is
+ * living in — a server-side hour would greet a traveller by the wrong one.
+ */
+export const greeting = (now = new Date()) => {
+  const hour = now.getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
 };
 
 export const maskPhone = (phone) => {

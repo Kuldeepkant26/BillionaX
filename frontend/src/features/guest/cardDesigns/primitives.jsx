@@ -69,3 +69,45 @@ export const Sheen = () => (
     }}
   />
 );
+
+/**
+ * The Billionax mark: a ring with a vertical bar through it.
+ *
+ * Redrawn as geometry rather than embedding public/logo.png, because the card
+ * art is SVG that scales from a 78px picker tile to a full-width card. The PNG
+ * is 265x250 and would soften at card size and waste bytes at tile size. Drawn
+ * this way it also takes `stroke`, so each design can render the mark in its
+ * own metal instead of the fixed brand gold — which is what lets it sit on
+ * steel, on marble and on a dark field without looking pasted on.
+ *
+ * Proportions are measured from the source PNG: a ring of radius 74 at an
+ * 11px stroke, centred at (135, 125.5) in its 265x250 frame, with the bar
+ * running x=129..140 from y=32 to y=220 — i.e. overshooting the ring by
+ * roughly 0.28x its radius at each end. Normalised here to a 100x100
+ * viewBox: r=37, stroke 5.5, bar from y=2.6 to y=97.4.
+ *
+ * The bar is drawn AFTER the ring and in the same colour, so the two read as
+ * one mark. In the original the bar simply passes in front — there is no gap
+ * cut in the ring, which an earlier reading of the artwork got wrong.
+ */
+export const LogoMark = ({
+  className = "",
+  stroke = "currentColor",
+  strokeWidth = 5.5,
+  opacity = 1,
+  style,
+}) => (
+  <svg
+    viewBox="0 0 100 100"
+    fill="none"
+    stroke={stroke}
+    strokeWidth={strokeWidth}
+    className={className}
+    style={style}
+    opacity={opacity}
+    aria-hidden="true"
+  >
+    <circle cx="50" cy="50" r="37" />
+    <path d="M50 2.6v94.8" strokeLinecap="butt" />
+  </svg>
+);

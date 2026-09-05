@@ -9,8 +9,6 @@ export const listRebates = () => api.get("/hotel/rebates").then(unwrap);
 export const listMembers = (params) => api.get("/hotel/members", { params }).then(unwrap);
 export const allocate = (payload) => api.post("/hotel/members/allocate", payload).then(unwrap);
 
-export const verifyVoucher = (payload) => api.post("/hotel/vouchers/verify", payload).then(unwrap);
-export const redeemVoucher = (payload) => api.post("/hotel/vouchers/redeem", payload).then(unwrap);
 
 export const listTransactions = (params) => api.get("/hotel/transactions", { params }).then(unwrap);
 
@@ -60,3 +58,30 @@ export const createContentUpload = () => api.post("/hotel/content/image-upload")
 export const createContentVideoUpload = () =>
   api.post("/hotel/content/video-upload").then(unwrap);
 export const updateSettings = (payload) => api.patch("/hotel/settings", payload).then(unwrap);
+
+/* ---- video comments (panel preview + moderation) ---------------------- */
+
+/** The full thread on one of this hotel's videos, replies nested. */
+export const videoComments = (contentId) =>
+  api.get(`/hotel/videos/${contentId}/comments`).then(unwrap);
+
+/** Moderation: remove a comment posted on this hotel's video. */
+export const deleteVideoComment = (commentId) =>
+  api.delete(`/hotel/comments/${commentId}`).then(unwrap);
+
+/* ---- bills -------------------------------------------------------------- */
+
+/** Guests at this hotel, matched on name or email. Emails come back masked. */
+export const searchGuests = (params) =>
+  api.get("/hotel/guests/search", { params }).then(unwrap);
+
+/** The full email, for the identity check before sending a bill. */
+export const revealGuestEmail = (guestId) =>
+  api.get(`/hotel/guests/${guestId}/email`).then(unwrap);
+
+/** Running total for the composer, priced by the same code that stores it. */
+export const priceBill = (payload) => api.post("/hotel/bills/price", payload).then(unwrap);
+
+export const createBill = (payload) => api.post("/hotel/bills", payload).then(unwrap);
+
+export const listBills = (params) => api.get("/hotel/bills", { params }).then(unwrap);

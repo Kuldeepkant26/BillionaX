@@ -44,6 +44,75 @@ const hotelSchema = new mongoose.Schema(
       [TIERS.PLATINUM]: { type: Number, default: 30, min: 0, max: 100 },
     },
 
+    /* ---- KYC and payouts ---- */
+
+    /**
+     * What Razorpay Route needs to pay this hotel, plus the KYC behind it.
+     *
+     * bank holds the values THE BANK RETURNED from the penny drop, never the
+     * ones an admin typed. That is the entire point of verifying: a transposed
+     * IFSC that reaches this document sends money to the wrong account, and the
+     * typed value is exactly the one that would be wrong.
+     */
+    business: {
+      legalName: { type: String, trim: true },
+      type: { type: String, trim: true },
+      pan: { type: String, trim: true, uppercase: true },
+      gstin: { type: String, trim: true, uppercase: true },
+      registeredAddress: { type: String, trim: true },
+      city: { type: String, trim: true },
+      state: { type: String, trim: true },
+      pincode: { type: String, trim: true },
+    },
+
+    stakeholder: {
+      name: { type: String, trim: true },
+      pan: { type: String, trim: true, uppercase: true },
+      email: { type: String, trim: true, lowercase: true },
+      phone: { type: String, trim: true },
+      address: { type: String, trim: true },
+    },
+
+    bank: {
+      accountNumber: { type: String, trim: true },
+      ifsc: { type: String, trim: true, uppercase: true },
+      beneficiaryName: { type: String, trim: true },
+      // Straight from the bank, for the name-match check.
+      registeredName: { type: String, trim: true },
+      bankName: { type: String, trim: true },
+      accountStatus: { type: String, trim: true },
+      nameMatchScore: { type: Number },
+      verifiedAt: { type: Date },
+      verificationId: { type: String, trim: true },
+    },
+
+    /**
+     * Terms acceptance. Timestamp and IP are kept because this is the record
+     * that the hotel agreed, and "they clicked it" is worth nothing without
+     * when and from where.
+     */
+    agreement: {
+      acceptedAt: { type: Date },
+      acceptedIp: { type: String, trim: true },
+      acceptedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    },
+
+    razorpayLinkedAccountId: { type: String, trim: true, index: true },
+
+    /**
+     * Whether this hotel can take money yet.
+     *
+     * Anything other than "activated" blocks bill creation: a bill a guest
+     * cannot pay is worse than no bill, because staff believe it was sent.
+     */
+    linkedAccountStatus: {
+      type: String,
+      enum: ["none", "pending", "activated", "needs_clarification", "failed"],
+      default: "none",
+      index: true,
+    },
+    linkedAccountNote: { type: String, trim: true },
+
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

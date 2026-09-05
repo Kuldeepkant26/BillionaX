@@ -4,7 +4,7 @@ export const ROUTES = {
   JOIN: "/join/:slug",
   LOGIN: "/login",
   APP: "/app",
-  APP_REDEEM: "/app/redeem",
+  APP_PAY: "/app/pay",
   APP_HISTORY: "/app/history",
   APP_OFFERS: "/app/offers",
   APP_OFFER: "/app/offers/:contentId",
@@ -15,7 +15,7 @@ export const ROUTES = {
   // hotel panel
   HOTEL_LOGIN: "/hotel/login",
   HOTEL: "/hotel",
-  HOTEL_VERIFY: "/hotel/verify",
+  HOTEL_BILL: "/hotel/bill",
   HOTEL_TRANSACTIONS: "/hotel/transactions",
   HOTEL_MEMBERS: "/hotel/members",
   HOTEL_COINS: "/hotel/coins",
@@ -32,6 +32,7 @@ export const ROUTES = {
   ADMIN_GUESTS: "/admin/guests",
   ADMIN_ADMINS: "/admin/admins",
   ADMIN_TRANSACTIONS: "/admin/transactions",
+  ADMIN_PAYMENTS: "/admin/payments",
   ADMIN_SETTINGS: "/admin/settings",
 };
 
@@ -45,6 +46,6 @@ export const homeForRole = (role) =>
   ({
     MAIN_ADMIN: ROUTES.ADMIN,
     HOTEL_ADMIN: ROUTES.HOTEL,
-    HOTEL_STAFF: ROUTES.HOTEL_VERIFY,
+    HOTEL_STAFF: ROUTES.HOTEL_BILL,
     GUEST: ROUTES.APP,
   }[role] || ROUTES.HOME);

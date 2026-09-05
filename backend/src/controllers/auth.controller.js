@@ -3,6 +3,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { env, isProduction } from "../config/env.js";
 import * as authService from "../services/auth.service.js";
 import { requestOtp } from "../services/otp.service.js";
+import { Hotel } from "../models/hotel.model.js";
 
 const cookieOptions = {
   httpOnly: true,
@@ -67,6 +68,26 @@ export const logout = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, null, "Signed out"));
 });
 
+/**
+ * The signed-in user, plus the hotel they work at when they are staff.
+ *
+ * The hotel rides along here rather than in its own request because the panel
+ * chrome needs its name and logo on every screen, and this call already runs
+ * on every session restore. Two fields on a query the app makes anyway beat a
+ * second round trip on every page load.
+ *
+ * Guests get no hotel: they belong to many, and the one that matters is the
+ * active membership, which the memberships call already carries.
+ */
 export const me = asyncHandler(async (req, res) => {
-  res.status(200).json(new ApiResponse(200, { user: req.user.toSafeObject() }));
+  const payload = { user: req.user.toSafeObject() };
+
+  if (req.user.hotelId) {
+    const hotel = await Hotel.findById(req.user.hotelId).select("name logoUrl").lean();
+    if (hotel) {
+      payload.hotel = { id: String(hotel._id), name: hotel.name, logoUrl: hotel.logoUrl || null };
+    }
+  }
+
+  res.status(200).json(new ApiResponse(200, payload));
 });

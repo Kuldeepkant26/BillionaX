@@ -13,10 +13,6 @@ export const getMembership = (hotelId) => api.get(`/guest/memberships/${hotelId}
 export const getTransactions = (hotelId, params) =>
   api.get(`/guest/memberships/${hotelId}/transactions`, { params }).then(unwrap);
 
-export const createVoucher = (payload) => api.post("/guest/vouchers", payload).then(unwrap);
-export const getActiveVoucher = (hotelId) =>
-  api.get("/guest/vouchers/active", { params: { hotelId } }).then(unwrap);
-export const cancelVoucher = (id) => api.delete(`/guest/vouchers/${id}`).then(unwrap);
 
 export const getHotelContent = (hotelId) =>
   api.get(`/guest/hotels/${hotelId}/content`).then(unwrap);
@@ -40,8 +36,33 @@ export const toggleVideoLike = (hotelId, contentId) =>
 export const listVideoComments = (hotelId, contentId, params) =>
   api.get(`/guest/hotels/${hotelId}/videos/${contentId}/comments`, { params }).then(unwrap);
 
-export const addVideoComment = (hotelId, contentId, body) =>
-  api.post(`/guest/hotels/${hotelId}/videos/${contentId}/comments`, { body }).then(unwrap);
+export const addVideoComment = (hotelId, contentId, body, parentId = null) =>
+  api
+    .post(`/guest/hotels/${hotelId}/videos/${contentId}/comments`, { body, parentId })
+    .then(unwrap);
+
+export const listCommentReplies = (hotelId, commentId) =>
+  api.get(`/guest/hotels/${hotelId}/comments/${commentId}/replies`).then(unwrap);
+
+export const toggleCommentLike = (hotelId, commentId) =>
+  api.post(`/guest/hotels/${hotelId}/comments/${commentId}/like`).then(unwrap);
 
 export const deleteVideoComment = (commentId) =>
   api.delete(`/guest/comments/${commentId}`).then(unwrap);
+
+/* ---- bills -------------------------------------------------------------- */
+
+export const listBills = (params) => api.get("/guest/bills", { params }).then(unwrap);
+
+export const getBill = (billId) => api.get(`/guest/bills/${billId}`).then(unwrap);
+
+/** Opens a payment, applying the coins the guest chose. */
+export const payBill = (billId, coins) =>
+  api.post(`/guest/bills/${billId}/pay`, { coins }).then(unwrap);
+
+/** Confirms a completed payment and settles the bill. */
+export const confirmBill = (billId, payload) =>
+  api.post(`/guest/bills/${billId}/confirm`, payload).then(unwrap);
+
+export const cancelBill = (billId) =>
+  api.post(`/guest/bills/${billId}/cancel`).then(unwrap);

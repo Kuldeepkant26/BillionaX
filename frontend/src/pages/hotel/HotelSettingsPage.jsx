@@ -276,22 +276,6 @@ const SettingsForm = ({ data, reload }) => {
               Copy link
             </Button>
           </Section>
-
-          <Section title="Redemption caps" description="Most of a bill payable with coins. Set by Billionax.">
-            <div className="flex flex-col gap-2.5 pt-3">
-              {Object.entries(data.hotel?.tierCaps || {}).map(([tier, pct]) => (
-                <div key={tier} className="text-xs [&>b]:font-semibold [&_.progress]:mt-[5px]">
-                  <div className="between">
-                    <span>{tier}</span>
-                    <b>{pct}%</b>
-                  </div>
-                  <div className="progress">
-                    <i style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Section>
         </div>
       </div>
       <ApplyBar open={dirty} busy={busy} onApply={save} onDiscard={discard} />

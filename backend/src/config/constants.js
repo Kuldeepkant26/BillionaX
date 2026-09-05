@@ -47,6 +47,28 @@ export const VOUCHER_STATUS = Object.freeze({
 
 export const VOUCHER_STATUS_VALUES = Object.values(VOUCHER_STATUS);
 
+/**
+ * A staff-composed bill's lifecycle.
+ *
+ * PENDING is the only state a guest can act on, and the only one a payment can
+ * be attached to. Every terminal state is reached exactly once — the status
+ * flip is the mutex, the same trick VOUCHER_STATUS used to make a code
+ * single-use.
+ *
+ * A failed payment deliberately has NO status of its own: the bill stays
+ * PENDING so the guest can simply try again. A FAILED state would either
+ * strand the bill or need a second transition back, and both are worse than
+ * doing nothing.
+ */
+export const BILL_STATUS = Object.freeze({
+  PENDING: "PENDING",
+  PAID: "PAID",
+  CANCELLED: "CANCELLED",
+  EXPIRED: "EXPIRED",
+});
+
+export const BILL_STATUS_VALUES = Object.values(BILL_STATUS);
+
 export const CONTENT_KINDS = Object.freeze({
   // A photo in the hotel's home-screen slideshow. Images only.
   CONTENT: "CONTENT",
@@ -129,6 +151,21 @@ export const CARD_DESIGNS = Object.freeze({
   LEDGER: "LEDGER",
   KEYCARD: "KEYCARD",
   MONOGRAM: "MONOGRAM",
+  AURORA: "AURORA",
+  MARBLE: "MARBLE",
+  CARBON: "CARBON",
+  HORIZON: "HORIZON",
+  // The Aurora colourways. One drawing, five palettes — see the frontend's
+  // cardDesigns registry.
+  AURORA_REEF: "AURORA_REEF",
+  AURORA_EMBER: "AURORA_EMBER",
+  AURORA_ORCHID: "AURORA_ORCHID",
+  AURORA_FROST: "AURORA_FROST",
+  // The Insignia family, built around the Billionax mark.
+  CREST: "CREST",
+  EMBLEM: "EMBLEM",
+  IMPRINT: "IMPRINT",
+  SIGNET: "SIGNET",
 });
 
 export const CARD_DESIGN_VALUES = Object.values(CARD_DESIGNS);
@@ -145,19 +182,49 @@ export const DEFAULT_CARD_DESIGN = CARD_DESIGNS.BRUSHED_STEEL;
  * frontend's accentPresets registry, so nothing renders admin-supplied CSS.
  * A key the frontend does not know falls back to the default. Keep the two
  * lists in step (see tests/themePreset.test.js).
+ *
+ * The presets are grouped into categories (Soft, Premium, Light, Vivid,
+ * Classic) for the admin picker. That grouping is PRESENTATION and lives only
+ * in the frontend registry — the API stores a flat key, so a preset can be
+ * refiled into another section without a migration. The comments below only
+ * mirror the sections to keep the list readable.
  */
 export const THEME_PRESETS = Object.freeze({
-  CORAL: "CORAL",
+  // Soft — low saturation, gentle contrast.
   SAND: "SAND",
-  INDIGO: "INDIGO",
   LAVENDER: "LAVENDER",
+  TEAL: "TEAL",
+  ROSE: "ROSE",
+  SAGE: "SAGE",
+  CLAY: "CLAY",
+
+  // Premium — deep jewelled colour on near-black rails.
   CHAMPAGNE: "CHAMPAGNE",
   EMERALD: "EMERALD",
-  TEAL: "TEAL",
+  OBSIDIAN: "OBSIDIAN",
+  BURGUNDY: "BURGUNDY",
+  ONYX_JADE: "ONYX_JADE",
+  PLUM: "PLUM",
+
+  // Light & airy — the only group with pale rails.
+  LINEN: "LINEN",
+  MIST: "MIST",
+  BLUSH: "BLUSH",
+  MEADOW: "MEADOW",
+
+  // Vivid — saturated and high-energy.
+  CORAL: "CORAL",
+  INDIGO: "INDIGO",
+  SAFFRON: "SAFFRON",
+  FUCHSIA: "FUCHSIA",
+  VIRIDIAN: "VIRIDIAN",
+
+  // Classic — restrained business palettes.
   OCEAN: "OCEAN",
   MIDNIGHT: "MIDNIGHT",
-  ROSE: "ROSE",
   MONO: "MONO",
+  SLATE: "SLATE",
+  FOREST: "FOREST",
   // The admin's own colour from the wheel. The hue itself rides in
   // `themeCustomColor` — this key only says "use that colour".
   CUSTOM: "CUSTOM",
@@ -166,3 +233,31 @@ export const THEME_PRESETS = Object.freeze({
 export const THEME_PRESET_VALUES = Object.values(THEME_PRESETS);
 
 export const DEFAULT_THEME_PRESET = THEME_PRESETS.CORAL;
+
+/**
+ * Typeface pairing for the whole app. Like THEME_PRESETS, the main admin picks
+ * one and it applies network-wide — panels and the guest app alike.
+ *
+ * KEYS ONLY, for the same reason: the font stacks live in the frontend's
+ * fontPresets registry and are applied by attribute, so no admin-supplied
+ * value ever reaches a `font-family` declaration. A key the frontend does not
+ * know falls back to the default. Keep the two lists in step (see
+ * tests/fontPreset.test.js).
+ *
+ * Each key names a PAIR — a display face and a UI face — because the two have
+ * to be chosen against each other. SYSTEM is the no-webfont option.
+ */
+export const FONT_PRESETS = Object.freeze({
+  EDITORIAL: "EDITORIAL",
+  MODERN: "MODERN",
+  CLASSIC: "CLASSIC",
+  LUXE: "LUXE",
+  SOFT: "SOFT",
+  TECHNICAL: "TECHNICAL",
+  SYSTEM: "SYSTEM",
+});
+
+export const FONT_PRESET_VALUES = Object.values(FONT_PRESETS);
+
+/** The pairing the app shipped with. */
+export const DEFAULT_FONT_PRESET = FONT_PRESETS.EDITORIAL;

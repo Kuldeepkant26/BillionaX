@@ -4,6 +4,7 @@ import {
   isValidHex,
   resolveAccent,
 } from "../../theme/accentPresets.js";
+import { DEFAULT_FONT, resolveFont } from "../../theme/fontPresets.js";
 
 export const GUEST_THEMES = { LIGHT: "lumen", DARK: "emerald-noir" };
 
@@ -15,7 +16,8 @@ export const GUEST_THEMES = { LIGHT: "lumen", DARK: "emerald-noir" };
  * guest explicitly chooses is what persists.
  *
  * `guestTheme` must be listed in the store's partialize allowlist, or the
- * toggle silently forgets itself on reload.
+ * toggle silently forgets itself on reload. The same applies to `accent` and
+ * `font`.
  */
 export const createThemeSlice = (set, get) => ({
   guestTheme: GUEST_THEMES.LIGHT,
@@ -36,6 +38,15 @@ export const createThemeSlice = (set, get) => ({
       accent: resolveAccent(accent),
       ...(isValidHex(accentCustom) ? { accentCustom } : null),
     }),
+
+  // The network-wide typeface pairing the main admin chose. A third axis
+  // alongside accent and guestTheme, and persisted for the same reason: a
+  // reload should paint in the right type before the server confirms it.
+  font: DEFAULT_FONT,
+
+  // Run through resolveFont so a key from a newer/older API build can never
+  // put an unpaintable value into the persisted store.
+  setFont: (font) => set({ font: resolveFont(font) }),
 
   setGuestTheme: (guestTheme) => set({ guestTheme }),
 

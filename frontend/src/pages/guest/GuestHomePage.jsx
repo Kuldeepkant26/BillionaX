@@ -9,9 +9,9 @@ import { MembershipCard } from "../../features/guest/MembershipCard.jsx";
 import { HotelSwitcher } from "../../features/guest/HotelSwitcher.jsx";
 import { HotelShowcase } from "../../features/guest/HotelShowcase.jsx";
 import { OfferArt } from "../../features/guest/OfferArt.jsx";
-import { Button, Empty, ErrorState } from "../../components/common/index.jsx";
+import { Empty, ErrorState } from "../../components/common/index.jsx";
 import { HomeSkeleton } from "../../features/guest/GuestSkeletons.jsx";
-import { endsIn, formatCoins } from "../../utils/format.js";
+import { endsIn, formatCoins, greeting } from "../../utils/format.js";
 import { avatarUrl } from "../../utils/upload.js";
 import styles from "./GuestHomePage.module.css";
 
@@ -37,13 +37,17 @@ const GuestHomePage = () => {
   const user = useAppStore((s) => s.user);
   const memberships = useAppStore((s) => s.memberships);
   const activeHotelId = useAppStore((s) => s.activeHotelId);
+  // Drives the count on the Pay tile, so an unpaid bill is visible from home.
+  const pendingBills = useAppStore((s) => s.pendingBills);
   const setMemberships = useAppStore((s) => s.setMemberships);
   const setActiveHotel = useAppStore((s) => s.setActiveHotel);
   const navigate = useNavigate();
 
   // GuestLayout's useGuestMemberships also loads these, but this page keeps its
   // own call for the loading and retry states the shell cannot provide.
-  const { data, loading, error, run } = useAsync(listMemberships, []);
+  const { data, loading, error, run } = useAsync(listMemberships, [], {
+    cacheKey: "guest.memberships",
+  });
 
   useEffect(() => {
     if (data?.memberships) setMemberships(data.memberships);
@@ -53,7 +57,11 @@ const GuestHomePage = () => {
 
   const { data: contentData } = useAsync(
     () => (activeHotelId ? getHotelContent(activeHotelId) : Promise.resolve(null)),
-    [activeHotelId]
+    [activeHotelId],
+    // The SAME key and deps as the Offers tab, so the two share one cache
+    // entry and one in-flight request instead of each fetching the hotel's
+    // content separately.
+    { cacheKey: "guest.content" }
   );
 
   if (loading && !memberships.length) return <HomeSkeleton />;
@@ -74,7 +82,7 @@ const GuestHomePage = () => {
     <div>
       <header className="flex items-center justify-between mb-3.5">
         <span>
-          <u className="block no-underline text-[10.5px] text-muted">Good evening</u>
+          <u className="block no-underline text-[10.5px] text-muted">{greeting()}</u>
           <b className="display text-[18px] tracking-[-0.2px]">{user?.name}</b>
         </span>
 
@@ -110,13 +118,93 @@ const GuestHomePage = () => {
         />
       </div>
 
-      <div className="flex gap-[9px] mt-3.5">
-        <Button block onClick={() => navigate(ROUTES.APP_REDEEM)} disabled={!active?.balance}>
-          Use coins on a bill
-        </Button>
-        <Button block variant="ghost" onClick={() => navigate(ROUTES.APP_HISTORY)}>
-          History
-        </Button>
+      {/*
+        Icon-led actions, the way a payments app opens.
+        No balance guard on Pay: a guest with zero coins still has bills to
+        settle, and the old "must hold coins" rule would lock them out of the
+        payment screen entirely.
+      */}
+      <div className={styles.actions}>
+        <button type="button" className={styles.action} onClick={() => navigate(ROUTES.APP_PAY)}>
+          <span className={`${styles.actionIcon} ${styles.actionPay}`}>
+            <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true">
+              <path
+                d="M3 8.5A2.5 2.5 0 0 1 5.5 6h13A2.5 2.5 0 0 1 21 8.5v7a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 15.5z"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+              />
+              <path d="M3 10.5h18" stroke="currentColor" strokeWidth="1.7" />
+              <path
+                d="M6.5 14.5h3"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+              />
+            </svg>
+            {pendingBills.length > 0 && (
+              <em className={styles.actionBadge}>{pendingBills.length}</em>
+            )}
+          </span>
+          <b>Pay</b>
+        </button>
+
+        <button
+          type="button"
+          className={styles.action}
+          onClick={() => navigate(ROUTES.APP_HISTORY)}
+        >
+          <span className={styles.actionIcon}>
+            <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none">
+              <circle cx="12" cy="12" r="8.4" stroke="currentColor" strokeWidth="1.7" />
+              <path
+                d="M12 7.6V12l3 1.8"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <b>History</b>
+        </button>
+
+        <button
+          type="button"
+          className={styles.action}
+          onClick={() => navigate(ROUTES.APP_OFFERS)}
+        >
+          <span className={styles.actionIcon}>
+            <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none">
+              <path
+                d="M12 3.2l2.6 5.4 5.9.8-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.4l5.9-.8z"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <b>Offers</b>
+        </button>
+
+        <button
+          type="button"
+          className={styles.action}
+          onClick={() => navigate(ROUTES.APP_PROFILE)}
+        >
+          <span className={styles.actionIcon}>
+            <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none">
+              <circle cx="12" cy="9" r="3.6" stroke="currentColor" strokeWidth="1.7" />
+              <path
+                d="M5 19.2c.8-3.5 3.6-5.4 7-5.4s6.2 1.9 7 5.4"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+              />
+            </svg>
+          </span>
+          <b>You</b>
+        </button>
       </div>
 
       <div className="grid grid-cols-3 gap-2 mt-3.5">

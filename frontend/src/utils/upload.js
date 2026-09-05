@@ -140,16 +140,22 @@ export const videoPoster = (url, width = 480) => {
 };
 
 /**
- * Adaptive streaming URL.
+ * Playback URL.
  *
- * f_auto on the video pipeline lets Cloudinary pick the codec the browser
- * actually supports, and q_auto trims the bitrate to the content — together
- * they are the difference between a clip that starts instantly on hotel wifi
- * and one that buffers. The original upload is never modified.
+ * f_mp4 and NOT f_auto,q_auto. This looks like a downgrade and is the opposite:
+ * q_auto makes Cloudinary transcode on the fly, and a derivation it has not
+ * cached yet is streamed chunked — no Content-Length and `Accept-Ranges: none`.
+ * The browser then sees only the first fragment, so `loadedmetadata` reports a
+ * duration of a couple of seconds for a two-minute clip and the scrubber cannot
+ * seek at all, because seeking IS a range request.
+ *
+ * f_mp4 serves the whole file with a Content-Length and byte ranges, which is
+ * what makes both the duration readout and the scrubber work. The original
+ * upload is still never modified.
  */
 export const videoStream = (url) => {
   if (!url || !url.includes("/video/upload/")) return url;
-  return url.replace("/video/upload/", "/video/upload/f_auto,q_auto/");
+  return url.replace("/video/upload/", "/video/upload/f_mp4/");
 };
 
 /**

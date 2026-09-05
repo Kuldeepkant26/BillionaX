@@ -23,8 +23,8 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("card design constants", () => {
-  it("ships the eight approved families", () => {
-    assert.equal(CARD_DESIGN_VALUES.length, 8);
+  it("ships the approved families", () => {
+    assert.equal(CARD_DESIGN_VALUES.length, 20);
   });
 
   it("defaults to brushed steel", () => {
@@ -74,6 +74,38 @@ describe("API and guest app agree on the design keys", () => {
     const match = registry.match(/export const DEFAULT_CARD_DESIGN = "([A-Z_]+)"/);
     assert.ok(match, "frontend DEFAULT_CARD_DESIGN not found");
     assert.equal(match[1], DEFAULT_CARD_DESIGN);
+  });
+});
+
+/*
+ * The picker groups the designs into sections. The grouping is frontend-only
+ * (the API stores a flat key), but a design whose `category` names no section
+ * would be dropped from the picker — an admin could never select it, and the
+ * flat key list would still look correct. This catches that.
+ */
+describe("every design is reachable in the picker", () => {
+  const registry = readFileSync(
+    join(here, "../../frontend/src/features/guest/cardDesigns/registry.jsx"),
+    "utf8"
+  );
+
+  const sections = [...registry.matchAll(/^    key: "([A-Z_]+)",$/gm)].map((m) => m[1]);
+  // Each design declares `category: "X"` directly under its label and note.
+  const categories = [...registry.matchAll(/^    category: "([A-Z_]+)",$/gm)].map((m) => m[1]);
+
+  it("declares a category for every design", () => {
+    assert.equal(
+      categories.length,
+      CARD_DESIGN_VALUES.length,
+      `${categories.length} categories for ${CARD_DESIGN_VALUES.length} designs`
+    );
+  });
+
+  it("only files designs into sections that exist", () => {
+    assert.ok(sections.length > 0, "no picker sections parsed");
+    for (const category of new Set(categories)) {
+      assert.ok(sections.includes(category), `design filed under ${category}, which is not a section`);
+    }
   });
 });
 

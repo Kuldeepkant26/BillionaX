@@ -19,6 +19,7 @@ import {
 import { ImagePicker } from "../../features/panel/ImagePicker.jsx";
 import { VideoPicker } from "../../features/panel/VideoPicker.jsx";
 import { videoPoster } from "../../utils/upload.js";
+import { VideoPreview } from "../../features/panel/VideoPreview.jsx";
 import { OfferArt } from "../../features/guest/OfferArt.jsx";
 import { offerState } from "./offerState.js";
 import { KINDS } from "./guestContentKinds.js";
@@ -48,6 +49,9 @@ const toDateInput = (value) => (value ? String(value).slice(0, 10) : "");
 
 const ContentPage = ({ kind = "slideshow" }) => {
   const config = KINDS[kind] || KINDS.slideshow;
+  // The video whose preview is open, or null. Holds the row itself rather than
+  // an id so the modal can paint immediately from the list it came from.
+  const [preview, setPreview] = useState(null);
   const api = config.api;
   const isVideo = config.media === "video";
   const isOffer = Boolean(config.offerFields);
@@ -275,7 +279,17 @@ const ContentPage = ({ kind = "slideshow" }) => {
                     >
                       {isVideo && (
                         <>
-                          <i className={styles.play} aria-hidden="true" />
+                          {/* The art is the play target, the way a video card
+                              behaves everywhere else. The Preview button below
+                              stays for keyboard and screen-reader users. */}
+                          <button
+                            type="button"
+                            className={styles.playHit}
+                            onClick={() => setPreview(item)}
+                            aria-label={`Preview ${item.title}`}
+                          >
+                            <i className={styles.play} aria-hidden="true" />
+                          </button>
                           {item.duration && <em className={styles.dur}>{item.duration}</em>}
                         </>
                       )}
@@ -303,6 +317,11 @@ const ContentPage = ({ kind = "slideshow" }) => {
                       </p>
                     )}
                     <div className="mt-3 flex flex-wrap gap-[7px]">
+                      {isVideo && (
+                        <Button size="sm" variant="ghost" onClick={() => setPreview(item)}>
+                          Preview
+                        </Button>
+                      )}
                       <Button size="sm" variant="ghost" onClick={() => startEdit(item)}>
                         Edit
                       </Button>
@@ -329,6 +348,10 @@ const ContentPage = ({ kind = "slideshow" }) => {
           />
         </>
       )}
+
+      {/* What the guest sees: the real player, plus the comment thread and the
+          moderation controls for it. */}
+      <VideoPreview open={Boolean(preview)} video={preview} onClose={() => setPreview(null)} />
 
       <Modal
         open={open}

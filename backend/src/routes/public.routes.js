@@ -23,6 +23,9 @@ router.get(
       new ApiResponse(200, {
         themePreset: settings.themePreset,
         themeCustomColor: settings.themeCustomColor,
+        // Same reasoning as the theme: the login page has to paint in the
+        // chosen typeface before anyone has a token.
+        fontPreset: settings.fontPreset,
         // So the code input can size itself to the codes actually issued
         // rather than hardcoding a length the server is free to change.
         otpLength: env.otp.length,

@@ -22,8 +22,8 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("theme preset constants", () => {
-  it("ships the twelve approved presets", () => {
-    assert.equal(THEME_PRESET_VALUES.length, 12);
+  it("ships the approved presets", () => {
+    assert.equal(THEME_PRESET_VALUES.length, 27);
   });
 
   it("defaults to coral", () => {
@@ -69,6 +69,27 @@ describe("API and frontend agree on the preset keys", () => {
     const match = registry.match(/export const DEFAULT_ACCENT = "([A-Z_]+)"/);
     assert.ok(match, "frontend DEFAULT_ACCENT not found");
     assert.equal(match[1], DEFAULT_THEME_PRESET);
+  });
+});
+
+/*
+ * The pre-paint script in index.html cannot import the registry — any module
+ * import is deferred past first paint, which is the whole reason that script
+ * exists. So it carries a HARDCODED copy of the preset keys, and a preset
+ * missing from it silently falls back to CORAL for one frame on every cold
+ * load. That is exactly the kind of drift no one notices in review.
+ */
+describe("the pre-paint allowlist covers every preset", () => {
+  const html = readFileSync(join(here, "../../frontend/index.html"), "utf8");
+  const block = html.match(/var accents = \[([\s\S]*?)\];/);
+
+  it("finds the allowlist", () => {
+    assert.ok(block, "accents allowlist not found — did the script change shape?");
+  });
+
+  it("lists exactly the presets the API accepts", () => {
+    const listed = [...block[1].matchAll(/"([A-Z_]+)"/g)].map((m) => m[1]);
+    assert.deepEqual([...listed].sort(), [...THEME_PRESET_VALUES].sort());
   });
 });
 

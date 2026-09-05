@@ -9,6 +9,7 @@ import {
   formatCoinsCompact,
   formatCompact,
   formatDateTime,
+  greeting,
   initials,
 } from "../../utils/format.js";
 import styles from "./HotelDashboardPage.module.css";
@@ -32,13 +33,13 @@ const ICONS = {
     "M3 6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1H5a2 2 0 0 0 0 4h12v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
 };
 
-const greeting = () => {
-  const h = new Date().getHours();
-  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-};
-
 const HotelDashboardPage = () => {
-  const { data, loading, error, run } = useAsync(dashboard, []);
+  // Cached: the dashboard is the panel's hub and staff return to it between
+  // every other screen. It revalidates in the background on each visit, so the
+  // figures stay live without the page blanking to a spinner each time.
+  const { data, loading, error, run } = useAsync(dashboard, [], {
+    cacheKey: "hotel.dashboard",
+  });
 
   if (loading) return <Loading />;
   if (error) return <ErrorState error={error} onRetry={run} />;
@@ -82,8 +83,14 @@ const HotelDashboardPage = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 [@media(min-width:1100px)]:grid-cols-[1.5fr_1fr] gap-4 mt-4 items-start">
-        <Card title="Coin flow, last 7 days">
+      {/*
+        No items-start on these pairs: the two cards in a row are a set, and
+        letting each size to its own content left the shorter one floating
+        against a column of dead space. Stretched, they share the row's height
+        and the longer list scrolls inside its own card instead.
+      */}
+      <div className="grid grid-cols-1 [@media(min-width:1100px)]:grid-cols-[1.5fr_1fr] gap-4 mt-4">
+        <Card title="Coin flow, last 7 days" className={styles.pairCard}>
           <CoinFlowChart
             series={d.series || []}
             bars={[
@@ -93,11 +100,11 @@ const HotelDashboardPage = () => {
           />
         </Card>
 
-        <Card title="Latest activity">
+        <Card title="Latest activity" className={styles.pairCard}>
           {!d.recent?.length ? (
             <Empty title="No activity yet" hint="Transactions will appear here." />
           ) : (
-            <div className="flex flex-col">
+            <div className={`flex flex-col ${styles.grow} ${styles.activityList}`}>
               {d.recent.map((t) => (
                 <div
                   key={t._id}
@@ -125,8 +132,8 @@ const HotelDashboardPage = () => {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 [@media(min-width:1100px)]:grid-cols-[1.5fr_1fr] gap-4 mt-4 items-start">
-        <Card title="Coin inventory in play">
+      <div className="grid grid-cols-1 [@media(min-width:1100px)]:grid-cols-[1.5fr_1fr] gap-4 mt-4">
+        <Card title="Coin inventory in play" className={styles.pairCard}>
           <RatioDonut
             value={d.outstandingCoins || 0}
             total={(d.outstandingCoins || 0) + (d.hotel?.coinInventory || 0)}
@@ -140,13 +147,13 @@ const HotelDashboardPage = () => {
           </p>
         </Card>
 
-        <Card title="Right now">
+        <Card title="Right now" className={styles.pairCard}>
           <div className="bg-[var(--soft)] rounded-token-sm p-3.5 relative">
             <span
               className={`absolute top-3.5 right-3.5 w-[9px] h-[9px] rounded-full bg-[var(--acc2)] ${styles.pulse}`}
             />
-            <b className="block font-display text-[17px] font-semibold">{d.activeVouchers || 0} codes running</b>
-            <i className="not-italic text-[11.5px] text-muted">Guests waiting to pay at an outlet</i>
+            <b className="block font-display text-[17px] font-semibold">{d.pendingBills || 0} bills awaiting payment</b>
+            <i className="not-italic text-[11.5px] text-muted">Sent to guests, not yet settled</i>
           </div>
         </Card>
       </div>

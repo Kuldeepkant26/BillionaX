@@ -1,0 +1,124 @@
+/*
+ * The Pay screen.
+ *
+ * Theme tokens throughout, so it follows the guest's light or dark choice —
+ * a payment screen is the wrong place to be the one surface that ignores it.
+ */
+
+.page {
+  /* Clears the floating tab bar, which is fixed 14px from the bottom and 58px
+     tall. Without this the last bill's actions sit under it. */
+  padding-bottom: 84px;
+}
+
+/* ---- the summary ---- */
+
+/*
+ * Leads with the number the guest came here for. A gradient rather than a flat
+ * card so it reads as a header and not as the first item in the list.
+ */
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--rad);
+  border: 1px solid var(--line);
+  background: linear-gradient(150deg, var(--chip), var(--card) 65%);
+  padding: 20px 18px 18px;
+  margin-bottom: 20px;
+}
+
+/* Something is owed: the accent edge makes that legible at a glance, without
+   the alarm of a red panel for an ordinary restaurant bill. */
+.heroDue {
+  border-color: var(--acc);
+  background: linear-gradient(150deg, var(--acc-soft), var(--card) 70%);
+}
+
+.heroLabel {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.heroAmount {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 600;
+  letter-spacing: -1.4px;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.heroMeta {
+  display: block;
+  margin-top: 7px;
+  font-size: 12px;
+  color: var(--dim);
+}
+.heroMeta em {
+  font-style: normal;
+  color: var(--acc);
+  font-weight: 600;
+}
+
+/* ---- list ---- */
+
+.listHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.footnote {
+  margin: 16px 4px 0;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--dim);
+}
+
+/* ---- empty ---- */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 34px 24px 40px;
+}
+
+.emptyIcon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 14px;
+  border-radius: 20px;
+  background: var(--chip);
+  color: var(--dim);
+}
+
+.empty b {
+  font-size: 14.5px;
+  font-weight: 650;
+}
+
+.empty p {
+  margin: 6px 0 0;
+  max-width: 30ch;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--dim);
+}

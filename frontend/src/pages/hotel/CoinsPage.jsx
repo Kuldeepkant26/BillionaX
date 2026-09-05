@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { coinBalance, listPurchases, listPacks, buyCoins } from "../../api/hotel.api.js";
 import { useAsync } from "../../hooks/useAsync.js";
+import { invalidateCache } from "../../hooks/asyncCache.js";
 import { usePaginatedList } from "../../hooks/usePaginatedList.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import {
@@ -27,10 +28,12 @@ const METHODS = [
 const STEP = { PICK: "pick", PAY: "pay", DONE: "done" };
 
 const CoinsPage = () => {
-  const balance = useAsync(coinBalance, []);
+  const balance = useAsync(coinBalance, [], { cacheKey: "hotel.coinBalance" });
   // key: "purchases" — bespoke response key kept.
   const purchases = usePaginatedList(listPurchases, { limit: 10, key: "purchases" });
-  const packs = useAsync(listPacks, []);
+  // Coin packs are near-static reference data, so this is the clearest win:
+  // it is fetched once and then read from cache on every later visit.
+  const packs = useAsync(listPacks, [], { cacheKey: "hotel.packs" });
 
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(STEP.PICK);
@@ -86,6 +89,8 @@ const CoinsPage = () => {
       toastSuccess(`${formatCoins(result.purchase.coins)} coins added`);
       balance.run();
       purchases.run();
+      // Inventory changed, so the dashboard's cached figures are stale.
+      invalidateCache("hotel.dashboard");
     } catch (err) {
       setMessage(err.message);
     } finally {

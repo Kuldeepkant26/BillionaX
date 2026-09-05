@@ -9,8 +9,8 @@ import {
   objectIdParam,
   paginationRules,
   allocateRules,
-  verifyVoucherRules,
-  redeemVoucherRules,
+  createBillRules,
+  guestSearchRules,
   contentRules,
   offerRules,
   privilegeRules,
@@ -37,8 +37,21 @@ const adminOnly = requireRole(ROLES.HOTEL_ADMIN, ROLES.MAIN_ADMIN);
 router.use(protect, requireRole(...HOTEL_ROLES), requireSameHotel);
 
 // --- available to both hotel roles ---
-router.post("/vouchers/verify", redeemLimiter, verifyVoucherRules, validate, hotelController.verifyVoucher);
-router.post("/vouchers/redeem", redeemLimiter, redeemVoucherRules, validate, hotelController.redeemVoucher);
+/* ---- bills: compose and send, then watch them settle ---- */
+
+router.get("/guests/search", guestSearchRules, validate, hotelController.searchGuests);
+router.get(
+  "/guests/:guestId/email",
+  objectIdParam("guestId"),
+  validate,
+  hotelController.revealGuestEmail
+);
+router.post("/bills/price", createBillRules, validate, hotelController.priceBill);
+// Rate-limited like the redeem path it replaces: this is the endpoint that
+// puts a charge in front of a guest.
+router.post("/bills", redeemLimiter, createBillRules, validate, hotelController.createBill);
+router.get("/bills", paginationRules, validate, hotelController.listBills);
+
 router.get("/transactions", paginationRules, txFilterRules, validate, hotelController.listTransactions);
 router.get("/members", paginationRules, memberFilterRules, validate, hotelController.listMembers);
 
@@ -141,6 +154,23 @@ router.delete(
 router.get("/staff", adminOnly, paginationRules, staffFilterRules, validate, hotelController.listStaff);
 router.post("/staff", adminOnly, hotelUserRules, validate, hotelController.createStaff);
 router.patch("/staff/:id", adminOnly, objectIdParam("id"), validate, hotelController.setStaffActive);
+
+/* ---- video comments (preview + moderation) ---- */
+
+router.get(
+  "/videos/:contentId/comments",
+  objectIdParam("contentId"),
+  validate,
+  hotelController.videoComments
+);
+
+router.delete(
+  "/comments/:commentId",
+  adminOnly,
+  objectIdParam("commentId"),
+  validate,
+  hotelController.deleteVideoComment
+);
 
 router.get("/settings", adminOnly, hotelController.getSettings);
 router.post("/settings/logo-upload", adminOnly, hotelController.createLogoUpload);

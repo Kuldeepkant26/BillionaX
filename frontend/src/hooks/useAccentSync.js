@@ -4,7 +4,8 @@ import { publicConfig } from "../api/auth.api.js";
 import { useAppStore } from "../store/useAppStore.js";
 
 /**
- * Syncs the admin-chosen colour preset from the server, once per shell mount.
+ * Syncs the admin-chosen colour preset and typeface from the server, once per
+ * shell mount.
  *
  * The persisted store value paints the first frame; this call catches the
  * case where the main admin changed the theme since this browser last saw
@@ -14,12 +15,16 @@ import { useAppStore } from "../store/useAppStore.js";
  */
 export const useAccentSync = () => {
   const setAccent = useAppStore((s) => s.setAccent);
+  const setFont = useAppStore((s) => s.setFont);
 
   useEffect(() => {
     let cancelled = false;
     publicConfig()
       .then((data) => {
-        if (!cancelled && data?.themePreset) setAccent(data.themePreset, data.themeCustomColor);
+        if (cancelled) return;
+        if (data?.themePreset) setAccent(data.themePreset, data.themeCustomColor);
+        // The typeface rides on the same call for the same reason.
+        if (data?.fontPreset) setFont(data.fontPreset);
       })
       .catch(() => {
         // The persisted (or default) accent already painted the app; a failed

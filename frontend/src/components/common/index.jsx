@@ -207,13 +207,20 @@ export const Avatar = ({ children, className = "" }) => (
   <span className={`avatar ${className}`}>{children}</span>
 );
 
-export const Modal = ({ open, title, onClose, children, footer }) => {
+/**
+ * `dismissible={false}` removes every incidental way out — Escape, the backdrop
+ * and the × — leaving only the buttons the dialog itself provides.
+ *
+ * For a bill: a stray tap on the backdrop must not make a charge disappear, and
+ * the guest should have to say which they meant, pay or decline.
+ */
+export const Modal = ({ open, title, onClose, children, footer, dismissible = true }) => {
   useEffect(() => {
-    if (!open) return;
+    if (!open || !dismissible) return;
     const onKey = (e) => e.key === "Escape" && onClose?.();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onClose, dismissible]);
 
   if (!open) return null;
 
@@ -222,13 +229,18 @@ export const Modal = ({ open, title, onClose, children, footer }) => {
   const host = document.getElementById("modal-root") || document.body;
 
   return createPortal(
-    <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
+    <div
+      className="modal-back"
+      onMouseDown={(e) => dismissible && e.target === e.currentTarget && onClose?.()}
+    >
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
         <header className="modal-hd">
           <h3 className="display">{title}</h3>
-          <button className="modal-x" onClick={onClose} aria-label="Close">
-            ×
-          </button>
+          {dismissible && (
+            <button className="modal-x" onClick={onClose} aria-label="Close">
+              ×
+            </button>
+          )}
         </header>
         {children}
         {footer && <div style={{ marginTop: 16 }}>{footer}</div>}

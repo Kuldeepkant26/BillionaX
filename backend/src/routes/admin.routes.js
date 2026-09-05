@@ -19,6 +19,9 @@ import {
   hotelFilterRules,
   monthlyReportRules,
   runRebateRules,
+  paymentSettingsRules,
+  onboardingRules,
+  bankVerificationRules,
 } from "../validators/common.validator.js";
 
 const router = Router();
@@ -83,6 +86,35 @@ router.get("/admins", paginationRules, validate, adminController.listAdmins);
 router.post("/admins", adminUserRules, validate, adminController.createAdmin);
 router.patch("/admins/:id", objectIdParam("id"), adminUpdateRules, validate, adminController.updateAdmin);
 router.delete("/admins/:id", objectIdParam("id"), validate, adminController.deleteAdmin);
+
+/* ---- hotel onboarding ---- */
+
+router.patch(
+  "/hotels/:hotelId/onboarding",
+  objectIdParam("hotelId"),
+  onboardingRules,
+  validate,
+  adminController.saveOnboarding
+);
+router.post(
+  "/hotels/:hotelId/bank-verification",
+  objectIdParam("hotelId"),
+  bankVerificationRules,
+  validate,
+  adminController.verifyBank
+);
+router.post(
+  "/hotels/:hotelId/linked-account",
+  objectIdParam("hotelId"),
+  validate,
+  adminController.createLinkedAccount
+);
+
+/* ---- payment credentials ---- */
+
+router.get("/payments", adminController.getPaymentSettings);
+router.patch("/payments", paymentSettingsRules, validate, adminController.savePaymentSettings);
+router.delete("/payments", adminController.clearPaymentSettings);
 
 router.get("/settings", adminController.getSettings);
 router.patch("/settings", settingsRules, validate, adminController.updateSettings);

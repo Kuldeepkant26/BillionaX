@@ -17,3 +17,50 @@
   0% { transform: scale(0.6); opacity: 0.6; }
   100% { transform: scale(1.5); opacity: 0; }
 }
+
+/*
+ * Paired cards share their row's height.
+ *
+ * A column layout so the body can take the remaining space: without it a card
+ * stretched by the grid keeps its content at the top and the extra height is
+ * just a gap at the bottom, which is what made the chart row look broken.
+ */
+.pairCard {
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * Only the element that OPTS IN absorbs the extra height. Stretching whichever
+ * child happened to be last inflated "Right now"'s little status tile into a
+ * tall empty box — the card should grow, the tile inside it should not.
+ */
+.pairCard > .grow {
+  flex: 1;
+  min-height: 0;
+}
+
+/*
+ * The activity feed scrolls inside the card rather than setting the row's
+ * height. min-height keeps it from collapsing when the chart beside it is
+ * short; the max is what stops eight transactions dictating the layout.
+ */
+/*
+ * Caps the feed at roughly the chart's own height beside it, so the pair reads
+ * as one row instead of the list dragging the chart card down. Anything past
+ * that scrolls inside the card.
+ */
+.activityList {
+  min-height: 180px;
+  max-height: 268px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Clears the scrollbar so it never sits on top of the amount column. */
+  padding-right: 10px;
+}
+
+/* Opt-in marker — see .pairCard > .grow above. Carries no styles of its own;
+   it only says "this child takes the card's spare height". */
+.grow {
+  min-height: 0;
+}

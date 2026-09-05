@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
-import { TX_TYPES, VOUCHER_STATUS, ROLES } from "../config/constants.js";
+import { TX_TYPES, BILL_STATUS, ROLES } from "../config/constants.js";
 import { Hotel } from "../models/hotel.model.js";
 import { User } from "../models/user.model.js";
-import { Voucher } from "../models/voucher.model.js";
+import { Bill } from "../models/bill.model.js";
 import { CoinTransaction } from "../models/coinTransaction.model.js";
 import { GuestHotelMembership } from "../models/guestHotelMembership.model.js";
 import { RebateSettlement } from "../models/rebateSettlement.model.js";
@@ -22,6 +22,19 @@ const daysAgo = (n) => {
 
 const oid = (id) => new mongoose.Types.ObjectId(String(id));
 
+/**
+ * Excludes demo rows from every money figure.
+ *
+ * `$ne: true` rather than `false` on purpose: every row written before demo
+ * mode existed has no isDemo field at all, and `{isDemo: false}` would match
+ * none of them — silently zeroing all historical revenue.
+ *
+ * Demo bills are deliberately real rows (so a demonstration produces genuine
+ * history and reports) and this is what keeps them out of the numbers that
+ * matter: revenue, commission and settlement reconciliation.
+ */
+export const EXCLUDE_DEMO = { isDemo: { $ne: true } };
+
 /** Local calendar date as YYYY-MM-DD. See the note in rebate.service.js. */
 const localDate = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -29,7 +42,7 @@ const localDate = (d) =>
 /** Coin flow per day for the last N days, used by the dashboard charts. */
 const dailySeries = async (match, days = 7) => {
   const rows = await CoinTransaction.aggregate([
-    { $match: { ...match, createdAt: { $gte: daysAgo(days - 1) } } },
+    { $match: { ...match, ...EXCLUDE_DEMO, createdAt: { $gte: daysAgo(days - 1) } } },
     {
       $group: {
         _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
@@ -78,6 +91,7 @@ export const monthlyRedemptions = async ({ hotelId = null, from, to, months = 12
   const match = {
     type: TX_TYPES.REDEEM,
     createdAt: { $gte: rangeStart, $lt: rangeEnd },
+    ...EXCLUDE_DEMO,
   };
   if (hotelId) match.hotelId = oid(hotelId);
 
@@ -163,12 +177,12 @@ export const hotelDashboard = async (hotelId) => {
   const hid = oid(hotelId);
   const today = startOfToday();
 
-  const [hotel, newMembersToday, redeemedToday, activeVouchers, totals, recent, series] =
+  const [hotel, newMembersToday, redeemedToday, pendingBills, totals, recent, series] =
     await Promise.all([
       Hotel.findById(hotelId),
       GuestHotelMembership.countDocuments({ hotelId: hid, joinedAt: { $gte: today } }),
       CoinTransaction.aggregate([
-        { $match: { hotelId: hid, type: TX_TYPES.REDEEM, createdAt: { $gte: today } } },
+        { $match: { hotelId: hid, type: TX_TYPES.REDEEM, ...EXCLUDE_DEMO, createdAt: { $gte: today } } },
         {
           $group: {
             _id: null,
@@ -178,9 +192,11 @@ export const hotelDashboard = async (hotelId) => {
           },
         },
       ]),
-      Voucher.countDocuments({
+      // Bills sent but not yet settled. Was a count of live voucher codes,
+      // until billing moved into the app.
+      Bill.countDocuments({
         hotelId: hid,
-        status: VOUCHER_STATUS.ACTIVE,
+        status: BILL_STATUS.PENDING,
         expiresAt: { $gt: new Date() },
       }),
       GuestHotelMembership.aggregate([
@@ -213,7 +229,7 @@ export const hotelDashboard = async (hotelId) => {
       revenue: redeemedToday[0]?.revenue || 0,
       bills: redeemedToday[0]?.count || 0,
     },
-    activeVouchers,
+    pendingBills,
     members: totals[0]?.members || 0,
     outstandingCoins: totals[0]?.outstanding || 0,
     recent,
@@ -238,7 +254,7 @@ export const adminDashboard = async () => {
     ]),
     User.countDocuments({ role: ROLES.GUEST }),
     CoinTransaction.aggregate([
-      { $match: { type: TX_TYPES.REDEEM } },
+      { $match: { type: TX_TYPES.REDEEM, ...EXCLUDE_DEMO } },
       {
         $group: {
           _id: null,
@@ -249,7 +265,7 @@ export const adminDashboard = async () => {
       },
     ]),
     CoinTransaction.aggregate([
-      { $match: { type: TX_TYPES.REDEEM } },
+      { $match: { type: TX_TYPES.REDEEM, ...EXCLUDE_DEMO } },
       {
         $group: {
           _id: "$hotelId",

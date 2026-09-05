@@ -34,7 +34,10 @@ const NotificationsPage = () => {
 
   const { data, loading, error, run, setData } = useAsync(
     () => listNotifications({ limit: PAGE_SIZE }),
-    []
+    [],
+    // setData writes through to the cache, so marking one read stays read
+    // after navigating away and back.
+    { cacheKey: "guest.notifications" }
   );
 
   // A push that lands while this page is already open must appear without a

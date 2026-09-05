@@ -150,18 +150,12 @@ export const OfferSkeleton = () => (
   </SkeletonScreen>
 );
 
-export const RedeemSkeleton = () => (
-  <SkeletonScreen label="Loading your balance">
+export const PaySkeleton = () => (
+  <SkeletonScreen label="Loading your bills">
     <Skeleton w={150} h={22} />
     <Skeleton w={200} h={12} style={{ marginTop: 8 }} />
-    <Skeleton h={120} radius="var(--rad)" style={{ marginTop: 16 }} />
-    <Skeleton h={44} radius="var(--rad-sm)" style={{ marginTop: 16 }} />
-    <div className="flex gap-[7px] mt-3">
-      <Skeleton w={68} h={30} radius={999} />
-      <Skeleton w={68} h={30} radius={999} />
-      <Skeleton w={68} h={30} radius={999} />
-    </div>
-    <Skeleton h={44} radius={999} style={{ marginTop: 18 }} />
+    <Skeleton h={150} radius="var(--rad)" style={{ marginTop: 16 }} />
+    <Skeleton h={150} radius="var(--rad)" style={{ marginTop: 12 }} />
   </SkeletonScreen>
 );
 

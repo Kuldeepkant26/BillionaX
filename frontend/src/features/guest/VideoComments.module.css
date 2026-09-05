@@ -1,0 +1,441 @@
+/*
+ * The comment thread under a video.
+ *
+ * Every colour here is a theme token, so the section follows the app's light
+ * and dark palettes without a second definition.
+ */
+
+.wrap {
+  margin-top: 26px;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.heading {
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+/* ---- avatars ---------------------------------------------------------- */
+
+.avatarWrap {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  overflow: visible;
+}
+
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatarFallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--dim);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* The verified tick on a hotel's own reply. Sits half off the avatar so it
+   reads as a badge rather than part of the picture. */
+.hostDot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--acc);
+  border: 1.5px solid var(--bg, var(--card));
+}
+
+/* ---- composer --------------------------------------------------------- */
+
+.composerRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.composerCompact {
+  margin: 10px 0 4px;
+}
+
+.composerBody {
+  min-width: 0;
+  flex: 1;
+}
+
+.composerInput {
+  width: 100%;
+  resize: none;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 6px 0;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--fg);
+  outline: none;
+  min-height: 32px;
+  max-height: 160px;
+  transition: border-color 0.15s ease;
+}
+.composerInput:focus {
+  border-bottom-color: var(--acc);
+}
+.composerInput::placeholder {
+  color: var(--dim);
+}
+
+.composerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.counter {
+  margin-right: auto;
+  font-size: 10.5px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- the scroll region ------------------------------------------------ */
+
+/*
+ * The fixed height is the point: the thread never pushes the up-next rail an
+ * arbitrary distance down the page, however popular the video is.
+ *
+ * overscroll-behavior stops a flick at the end of the thread from scrolling
+ * the page behind it, which is what makes the region feel like its own surface.
+ */
+/* Wraps the scroller so the fade can sit against its edge without scrolling
+   away with the content. */
+.scrollFrame {
+  position: relative;
+}
+
+.scroller {
+  max-height: 420px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 10px 2px 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--soft) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+/*
+ * A soft fade at the bottom edge while there is more to scroll to. Without it a
+ * comment clipped by the max-height reads as a rendering fault rather than as a
+ * region you can scroll.
+ *
+ * Done with a MASK on the scroller rather than a gradient overlay: a gradient
+ * has to be painted in the page's own background colour, and this section sits
+ * on the guest background, the card and the panel in different places. Masking
+ * fades the content itself to transparent, so it is correct on any surface and
+ * in both themes.
+ */
+.scrollerFaded {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 42px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 42px), transparent);
+}
+
+.scroller::-webkit-scrollbar {
+  width: 6px;
+}
+.scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroller::-webkit-scrollbar-thumb {
+  background: var(--soft);
+  border-radius: 999px;
+}
+.scroller::-webkit-scrollbar-thumb:hover {
+  background: var(--line);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---- a comment -------------------------------------------------------- */
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.rowReply {
+  gap: 8px;
+}
+
+.rowBody {
+  min-width: 0;
+  flex: 1;
+}
+
+.rowHead {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.author {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--fg);
+}
+
+.authorHost {
+  color: var(--acc);
+}
+
+.hostTag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--acc);
+  background: var(--acc-soft);
+  border-radius: 999px;
+  padding: 1.5px 6px;
+}
+
+.stamp {
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--dim);
+}
+
+.text {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--fg);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  margin-left: -6px;
+}
+
+.iconBtn,
+.textBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: none;
+  padding: 4px 6px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dim);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.iconBtn:hover,
+.textBtn:hover {
+  background: var(--soft);
+  color: var(--fg);
+}
+
+/* Liked: accent plus the filled heart, so it never relies on colour alone. */
+.iconBtnOn {
+  color: var(--acc);
+}
+
+.textBtnDanger:hover {
+  color: var(--bad);
+}
+
+/* ---- replies ---------------------------------------------------------- */
+
+.repliesToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  margin-left: -6px;
+  border: 0;
+  background: none;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--acc);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.repliesToggle:hover {
+  background: var(--acc-soft);
+}
+
+.repliesToggle svg {
+  transition: transform 0.18s ease;
+}
+.caretOpen {
+  transform: rotate(180deg);
+}
+
+/* The rule down the left edge ties a reply thread to its parent, so one level
+   of indentation is enough to read the structure. */
+.replyBlock {
+  margin-top: 10px;
+  padding-left: 12px;
+  border-left: 1.5px solid var(--line);
+}
+
+.replyList {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A loading pulse beside "N replies" while the thread is fetched. */
+.dots {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ---- load more, empty, skeleton --------------------------------------- */
+
+.loadMore {
+  width: 100%;
+  margin-top: 14px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--fg);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.loadMore:hover:not(:disabled) {
+  background: var(--soft);
+  border-color: var(--acc);
+}
+.loadMore:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.empty {
+  padding: 22px 0;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--dim);
+}
+
+.skeletonRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.skeletonAvatar {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--soft);
+}
+
+.skeletonLines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 3px;
+}
+
+.skeletonLine {
+  height: 9px;
+  border-radius: 5px;
+  background: var(--soft);
+}
+
+.skeletonRow {
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonRow,
+  .dots {
+    animation: none;
+  }
+  .repliesToggle svg {
+    transition: none;
+  }
+}

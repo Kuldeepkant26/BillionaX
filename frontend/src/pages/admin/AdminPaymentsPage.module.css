@@ -1,0 +1,140 @@
+/* Payment credentials and the demo/live indicator. */
+
+/*
+ * The mode banner. Loud on purpose: this is the difference between a
+ * demonstration and real money leaving a guest's account, and it must not be
+ * possible to be on this screen and be unsure which is happening.
+ */
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--rad);
+  border: 1.5px solid;
+  margin-bottom: 16px;
+}
+
+.banner b {
+  display: block;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+}
+
+.banner p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+
+.bannerDot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.demo {
+  border-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  color: var(--warn);
+}
+
+.live {
+  border-color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+  color: var(--ok);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+@media (min-width: 1000px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* ---- current state ---- */
+
+.status {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+}
+
+.status > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+.status > div:last-child {
+  border-bottom: 0;
+}
+
+.status dt {
+  color: var(--dim);
+}
+
+.status dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.status dd i {
+  font-style: normal;
+  color: var(--dim);
+}
+
+.note {
+  margin: 0 0 14px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+
+/* ---- explainer ---- */
+
+.steps {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.steps b {
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.steps p {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--dim);
+}
+
+.confirmText {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--dim);
+}
+.confirmText b {
+  color: var(--fg);
+}

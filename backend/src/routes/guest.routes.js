@@ -7,10 +7,10 @@ import { ROLES } from "../config/constants.js";
 import {
   objectIdParam,
   paginationRules,
-  createVoucherRules,
   joinHotelRules,
   memberDetailsRules,
   commentRules,
+  payBillRules,
 } from "../validators/common.validator.js";
 
 const router = Router();
@@ -37,9 +37,6 @@ router.get("/notifications", paginationRules, validate, guestController.listNoti
 router.get("/notifications/unread-count", guestController.notificationCount);
 router.post("/notifications/read", guestController.markNotificationsRead);
 
-router.post("/vouchers", createVoucherRules, validate, guestController.createVoucher);
-router.get("/vouchers/active", guestController.getActiveVoucher);
-router.delete("/vouchers/:id", objectIdParam("id"), validate, guestController.cancelVoucher);
 
 router.get(
   "/hotels/:hotelId/content",
@@ -98,8 +95,25 @@ router.post(
   objectIdParam("hotelId"),
   objectIdParam("contentId"),
   commentRules,
+  payBillRules,
   validate,
   guestController.addVideoComment
+);
+
+router.get(
+  "/hotels/:hotelId/comments/:commentId/replies",
+  objectIdParam("hotelId"),
+  objectIdParam("commentId"),
+  validate,
+  guestController.listVideoCommentReplies
+);
+
+router.post(
+  "/hotels/:hotelId/comments/:commentId/like",
+  objectIdParam("hotelId"),
+  objectIdParam("commentId"),
+  validate,
+  guestController.toggleVideoCommentLike
 );
 
 router.delete(
@@ -107,6 +121,31 @@ router.delete(
   objectIdParam("commentId"),
   validate,
   guestController.deleteVideoComment
+);
+
+/* ---- bills ---- */
+
+router.get("/bills", guestController.listBills);
+router.get("/bills/:billId", objectIdParam("billId"), validate, guestController.getBill);
+router.post(
+  "/bills/:billId/pay",
+  objectIdParam("billId"),
+  payBillRules,
+  validate,
+  guestController.payBill
+);
+router.post(
+  "/bills/:billId/confirm",
+  objectIdParam("billId"),
+  payBillRules,
+  validate,
+  guestController.confirmBill
+);
+router.post(
+  "/bills/:billId/cancel",
+  objectIdParam("billId"),
+  validate,
+  guestController.cancelBill
 );
 
 export default router;

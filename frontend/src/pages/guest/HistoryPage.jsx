@@ -19,7 +19,8 @@ const HistoryPage = () => {
 
   const { data, loading, error, run } = useAsync(
     () => (activeHotelId ? getTransactions(activeHotelId, { limit: 50 }) : Promise.resolve(null)),
-    [activeHotelId]
+    [activeHotelId],
+    { cacheKey: "guest.transactions" }
   );
 
   if (loading) return <ListSkeleton label="Loading your history" />;

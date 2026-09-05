@@ -8,6 +8,13 @@
  * in styles/themes.css as `[data-accent="KEY"]` blocks; the swatches here
  * exist only so the settings picker can preview every preset at once.
  *
+ * `category` groups the presets into the sections the picker renders. It is a
+ * PRESENTATION field only — nothing downstream stores or validates it, so
+ * moving a preset between sections is a safe, cosmetic change. Every preset
+ * must name a category that exists in THEME_CATEGORIES below, or the picker
+ * would silently drop it; ACCENT_CATEGORY_GROUPS is built from the category
+ * order and asserts nothing is orphaned.
+ *
  * `chart2` is each preset's SECOND categorical series colour. It is declared
  * per preset rather than shared, because one fixed companion hue cannot stay
  * distinguishable from every accent — a slate that separates cleanly from
@@ -18,65 +25,215 @@
  * A stored key this registry does not know resolves to the default, so
  * removing a preset can never leave a dashboard unpainted.
  */
-export const ACCENT_PRESETS = {
-  CORAL: {
-    label: "Vivid Coral",
-    note: "Warm and energetic — the house default",
-    swatches: { rail: "#d8411f", acc: "#d8411f", soft: "#fbe7df" },
+
+/**
+ * The picker's sections, in display order.
+ *
+ * These describe the FEEL of a palette, not its hue: "Soft" is about low
+ * saturation and gentle contrast, and holds both a warm blush and a cool
+ * sage. Grouping by hue instead would just reproduce the flat colour list
+ * the sections exist to break up.
+ */
+export const THEME_CATEGORIES = [
+  {
+    key: "SOFT",
+    label: "Soft",
+    note: "Low-saturation palettes with gentle contrast — calm, easy on long sessions.",
   },
+  {
+    key: "PREMIUM",
+    label: "Premium",
+    note: "Deep, jewelled colours on near-black rails — the luxury end of the range.",
+  },
+  {
+    key: "LIGHT",
+    label: "Light & airy",
+    note: "Pale rails and bright grounds. The most open, least heavy option.",
+  },
+  {
+    key: "VIVID",
+    label: "Vivid",
+    note: "Saturated, high-energy accents that carry from across a room.",
+  },
+  {
+    key: "CLASSIC",
+    label: "Classic",
+    note: "Restrained business palettes — navy, slate and monochrome.",
+  },
+];
+
+export const THEME_CATEGORY_KEYS = THEME_CATEGORIES.map((c) => c.key);
+
+export const ACCENT_PRESETS = {
+  /* ----------------------------- Soft ------------------------------- */
   SAND: {
     label: "Desert Sand",
     note: "Soft terracotta on warm stone — understated luxury",
+    category: "SOFT",
     swatches: { rail: "#2b2622", acc: "#b5673f", soft: "#f7ebe3" },
-  },
-  INDIGO: {
-    label: "Indigo Night",
-    note: "Cool violet-blue, calm and focused",
-    swatches: { rail: "#4d40c9", acc: "#5f51e3", soft: "#ebe8fc" },
   },
   LAVENDER: {
     label: "Soft Lavender",
     note: "Muted violet on a pale ground — gentle and modern",
+    category: "SOFT",
     swatches: { rail: "#3a3457", acc: "#7a5cb8", soft: "#f0ecfa" },
   },
+  TEAL: {
+    label: "Muted Teal",
+    note: "Soft blue-green — clean and restful",
+    category: "SOFT",
+    swatches: { rail: "#1d4d55", acc: "#3f7d8c", soft: "#e2f0f2" },
+  },
+  ROSE: {
+    label: "Dusty Rose",
+    note: "Warm mauve — refined without being loud",
+    category: "SOFT",
+    swatches: { rail: "#3d2630", acc: "#9a5b7d", soft: "#f8eaf1" },
+  },
+  SAGE: {
+    label: "Sage",
+    note: "Greyed garden green — the quietest palette on the list",
+    category: "SOFT",
+    swatches: { rail: "#333d33", acc: "#5f7a55", soft: "#eaf0e6" },
+  },
+  CLAY: {
+    label: "Warm Clay",
+    note: "Dusty brick on oatmeal — soft warmth without the orange",
+    category: "SOFT",
+    swatches: { rail: "#3a2e2a", acc: "#a35f4e", soft: "#f7ece7" },
+  },
+
+  /* ---------------------------- Premium ----------------------------- */
   CHAMPAGNE: {
     label: "Champagne Gold",
     note: "The brand gold on a near-black rail",
+    category: "PREMIUM",
     swatches: { rail: "#171310", acc: "#8a6f28", soft: "#f3ecd9" },
   },
   EMERALD: {
     label: "Emerald",
     note: "Deep green, grounded and fresh",
+    category: "PREMIUM",
     swatches: { rail: "#10603f", acc: "#177a53", soft: "#dff2e9" },
   },
-  TEAL: {
-    label: "Muted Teal",
-    note: "Soft blue-green — clean and restful",
-    swatches: { rail: "#1d4d55", acc: "#3f7d8c", soft: "#e2f0f2" },
+  OBSIDIAN: {
+    label: "Obsidian Gold",
+    note: "Black rail, antique brass accent — the most formal option",
+    category: "PREMIUM",
+    swatches: { rail: "#0d0c0a", acc: "#7d6534", soft: "#f2eddf" },
   },
+  BURGUNDY: {
+    label: "Burgundy",
+    note: "Deep wine on oxblood — cellar-door richness",
+    category: "PREMIUM",
+    swatches: { rail: "#2e1319", acc: "#8f2740", soft: "#f8e7ea" },
+  },
+  ONYX_JADE: {
+    label: "Onyx Jade",
+    note: "Near-black rail with a cool jade accent — jewelled and restrained",
+    category: "PREMIUM",
+    swatches: { rail: "#101614", acc: "#2f7d6a", soft: "#e2f1ed" },
+  },
+  PLUM: {
+    label: "Royal Plum",
+    note: "Saturated purple on aubergine — theatrical, still serious",
+    category: "PREMIUM",
+    swatches: { rail: "#261a33", acc: "#6b3fa0", soft: "#f0e9f8" },
+  },
+
+  /* ----------------------------- Light ------------------------------ */
+  LINEN: {
+    label: "Linen",
+    note: "Pale sand rail with espresso ink — bright and paper-like",
+    category: "LIGHT",
+    swatches: { rail: "#efe7da", acc: "#8a6a45", soft: "#f8f2e9" },
+  },
+  MIST: {
+    label: "Mist",
+    note: "Pale blue-grey rail — the airiest palette, almost weightless",
+    category: "LIGHT",
+    swatches: { rail: "#e4ebf1", acc: "#41708f", soft: "#eaf2f7" },
+  },
+  BLUSH: {
+    label: "Blush",
+    note: "Soft pink rail with a deep rose accent — warm and open",
+    category: "LIGHT",
+    swatches: { rail: "#f5e6e6", acc: "#a8546a", soft: "#fbecef" },
+  },
+  MEADOW: {
+    label: "Meadow",
+    note: "Pale green rail, fresh mid-green accent — light and natural",
+    category: "LIGHT",
+    swatches: { rail: "#e4eee2", acc: "#3f7d4f", soft: "#e9f4e8" },
+  },
+
+  /* ----------------------------- Vivid ------------------------------ */
+  CORAL: {
+    label: "Vivid Coral",
+    note: "Warm and energetic — the house default",
+    category: "VIVID",
+    swatches: { rail: "#d8411f", acc: "#d8411f", soft: "#fbe7df" },
+  },
+  INDIGO: {
+    label: "Indigo Night",
+    note: "Cool violet-blue, calm and focused",
+    category: "VIVID",
+    swatches: { rail: "#4d40c9", acc: "#5f51e3", soft: "#ebe8fc" },
+  },
+  SAFFRON: {
+    label: "Saffron",
+    note: "Hot marigold on a spiced rail — the warmest, loudest option",
+    category: "VIVID",
+    swatches: { rail: "#a8580c", acc: "#b4610d", soft: "#fdeeda" },
+  },
+  FUCHSIA: {
+    label: "Fuchsia",
+    note: "Electric magenta — unmistakable and modern",
+    category: "VIVID",
+    swatches: { rail: "#a81b6d", acc: "#b8237a", soft: "#fce6f2" },
+  },
+  VIRIDIAN: {
+    label: "Viridian",
+    note: "Bright tropical green — high energy without the warmth",
+    category: "VIVID",
+    swatches: { rail: "#04785c", acc: "#068366", soft: "#daf4ec" },
+  },
+
+  /* ---------------------------- Classic ----------------------------- */
   OCEAN: {
     label: "Ocean",
     note: "Steady maritime blue",
+    category: "CLASSIC",
     swatches: { rail: "#10598c", acc: "#176ba8", soft: "#e0eef8" },
   },
   MIDNIGHT: {
     label: "Midnight Slate",
     note: "Deep navy rail with a bright azure accent",
+    category: "CLASSIC",
     swatches: { rail: "#111a2e", acc: "#2f6fd0", soft: "#e6eefb" },
-  },
-  ROSE: {
-    label: "Dusty Rose",
-    note: "Warm mauve — refined without being loud",
-    swatches: { rail: "#3d2630", acc: "#9a5b7d", soft: "#f8eaf1" },
   },
   MONO: {
     label: "Graphite",
     note: "Monochrome ink — maximum restraint",
+    category: "CLASSIC",
     swatches: { rail: "#0f1216", acc: "#101318", soft: "#eef1f4" },
+  },
+  SLATE: {
+    label: "Slate Blue",
+    note: "Muted steel blue on a cool grey rail — quiet corporate",
+    category: "CLASSIC",
+    swatches: { rail: "#2a323d", acc: "#4a6485", soft: "#e9edf3" },
+  },
+  FOREST: {
+    label: "Forest",
+    note: "Dark pine rail with a mid-green accent — traditional and solid",
+    category: "CLASSIC",
+    swatches: { rail: "#1b2f24", acc: "#356b48", soft: "#e4efe7" },
   },
   CUSTOM: {
     label: "Custom",
     note: "Pick any colour from the wheel",
+    category: "CLASSIC",
     // Overwritten at render time by the admin's own colour; these are just
     // the resting swatches shown before one is chosen.
     swatches: { rail: "#2b3140", acc: "#5b6474", soft: "#eef1f4" },
@@ -85,6 +242,30 @@ export const ACCENT_PRESETS = {
 };
 
 export const ACCENT_PRESET_KEYS = Object.keys(ACCENT_PRESETS);
+
+/**
+ * The presets bucketed into the picker's sections, in category order.
+ *
+ * Built from the registry rather than hand-listed, so adding a preset above is
+ * the only edit needed to make it appear. A preset whose `category` names no
+ * known section would vanish from the picker entirely, so those fall into the
+ * LAST section instead — a misfiled tile is a cosmetic bug, a missing one is
+ * a theme nobody can select.
+ */
+export const ACCENT_CATEGORY_GROUPS = (() => {
+  const fallback = THEME_CATEGORY_KEYS[THEME_CATEGORY_KEYS.length - 1];
+  const buckets = Object.fromEntries(THEME_CATEGORY_KEYS.map((key) => [key, []]));
+
+  for (const key of ACCENT_PRESET_KEYS) {
+    const category = ACCENT_PRESETS[key].category;
+    buckets[buckets[category] ? category : fallback].push(key);
+  }
+
+  return THEME_CATEGORIES.map((category) => ({
+    ...category,
+    keys: buckets[category.key],
+  })).filter((group) => group.keys.length > 0);
+})();
 
 export const DEFAULT_ACCENT = "CORAL";
 

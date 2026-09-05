@@ -25,6 +25,7 @@ import {
   Table,
 } from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
+import { HotelOnboarding } from "../../features/panel/HotelOnboarding.jsx";
 import { QrCode } from "../../features/panel/QrCode.jsx";
 import { ROUTES } from "../../constants/routePaths.js";
 import { formatCoins, formatCurrency, formatDate } from "../../utils/format.js";
@@ -273,6 +274,8 @@ const HotelDetailPage = () => {
           </Card>
         </div>
       </div>
+
+      <HotelOnboarding hotel={hotel} onChange={run} />
 
       <Modal
         open={sellOpen}

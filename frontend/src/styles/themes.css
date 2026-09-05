@@ -439,6 +439,383 @@
   --join-glow: rgba(245, 241, 232, 0.35);
 }
 
+/* ------------------------------------------------------------------------- *
+ * SOFT — low saturation, gentle contrast. SAND, LAVENDER, TEAL and ROSE above
+ * belong to this group too; only the newer ones are defined here.
+ * ------------------------------------------------------------------------- */
+
+/* Greyed garden green. The rail is a desaturated pine so the accent stays the
+   only real colour on the screen. */
+[data-accent="SAGE"] {
+  --acc: #5f7a55;
+  --acc-fg: #ffffff;
+  --acc2: #4a6141;
+  --acc-soft: #eaf0e6;
+  --chart2: #9c6a8e;
+  --hero: linear-gradient(145deg, #8ba57f, #5f7a55 60%, #3d5237);
+  --rail: #333d33;
+  --railfg: #eff3ec;
+  --raildim: rgba(239, 243, 236, 0.62);
+  --railact: #9dba90;
+  --railacttx: #232a23;
+  --join-glow: rgba(95, 122, 85, 0.26);
+}
+[data-theme="emerald-noir"][data-accent="SAGE"] {
+  --acc: #a3c096;
+  --acc-fg: #16200f;
+  --acc2: #84a277;
+  --acc-soft: rgba(163, 192, 150, 0.15);
+  --chart2: #d3a0c5;
+}
+
+/* Dusty brick on oatmeal — warmer than Sage, softer than Coral. */
+[data-accent="CLAY"] {
+  --acc: #a35f4e;
+  --acc-fg: #ffffff;
+  --acc2: #84483a;
+  --acc-soft: #f7ece7;
+  --chart2: #4a7d80;
+  --hero: linear-gradient(145deg, #c98a76, #a35f4e 60%, #6f3b2d);
+  --rail: #3a2e2a;
+  --railfg: #f5ede8;
+  --raildim: rgba(245, 237, 232, 0.62);
+  --railact: #c98a76;
+  --railacttx: #2a211d;
+  --join-glow: rgba(163, 95, 78, 0.26);
+}
+[data-theme="emerald-noir"][data-accent="CLAY"] {
+  --acc: #d9917d;
+  --acc-fg: #24110b;
+  --acc2: #b8735f;
+  --acc-soft: rgba(217, 145, 125, 0.15);
+  --chart2: #7fb8bb;
+}
+
+/* ------------------------------------------------------------------------- *
+ * PREMIUM — deep, jewelled colour on near-black rails. CHAMPAGNE and EMERALD
+ * above are part of this group.
+ * ------------------------------------------------------------------------- */
+
+/* The most formal palette: a true black rail with antique brass. Distinct
+   from Champagne in that the accent is browner and the rail is colder. */
+[data-accent="OBSIDIAN"] {
+  --acc: #7d6534;
+  --acc-fg: #ffffff;
+  --acc2: #64512a;
+  --acc-soft: #f2eddf;
+  --chart2: #4a5d80;
+  --hero: linear-gradient(145deg, #bfa063, #7d6534 60%, #3d3119);
+  --rail: #0d0c0a;
+  --railfg: #f2eddf;
+  --raildim: rgba(242, 237, 223, 0.58);
+  --railact: #bfa063;
+  --railacttx: #0d0c0a;
+  --join-glow: rgba(125, 101, 52, 0.3);
+}
+[data-theme="emerald-noir"][data-accent="OBSIDIAN"] {
+  --acc: #cfae6c;
+  --acc-fg: #1a1408;
+  --acc2: #ad8f52;
+  --acc-soft: rgba(207, 174, 108, 0.15);
+  --chart2: #8fa4c8;
+}
+
+/* Deep wine. The rail is an oxblood rather than a neutral black so the whole
+   surface reads warm. */
+[data-accent="BURGUNDY"] {
+  --acc: #8f2740;
+  --acc-fg: #ffffff;
+  --acc2: #731d32;
+  --acc-soft: #f8e7ea;
+  --chart2: #4a7d64;
+  --hero: linear-gradient(145deg, #bf5570, #8f2740 60%, #5c1728);
+  --rail: #2e1319;
+  --railfg: #f7e9ec;
+  --raildim: rgba(247, 233, 236, 0.62);
+  --railact: #d2718a;
+  --railacttx: #240e13;
+  --join-glow: rgba(143, 39, 64, 0.3);
+}
+[data-theme="emerald-noir"][data-accent="BURGUNDY"] {
+  --acc: #dd8199;
+  --acc-fg: #260a12;
+  --acc2: #bd6379;
+  --acc-soft: rgba(221, 129, 153, 0.15);
+  --chart2: #7fc4a5;
+}
+
+/* Cool jade against near-black — the restrained counterpart to Emerald. */
+[data-accent="ONYX_JADE"] {
+  --acc: #2f7d6a;
+  --acc-fg: #ffffff;
+  --acc2: #226052;
+  --acc-soft: #e2f1ed;
+  /* Mauve, for the same deuteranopia reason as EMERALD's chart2. */
+  --chart2: #9c5a86;
+  --hero: linear-gradient(145deg, #5fae99, #2f7d6a 60%, #1a5245);
+  --rail: #101614;
+  --railfg: #e9f2ef;
+  --raildim: rgba(233, 242, 239, 0.58);
+  --railact: #5fae99;
+  --railacttx: #101614;
+  --join-glow: rgba(47, 125, 106, 0.28);
+}
+[data-theme="emerald-noir"][data-accent="ONYX_JADE"] {
+  --acc: #79c9b4;
+  --acc-fg: #08201a;
+  --acc2: #57a894;
+  --acc-soft: rgba(121, 201, 180, 0.15);
+  --chart2: #d094b4;
+}
+
+/* Saturated purple on aubergine. Deeper and warmer than Indigo. */
+[data-accent="PLUM"] {
+  --acc: #6b3fa0;
+  --acc-fg: #ffffff;
+  --acc2: #553180;
+  --acc-soft: #f0e9f8;
+  --chart2: #b5793f;
+  --hero: linear-gradient(145deg, #9c72cc, #6b3fa0 60%, #452765);
+  --rail: #261a33;
+  --railfg: #f1ebf7;
+  --raildim: rgba(241, 235, 247, 0.62);
+  --railact: #a983d6;
+  --railacttx: #1d1327;
+  --join-glow: rgba(107, 63, 160, 0.3);
+}
+[data-theme="emerald-noir"][data-accent="PLUM"] {
+  --acc: #b48fe0;
+  --acc-fg: #1c1030;
+  --acc2: #9670c4;
+  --acc-soft: rgba(180, 143, 224, 0.16);
+  --chart2: #d9a26a;
+}
+
+/* ------------------------------------------------------------------------- *
+ * LIGHT & AIRY — the only group with PALE rails.
+ *
+ * These invert the usual arrangement: the sidebar is near-white, so --railfg
+ * has to be dark ink and --railact becomes a tinted chip rather than a white
+ * one. --railacttx is therefore the accent's own foreground, not the rail.
+ * Getting either backwards produces white-on-white nav labels, which is why
+ * every one of these blocks sets all five rail tokens explicitly.
+ * ------------------------------------------------------------------------- */
+
+[data-accent="LINEN"] {
+  --acc: #8a6a45;
+  --acc-fg: #ffffff;
+  --acc2: #6e5436;
+  --acc-soft: #f8f2e9;
+  --chart2: #4a6d80;
+  --hero: linear-gradient(145deg, #c0a077, #8a6a45 60%, #59422a);
+  --rail: #efe7da;
+  --railfg: #2e2519;
+  --raildim: rgba(46, 37, 25, 0.62);
+  --railact: #8a6a45;
+  --railacttx: #ffffff;
+  --join-glow: rgba(138, 106, 69, 0.24);
+}
+[data-theme="emerald-noir"][data-accent="LINEN"] {
+  --acc: #c9a878;
+  --acc-fg: #1e160b;
+  --acc2: #a98a5e;
+  --acc-soft: rgba(201, 168, 120, 0.15);
+  --chart2: #8fa4c8;
+}
+
+[data-accent="MIST"] {
+  --acc: #41708f;
+  --acc-fg: #ffffff;
+  --acc2: #315872;
+  --acc-soft: #eaf2f7;
+  --chart2: #b5793f;
+  --hero: linear-gradient(145deg, #7aa8c4, #41708f 60%, #294a60);
+  --rail: #e4ebf1;
+  --railfg: #1d2b36;
+  --raildim: rgba(29, 43, 54, 0.6);
+  --railact: #41708f;
+  --railacttx: #ffffff;
+  --join-glow: rgba(65, 112, 143, 0.24);
+}
+[data-theme="emerald-noir"][data-accent="MIST"] {
+  --acc: #8fbcd8;
+  --acc-fg: #0c1e2a;
+  --acc2: #6b9cb8;
+  --acc-soft: rgba(143, 188, 216, 0.15);
+  --chart2: #d9a26a;
+}
+
+[data-accent="BLUSH"] {
+  --acc: #a8546a;
+  --acc-fg: #ffffff;
+  --acc2: #874052;
+  --acc-soft: #fbecef;
+  --chart2: #4a7d64;
+  --hero: linear-gradient(145deg, #d08b9d, #a8546a 60%, #6f3444);
+  --rail: #f5e6e6;
+  --railfg: #3a2229;
+  --raildim: rgba(58, 34, 41, 0.6);
+  --railact: #a8546a;
+  --railacttx: #ffffff;
+  --join-glow: rgba(168, 84, 106, 0.24);
+}
+[data-theme="emerald-noir"][data-accent="BLUSH"] {
+  --acc: #dc94a7;
+  --acc-fg: #2a0f17;
+  --acc2: #bb7488;
+  --acc-soft: rgba(220, 148, 167, 0.15);
+  --chart2: #7fc4a5;
+}
+
+[data-accent="MEADOW"] {
+  --acc: #3f7d4f;
+  --acc-fg: #ffffff;
+  --acc2: #2f623c;
+  --acc-soft: #e9f4e8;
+  /* Mauve again — see EMERALD. */
+  --chart2: #9c5a86;
+  --hero: linear-gradient(145deg, #74b083, #3f7d4f 60%, #275233);
+  --rail: #e4eee2;
+  --railfg: #1f2e22;
+  --raildim: rgba(31, 46, 34, 0.6);
+  --railact: #3f7d4f;
+  --railacttx: #ffffff;
+  --join-glow: rgba(63, 125, 79, 0.24);
+}
+[data-theme="emerald-noir"][data-accent="MEADOW"] {
+  --acc: #85c396;
+  --acc-fg: #0d2113;
+  --acc2: #63a375;
+  --acc-soft: rgba(133, 195, 150, 0.15);
+  --chart2: #d094b4;
+}
+
+/* ------------------------------------------------------------------------- *
+ * VIVID — saturated, high-energy. CORAL and INDIGO above belong here.
+ * ------------------------------------------------------------------------- */
+
+/* Hot marigold. The accent is darkened well below the swatch's brightness so
+   white label text still clears AA on a button. */
+[data-accent="SAFFRON"] {
+  --acc: #b4610d;
+  --acc-fg: #ffffff;
+  --acc2: #8f4c09;
+  --acc-soft: #fdeeda;
+  --chart2: #4a6d99;
+  --hero: linear-gradient(145deg, #f0a13d, #d97a12 60%, #8f4c09);
+  --rail: #a8580c;
+  --railfg: #ffffff;
+  --raildim: rgba(255, 255, 255, 0.78);
+  --railact: #ffffff;
+  --railacttx: #98500b;
+  --join-glow: rgba(217, 122, 18, 0.3);
+}
+[data-theme="emerald-noir"][data-accent="SAFFRON"] {
+  --acc: #f0a83f;
+  --acc-fg: #2a1602;
+  --acc2: #cc8a26;
+  --acc-soft: rgba(240, 168, 63, 0.16);
+  --chart2: #8fa4c8;
+}
+
+[data-accent="FUCHSIA"] {
+  --acc: #b8237a;
+  --acc-fg: #ffffff;
+  --acc2: #941a61;
+  --acc-soft: #fce6f2;
+  --chart2: #4a7d64;
+  --hero: linear-gradient(145deg, #e560a8, #b8237a 60%, #78134f);
+  --rail: #a81b6d;
+  --railfg: #ffffff;
+  --raildim: rgba(255, 255, 255, 0.78);
+  --railact: #ffffff;
+  --railacttx: #9c1864;
+  --join-glow: rgba(184, 35, 122, 0.3);
+}
+[data-theme="emerald-noir"][data-accent="FUCHSIA"] {
+  --acc: #ec86bd;
+  --acc-fg: #2c0a1d;
+  --acc2: #c9679c;
+  --acc-soft: rgba(236, 134, 189, 0.16);
+  --chart2: #7fc4a5;
+}
+
+[data-accent="VIRIDIAN"] {
+  --acc: #068366;
+  --acc-fg: #ffffff;
+  --acc2: #046651;
+  --acc-soft: #daf4ec;
+  /* Mauve, same deuteranopia constraint as every other green here. */
+  --chart2: #9c5a86;
+  --hero: linear-gradient(145deg, #2fbf98, #068366 60%, #04594a);
+  --rail: #04785c;
+  --railfg: #ffffff;
+  --raildim: rgba(255, 255, 255, 0.76);
+  --railact: #ffffff;
+  --railacttx: #046b53;
+  --join-glow: rgba(6, 131, 102, 0.3);
+}
+[data-theme="emerald-noir"][data-accent="VIRIDIAN"] {
+  --acc: #4fd0aa;
+  --acc-fg: #032019;
+  --acc2: #2eb08c;
+  --acc-soft: rgba(79, 208, 170, 0.15);
+  --chart2: #d094b4;
+}
+
+/* ------------------------------------------------------------------------- *
+ * CLASSIC — restrained business palettes. OCEAN, MIDNIGHT and MONO above are
+ * part of this group.
+ * ------------------------------------------------------------------------- */
+
+/* Muted steel blue. Quieter than Midnight and warmer than Mono. */
+[data-accent="SLATE"] {
+  --acc: #4a6485;
+  --acc-fg: #ffffff;
+  --acc2: #3a4f6a;
+  --acc-soft: #e9edf3;
+  --chart2: #b5793f;
+  --hero: linear-gradient(145deg, #7d94b3, #4a6485 60%, #2f4058);
+  --rail: #2a323d;
+  --railfg: #eef1f6;
+  --raildim: rgba(238, 241, 246, 0.6);
+  --railact: #8ba2c0;
+  --railacttx: #1e242c;
+  --join-glow: rgba(74, 100, 133, 0.26);
+}
+[data-theme="emerald-noir"][data-accent="SLATE"] {
+  --acc: #9db3d0;
+  --acc-fg: #101a26;
+  --acc2: #7b93b3;
+  --acc-soft: rgba(157, 179, 208, 0.15);
+  --chart2: #d9a26a;
+}
+
+/* Dark pine. The traditional hotel green, kept muted enough to stay neutral
+   behind a dashboard. */
+[data-accent="FOREST"] {
+  --acc: #356b48;
+  --acc-fg: #ffffff;
+  --acc2: #285437;
+  --acc-soft: #e4efe7;
+  /* Mauve — see EMERALD. */
+  --chart2: #9c5a86;
+  --hero: linear-gradient(145deg, #669e7a, #356b48 60%, #1f4630);
+  --rail: #1b2f24;
+  --railfg: #e9f2ec;
+  --raildim: rgba(233, 242, 236, 0.6);
+  --railact: #77b08b;
+  --railacttx: #14241b;
+  --join-glow: rgba(53, 107, 72, 0.28);
+}
+[data-theme="emerald-noir"][data-accent="FOREST"] {
+  --acc: #7fbf96;
+  --acc-fg: #0a1f13;
+  --acc2: #5c9e75;
+  --acc-soft: rgba(127, 191, 150, 0.15);
+  --chart2: #d094b4;
+}
+
 /*
  * CUSTOM — the admin's own colour from the wheel.
  *

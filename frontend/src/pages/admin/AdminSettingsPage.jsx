@@ -14,6 +14,7 @@ import { PageHead } from "../../features/panel/PageHead.jsx";
 import { ApplyBar } from "../../features/panel/ApplyBar.jsx";
 import { CardDesignPicker } from "../../features/panel/CardDesignPicker.jsx";
 import { ThemePicker } from "../../features/panel/ThemePicker.jsx";
+import { FontPicker } from "../../features/panel/FontPicker.jsx";
 import { DEFAULT_CARD_DESIGN } from "../../features/guest/cardDesigns/registry.jsx";
 import {
   DEFAULT_ACCENT,
@@ -21,6 +22,7 @@ import {
   isValidHex,
   resolveAccent,
 } from "../../theme/accentPresets.js";
+import { DEFAULT_FONT, resolveFont } from "../../theme/fontPresets.js";
 
 const toForm = (s) => ({
   welcomeCredit: s.welcomeCredit,
@@ -35,6 +37,7 @@ const toForm = (s) => ({
   cardDesign: s.cardDesign || DEFAULT_CARD_DESIGN,
   themePreset: resolveAccent(s.themePreset || DEFAULT_ACCENT),
   themeCustomColor: isValidHex(s.themeCustomColor) ? s.themeCustomColor : DEFAULT_CUSTOM_COLOR,
+  fontPreset: resolveFont(s.fontPreset || DEFAULT_FONT),
 });
 
 const AdminSettingsPage = () => {
@@ -57,6 +60,7 @@ const RulesForm = ({ settings, reload }) => {
   const toastSuccess = useAppStore((s) => s.toastSuccess);
   const toastError = useAppStore((s) => s.toastError);
   const setAccent = useAppStore((s) => s.setAccent);
+  const setFont = useAppStore((s) => s.setFont);
   const run = reload;
 
   // Every value is a scalar, so a shallow compare is enough to know whether
@@ -73,9 +77,14 @@ const RulesForm = ({ settings, reload }) => {
   const serverCustom = isValidHex(settings.themeCustomColor)
     ? settings.themeCustomColor
     : DEFAULT_CUSTOM_COLOR;
+  const serverFont = resolveFont(settings.fontPreset || DEFAULT_FONT);
   useEffect(() => {
     setAccent(serverPreset, serverCustom);
-    return () => setAccent(serverPreset, serverCustom);
+    setFont(serverFont);
+    return () => {
+      setAccent(serverPreset, serverCustom);
+      setFont(serverFont);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -85,6 +94,7 @@ const RulesForm = ({ settings, reload }) => {
     setForm(initial);
     setErrors({});
     setAccent(serverPreset, serverCustom);
+    setFont(serverFont);
   };
 
   const save = async () => {
@@ -107,6 +117,7 @@ const RulesForm = ({ settings, reload }) => {
         cardDesign: form.cardDesign,
         themePreset: form.themePreset,
         themeCustomColor: form.themeCustomColor,
+        fontPreset: form.fontPreset,
       });
       toastSuccess("Settings saved");
       run();
@@ -117,6 +128,7 @@ const RulesForm = ({ settings, reload }) => {
       // preview back rather than leaving the panel painted in a colour that
       // was never stored.
       setAccent(serverPreset, serverCustom);
+      setFont(serverFont);
     } finally {
       setBusy(false);
     }
@@ -264,6 +276,16 @@ const RulesForm = ({ settings, reload }) => {
           onCustomColorChange={(themeCustomColor) => {
             setForm((f) => ({ ...f, themeCustomColor }));
             setAccent(form.themePreset, themeCustomColor);
+          }}
+        />
+      </Card>
+
+      <Card title="App typeface" className="my-4">
+        <FontPicker
+          value={form.fontPreset}
+          onChange={(fontPreset) => {
+            setForm((f) => ({ ...f, fontPreset }));
+            setFont(fontPreset);
           }}
         />
       </Card>

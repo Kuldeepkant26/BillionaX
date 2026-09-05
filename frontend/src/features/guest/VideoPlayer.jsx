@@ -23,14 +23,24 @@ const fmt = (seconds) => {
   return `${m}:${String(s).padStart(2, "0")}`;
 };
 
-export const VideoPlayer = ({ src, poster, title }) => {
+/** "1:57" -> 117. The stored badge value, used only until the file reports. */
+const parseClock = (label) => {
+  if (typeof label !== "string") return 0;
+  const parts = label.split(":").map(Number);
+  if (parts.some((n) => !Number.isFinite(n))) return 0;
+  return parts.reduce((total, n) => total * 60 + n, 0);
+};
+
+export const VideoPlayer = ({ src, poster, title, fallbackDuration }) => {
   const videoRef = useRef(null);
   const hideTimer = useRef(null);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
   const [time, setTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  // Seeded from the duration the manager's upload measured, so the readout is
+  // right from the first paint instead of showing 0:00 until metadata lands.
+  const [duration, setDuration] = useState(() => parseClock(fallbackDuration));
   const [buffering, setBuffering] = useState(false);
   const [chrome, setChrome] = useState(true);
   const [started, setStarted] = useState(false);
@@ -70,12 +80,22 @@ export const VideoPlayer = ({ src, poster, title }) => {
     }
   };
 
+  /**
+   * Seeking is a byte-range request, so it fails on a source Cloudinary is
+   * still transcoding (`Accept-Ranges: none`). Assigning currentTime on such a
+   * source throws or silently snaps back, so the guard keeps the thumb where
+   * the guest left it rather than jumping to zero.
+   */
   const seek = (event) => {
     const el = videoRef.current;
     if (!el || !duration) return;
     const next = (Number(event.target.value) / 100) * duration;
-    el.currentTime = next;
-    setTime(next);
+    try {
+      el.currentTime = next;
+      setTime(next);
+    } catch {
+      // Not seekable yet; the readout keeps following playback.
+    }
   };
 
   const progress = duration ? (time / duration) * 100 : 0;
@@ -106,7 +126,17 @@ export const VideoPlayer = ({ src, poster, title }) => {
         onWaiting={() => setBuffering(true)}
         onPlaying={() => setBuffering(false)}
         onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onLoadedMetadata={(e) => {
+          // A chunked or still-transcoding source reports Infinity or a
+          // fragment's length rather than the whole clip. Keeping the seeded
+          // value is better than replacing a correct number with a wrong one.
+          const reported = e.currentTarget.duration;
+          if (Number.isFinite(reported) && reported > 0) setDuration(reported);
+        }}
+        onDurationChange={(e) => {
+          const reported = e.currentTarget.duration;
+          if (Number.isFinite(reported) && reported > 0) setDuration(reported);
+        }}
         onEnded={() => {
           setPlaying(false);
           setChrome(true);

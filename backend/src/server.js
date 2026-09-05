@@ -6,9 +6,11 @@ import { connectDB } from "./config/db.js";
 import { logger } from "./utils/logger.js";
 import { createRealtime, closeRealtime } from "./realtime/index.js";
 import { startOfferSweep } from "./services/offerExpiry.service.js";
+import { startBillSweep } from "./services/billExpiry.service.js";
 
 let server;
 let stopOfferSweep;
+let stopBillSweep;
 
 const shutdown = async (signal, code = 0) => {
   logger.info(`${signal} received, shutting down gracefully`);
@@ -16,6 +18,7 @@ const shutdown = async (signal, code = 0) => {
   // Mongo work after the decision to shut down, and the connection close at
   // the end of this function would otherwise land mid-delete.
   if (stopOfferSweep) stopOfferSweep();
+  if (stopBillSweep) stopBillSweep();
   // Sockets must go next. They are open connections that keep the HTTP
   // server's close() callback from ever firing, so closing in the other order
   // hangs the process instead of exiting.
@@ -41,6 +44,7 @@ const startServer = async () => {
   // Started after listen: reclaiming storage is not a prerequisite for
   // answering requests.
   stopOfferSweep = startOfferSweep();
+  stopBillSweep = startBillSweep();
 };
 
 process.on("unhandledRejection", (reason) => {

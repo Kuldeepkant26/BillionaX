@@ -1,6 +1,6 @@
 import {
+  ACCENT_CATEGORY_GROUPS,
   ACCENT_PRESETS,
-  ACCENT_PRESET_KEYS,
   CUSTOM_ACCENT,
   deriveCustomTokens,
 } from "../../theme/accentPresets.js";
@@ -55,43 +55,62 @@ export const ThemePicker = ({ value, customColor, onChange, onCustomColorChange 
         until you apply it.
       </p>
 
-      {/* Native prefixes — see the note in CardDesignPicker on why arbitrary
-          [@media(...)] variants must not be stacked. */}
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 xl:grid-cols-6">
-        {ACCENT_PRESET_KEYS.map((key) => {
-          const preset = ACCENT_PRESETS[key];
-          const active = value === key;
-          // The custom tile previews the admin's own colour rather than the
-          // registry's resting swatches.
-          const swatches = preset.isCustom
-            ? { rail: customTokens.rail, acc: customTokens.acc, soft: customTokens.accSoft }
-            : preset.swatches;
+      {/* Grouped into sections rather than one flat wall of tiles: at 27
+          presets the flat grid gave an admin no way to narrow the choice, and
+          the sections are how people actually decide — "something soft",
+          "something premium" — before they compare individual colours.
 
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onChange(key)}
-              aria-pressed={active}
-              className={`cursor-pointer rounded-token border bg-card p-2 text-left transition-[border-color,box-shadow] duration-150 ${
-                active
-                  ? "border-[var(--acc)] shadow-[0_0_0_2px_var(--acc)]"
-                  : "border-hairline hover:border-[var(--acc)]"
-              }`}
-            >
-              <Mock swatches={swatches} />
-              <span className="mt-1.5 flex items-baseline justify-between gap-1">
-                <b className="truncate font-display text-[12px] font-semibold">{preset.label}</b>
-                {active && (
-                  <span className="text-[9px] font-bold uppercase tracking-[.1em] text-[var(--acc)]">
-                    On
+          Native prefixes — see the note in CardDesignPicker on why arbitrary
+          [@media(...)] variants must not be stacked. */}
+      {ACCENT_CATEGORY_GROUPS.map((group) => (
+        <section key={group.key} className="mb-5 last:mb-0">
+          <div className="mb-2.5">
+            <b className="font-display text-[13.5px] font-semibold">{group.label}</b>
+            <p className="mt-0.5 max-w-[62ch] text-[11.5px] leading-[1.5] text-muted">
+              {group.note}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 xl:grid-cols-6">
+            {group.keys.map((key) => {
+              const preset = ACCENT_PRESETS[key];
+              const active = value === key;
+              // The custom tile previews the admin's own colour rather than
+              // the registry's resting swatches.
+              const swatches = preset.isCustom
+                ? { rail: customTokens.rail, acc: customTokens.acc, soft: customTokens.accSoft }
+                : preset.swatches;
+
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => onChange(key)}
+                  aria-pressed={active}
+                  title={preset.note}
+                  className={`cursor-pointer rounded-token border bg-card p-2 text-left transition-[border-color,box-shadow] duration-150 ${
+                    active
+                      ? "border-[var(--acc)] shadow-[0_0_0_2px_var(--acc)]"
+                      : "border-hairline hover:border-[var(--acc)]"
+                  }`}
+                >
+                  <Mock swatches={swatches} />
+                  <span className="mt-1.5 flex items-baseline justify-between gap-1">
+                    <b className="truncate font-display text-[12px] font-semibold">
+                      {preset.label}
+                    </b>
+                    {active && (
+                      <span className="text-[9px] font-bold uppercase tracking-[.1em] text-[var(--acc)]">
+                        On
+                      </span>
+                    )}
                   </span>
-                )}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ))}
 
       {/* The wheel only appears once Custom is the chosen theme — shown always
           it would read as a second, competing control. */}

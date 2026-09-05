@@ -39,6 +39,17 @@ const coinTransactionSchema = new mongoose.Schema(
     outlet: { type: String, trim: true },
     platformFee: { type: Number },
 
+    /**
+     * Written by a demo payment, so financial reporting can exclude it.
+     *
+     * On the ledger as well as the Bill because reports aggregate THIS
+     * collection: a flag that lives only on the bill could not be filtered here
+     * without a join on every revenue query.
+     *
+     * An audit field only — no business logic branches on it.
+     */
+    isDemo: { type: Boolean, default: false },
+
     performedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     idempotencyKey: { type: String },
     note: { type: String, trim: true, maxlength: 500 },
@@ -47,6 +58,8 @@ const coinTransactionSchema = new mongoose.Schema(
 );
 
 coinTransactionSchema.index({ hotelId: 1, createdAt: -1 });
+// Reports filter demo rows out of every money aggregate.
+coinTransactionSchema.index({ isDemo: 1, type: 1, createdAt: -1 });
 coinTransactionSchema.index({ guestId: 1, createdAt: -1 });
 coinTransactionSchema.index({ membershipId: 1, createdAt: -1 });
 
