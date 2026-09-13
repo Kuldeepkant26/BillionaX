@@ -53,6 +53,16 @@ const NAV = [
     icon: "M6.5 3.2h10.3a1 1 0 0 1 1 1v9.3M3.2 6.5v9.8a1 1 0 0 0 1 1h9.8a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1H4.2a1 1 0 0 0-1 1zm2.1 8.4 2.8-3.1 1.9 2 1.7-1.8 1.6 1.7",
   },
   {
+    // Next to Privileges rather than in Settings: this is a list a manager
+    // edits row by row, not a form they apply in one go.
+    to: ROUTES.HOTEL_SERVICES,
+    label: "Services",
+    roles: ADMIN,
+    // Filled, like every icon here — PanelLayout renders these with no stroke,
+    // so a line-drawn path would come out invisible.
+    icon: "M2.6 3.4h6.2v6.2H2.6zm8.6 0h6.2v6.2h-6.2zM2.6 11.4h6.2v5.2H2.6zm8.6 0h6.2v5.2h-6.2z",
+  },
+  {
     to: ROUTES.HOTEL_PRIVILEGES,
     label: "Privileges",
     roles: ADMIN,

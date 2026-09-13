@@ -25,6 +25,7 @@ export const ROUTES = {
   HOTEL_COINS: "/hotel/coins",
   HOTEL_CONTENT: "/hotel/guest-content",
   HOTEL_PRIVILEGES: "/hotel/privileges",
+  HOTEL_SERVICES: "/hotel/services",
   HOTEL_STAFF: "/hotel/staff",
   HOTEL_SETTINGS: "/hotel/settings",
   HOTEL_FEED: "/hotel/feed",

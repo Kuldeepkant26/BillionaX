@@ -50,6 +50,7 @@ const CoinsPage = lazy(() => import("../pages/hotel/CoinsPage.jsx"));
 const GuestContentPage = lazy(() => import("../pages/hotel/GuestContentPage.jsx"));
 const HotelFeedPage = lazy(() => import("../pages/hotel/HotelFeedPage.jsx"));
 const PrivilegesPage = lazy(() => import("../pages/hotel/PrivilegesPage.jsx"));
+const ServicesPage = lazy(() => import("../pages/hotel/ServicesPage.jsx"));
 const StaffPage = lazy(() => import("../pages/hotel/StaffPage.jsx"));
 const HotelSettingsPage = lazy(() => import("../pages/hotel/HotelSettingsPage.jsx"));
 
@@ -195,6 +196,14 @@ const router = createBrowserRouter([
         element: lazyEl(
           <RoleRoute allow={HOTEL_ADMIN_ONLY} loginPath={ROUTES.HOTEL_LOGIN}>
             <PrivilegesPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: "services",
+        element: lazyEl(
+          <RoleRoute allow={HOTEL_ADMIN_ONLY} loginPath={ROUTES.HOTEL_LOGIN}>
+            <ServicesPage />
           </RoleRoute>
         ),
       },

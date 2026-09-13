@@ -41,6 +41,18 @@ export const createVideo = (payload) => api.post("/hotel/videos", payload).then(
 export const updateVideo = (id, payload) => api.patch(`/hotel/videos/${id}`, payload).then(unwrap);
 export const deleteVideo = (id) => api.delete(`/hotel/videos/${id}`).then(unwrap);
 
+/**
+ * The hotel's billable services and the coin cap on each.
+ *
+ * The list is readable by staff as well as managers — the bill composer needs
+ * it to populate its per-line dropdown.
+ */
+export const listServices = (params) => api.get("/hotel/services", { params }).then(unwrap);
+export const createService = (payload) => api.post("/hotel/services", payload).then(unwrap);
+export const updateService = (id, payload) =>
+  api.patch(`/hotel/services/${id}`, payload).then(unwrap);
+export const deleteService = (id) => api.delete(`/hotel/services/${id}`).then(unwrap);
+
 export const listPrivileges = (params) => api.get("/hotel/privileges", { params }).then(unwrap);
 export const createPrivilege = (payload) => api.post("/hotel/privileges", payload).then(unwrap);
 export const updatePrivilege = (id, payload) =>
