@@ -130,6 +130,40 @@ export const listSavedPosts = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, data));
 });
 
+/* ---- panel lists ------------------------------------------------------ */
+
+export const listMyPosts = asyncHandler(async (req, res) => {
+  const data = await feedService.listMyPosts({
+    userId: req.user._id,
+    cursor: req.query.cursor,
+    limit: req.query.limit,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const listHotelPosts = asyncHandler(async (req, res) => {
+  // The actor, not a hotelId from the request: the hotel is always the
+  // caller's own. See the rule at the top of feed.service.js.
+  const data = await feedService.listHotelPosts({
+    actor: req.user,
+    page: req.query.page,
+    limit: req.query.limit,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const listModerationPosts = asyncHandler(async (req, res) => {
+  const data = await feedService.listModerationPosts({
+    actor: req.user,
+    page: req.query.page,
+    limit: req.query.limit,
+    role: req.query.role,
+    hotelId: req.query.hotelId,
+    q: req.query.q,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
 /* ---- comments --------------------------------------------------------- */
 
 export const listComments = asyncHandler(async (req, res) => {

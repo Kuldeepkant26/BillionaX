@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { ApiError } from "../utils/ApiError.js";
-import { ROLES } from "../config/constants.js";
+import { ROLES, ROLE_VALUES } from "../config/constants.js";
 import { User } from "../models/user.model.js";
 import { FeedPost } from "../models/feedPost.model.js";
 import { FeedPostLike } from "../models/feedPostLike.model.js";
@@ -40,6 +40,9 @@ import {
 
 /** Roles whose posts and comments wear the verified tick. */
 const VERIFIED_ROLES = new Set([ROLES.HOTEL_ADMIN, ROLES.MAIN_ADMIN]);
+
+/** Guards the moderation filter's role param against anything not a real role. */
+const ROLE_SET = new Set(ROLE_VALUES);
 
 /**
  * The tick, from a field already on the row.
@@ -508,6 +511,105 @@ export const listSavedPosts = async ({ userId, page = 1, limit = 18 }) => {
   const docs = page_.map((s) => s.postId).filter(Boolean);
 
   return { items: await decorate(docs, userId), page: safePage, limit: safeLimit, hasMore };
+};
+
+/* ---- panel lists ------------------------------------------------------ */
+
+/**
+ * The caller's own posts. Cursor-paginated like the main feed, since the panel
+ * and the guest profile both scroll it.
+ */
+export const listMyPosts = async ({ userId, cursor, limit = 12 }) => {
+  const safeLimit = Math.min(30, Math.max(1, Number(limit) || 12));
+
+  const filter = { authorId: userId, isDeleted: false };
+  if (cursor) {
+    const at = new Date(cursor);
+    if (Number.isNaN(at.getTime())) {
+      throw new ApiError(400, "Invalid cursor", [{ field: "cursor", message: "Invalid cursor" }]);
+    }
+    filter.createdAt = { $lt: at };
+  }
+
+  const docs = await FeedPost.find(filter)
+    .sort({ createdAt: -1 })
+    .limit(safeLimit + 1)
+    .populate("authorId", AUTHOR_FIELDS)
+    .lean();
+
+  const hasMore = docs.length > safeLimit;
+  const page = hasMore ? docs.slice(0, safeLimit) : docs;
+
+  return {
+    items: await decorate(page, userId),
+    nextCursor: hasMore && page.length ? page[page.length - 1].createdAt.toISOString() : null,
+    hasMore,
+  };
+};
+
+/**
+ * Everything one property's staff and admins have posted.
+ *
+ * THE HOTEL IS THE CALLER'S OWN, taken from their user record — never from a
+ * param. That is the rule standing in for requireSameHotel on this router, and
+ * it is why this function takes an actor rather than a hotelId.
+ *
+ * Returns `total` rather than `hasMore`: this is a panel table, matching every
+ * other panel list in the app.
+ */
+export const listHotelPosts = async ({ actor, page = 1, limit = 20 }) => {
+  if (!actor.hotelId) throw new ApiError(400, "A hotelId is required");
+
+  const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+  const safePage = Math.max(1, Number(page) || 1);
+
+  const filter = { authorHotelId: actor.hotelId, isDeleted: false };
+
+  const [docs, total] = await Promise.all([
+    FeedPost.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(safeLimit)
+      .skip((safePage - 1) * safeLimit)
+      .populate("authorId", AUTHOR_FIELDS)
+      .lean(),
+    FeedPost.countDocuments(filter),
+  ]);
+
+  return { items: await decorate(docs, actor._id), total, page: safePage, limit: safeLimit };
+};
+
+/**
+ * Every post on the network, for MAIN_ADMIN moderation.
+ *
+ * The only read in this file that can filter by hotel from client input, and it
+ * is safe precisely because the route carries requireRole(MAIN_ADMIN) — the one
+ * role for whom "any hotel" is the correct scope. Validated as an ObjectId
+ * before it reaches the query.
+ */
+export const listModerationPosts = async ({ actor, page = 1, limit = 20, role, hotelId, q }) => {
+  const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+  const safePage = Math.max(1, Number(page) || 1);
+
+  const filter = { isDeleted: false };
+  if (role && ROLE_SET.has(role)) filter.authorRole = role;
+  if (hotelId && mongoose.isValidObjectId(hotelId)) filter.authorHotelId = hotelId;
+  if (q) {
+    // Escaped before it reaches the regex: an unescaped caption search is a
+    // denial of service waiting for someone to type "(((".
+    filter.caption = new RegExp(String(q).slice(0, 64).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+  }
+
+  const [docs, total] = await Promise.all([
+    FeedPost.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(safeLimit)
+      .skip((safePage - 1) * safeLimit)
+      .populate("authorId", AUTHOR_FIELDS)
+      .lean(),
+    FeedPost.countDocuments(filter),
+  ]);
+
+  return { items: await decorate(docs, actor._id), total, page: safePage, limit: safeLimit };
 };
 
 /* ---- comments --------------------------------------------------------- */

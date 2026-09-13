@@ -1,7 +1,9 @@
 import { Router } from "express";
 import * as feedController from "../controllers/feed.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
+import { requireRole } from "../middlewares/rbac.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
+import { ROLES } from "../config/constants.js";
 import { feedUploadLimiter } from "../middlewares/rateLimiter.middleware.js";
 import {
   commentRules,
@@ -9,6 +11,7 @@ import {
   feedPostRules,
   objectIdParam,
   paginationRules,
+  searchRule,
 } from "../validators/common.validator.js";
 
 const router = Router();
@@ -41,9 +44,33 @@ router.use(protect);
 
 router.get("/", paginationRules, validate, feedController.listFeed);
 
-// Before /posts/:postId, or "saved" is matched as an id and objectIdParam
-// rejects a perfectly valid route with a confusing 422.
+// These literal segments all sit before /posts/:postId, which is a different
+// prefix — but "saved", "mine", "hotel" and "moderation" are grouped here so
+// the ordering rule stays visible in one place.
 router.get("/saved", paginationRules, validate, feedController.listSavedPosts);
+
+router.get("/mine", paginationRules, validate, feedController.listMyPosts);
+
+// requireRole here, unlike everywhere else in this router, because the ENDPOINT
+// is what is role-specific — a guest has no hotel to list posts for. Contrast
+// the deletes, where the role decides which ROW may be touched and the gate
+// therefore belongs in the service.
+router.get(
+  "/hotel",
+  requireRole(ROLES.HOTEL_ADMIN, ROLES.HOTEL_STAFF),
+  paginationRules,
+  validate,
+  feedController.listHotelPosts
+);
+
+router.get(
+  "/moderation",
+  requireRole(ROLES.MAIN_ADMIN),
+  paginationRules,
+  searchRule,
+  validate,
+  feedController.listModerationPosts
+);
 
 router.get("/posts/:postId", objectIdParam("postId"), validate, feedController.getPost);
 
