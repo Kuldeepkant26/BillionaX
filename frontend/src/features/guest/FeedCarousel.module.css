@@ -9,8 +9,11 @@
   overscroll-behavior-x: contain;
   /* A fixed box for every post, so the feed does not reflow as images land and
      the reader's scroll position stays where they put it. 4:5 is the tallest
-     portrait Instagram allows and reads well on a phone. */
+     portrait Instagram allows and reads well on a phone.
+     Capped in viewport height as well, because the panels render this in a
+     desktop column where 4:5 of 480px is taller than the screen. */
   aspect-ratio: 4 / 5;
+  max-height: 68svh;
   background: var(--chip);
   /* Hidden rather than styled: a scrollbar under a photo looks like a defect.
      The dots are the affordance. */

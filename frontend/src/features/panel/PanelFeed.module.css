@@ -1,0 +1,172 @@
+/*
+ * The panel's Feed tab. The post cards themselves are the guest components, so
+ * this is only the chrome around them: a reading column, the inbox rows and the
+ * moderation filters.
+ */
+
+/* Posts are capped at a readable measure rather than stretched across a desktop
+   panel — a 1200px-wide photograph in a management screen helps nobody. */
+.column {
+  max-width: 480px;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 14px 0;
+}
+
+.seeLikes {
+  display: block;
+  margin: -6px 0 16px 13px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--acc);
+  cursor: pointer;
+}
+
+.seeLikes:hover {
+  text-decoration: underline;
+}
+
+/* ---- author line, shared by the likes modal and the inbox ---- */
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.avatar {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--dim);
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.whoText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.whoText b {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--fg);
+}
+
+.whoText i {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+/* ---- comment inbox ---- */
+
+.inbox {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  max-width: 620px;
+}
+
+.inbox li {
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--rad-sm);
+  background: var(--card);
+}
+
+.inboxBody {
+  margin: 9px 0 11px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+
+.inboxFoot {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.thumb {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+  display: block;
+}
+
+.inboxCaption {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--dim);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ---- moderation filters ---- */
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.filters .input,
+.filters select,
+.filters input {
+  width: auto;
+  min-width: 160px;
+}
+
+.count {
+  font-size: 12px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}

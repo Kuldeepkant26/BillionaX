@@ -48,6 +48,7 @@ const MembersPage = lazy(() => import("../pages/hotel/MembersPage.jsx"));
 const TransactionsPage = lazy(() => import("../pages/hotel/TransactionsPage.jsx"));
 const CoinsPage = lazy(() => import("../pages/hotel/CoinsPage.jsx"));
 const GuestContentPage = lazy(() => import("../pages/hotel/GuestContentPage.jsx"));
+const HotelFeedPage = lazy(() => import("../pages/hotel/HotelFeedPage.jsx"));
 const PrivilegesPage = lazy(() => import("../pages/hotel/PrivilegesPage.jsx"));
 const StaffPage = lazy(() => import("../pages/hotel/StaffPage.jsx"));
 const HotelSettingsPage = lazy(() => import("../pages/hotel/HotelSettingsPage.jsx"));
@@ -60,6 +61,7 @@ const AdminsPage = lazy(() => import("../pages/admin/AdminsPage.jsx"));
 const AdminTransactionsPage = lazy(() => import("../pages/admin/AdminTransactionsPage.jsx"));
 const AdminSettingsPage = lazy(() => import("../pages/admin/AdminSettingsPage.jsx"));
 const AdminPaymentsPage = lazy(() => import("../pages/admin/AdminPaymentsPage.jsx"));
+const AdminFeedPage = lazy(() => import("../pages/admin/AdminFeedPage.jsx"));
 
 const lazyEl = (node) => <Suspense fallback={<Loading />}>{node}</Suspense>;
 
@@ -178,6 +180,10 @@ const router = createBrowserRouter([
           </RoleRoute>
         ),
       },
+      // Not wrapped in RoleRoute, unlike its neighbours: staff post to the feed
+      // as themselves, so the tab is theirs too. What differs by role is the
+      // SCOPE of the list, and the server decides that from the token.
+      { path: "feed", element: lazyEl(<HotelFeedPage />) },
       // The three used to be separate destinations (and "offers" had no nav
       // entry at all). Kept as redirects so an old bookmark still lands on
       // the right tab rather than a 404.
@@ -243,6 +249,7 @@ const router = createBrowserRouter([
       { path: "hotels", element: lazyEl(<HotelsPage />) },
       { path: "hotels/:hotelId", element: lazyEl(<HotelDetailPage />) },
       { path: "guests", element: lazyEl(<GuestsPage />) },
+      { path: "feed", element: lazyEl(<AdminFeedPage />) },
       { path: "admins", element: lazyEl(<AdminsPage />) },
       { path: "transactions", element: lazyEl(<AdminTransactionsPage />) },
       { path: "payments", element: lazyEl(<AdminPaymentsPage />) },

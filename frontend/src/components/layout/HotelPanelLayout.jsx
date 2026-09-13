@@ -45,6 +45,14 @@ const NAV = [
     icon: "M2.5 4.5h15v11h-15zm2 8l3-3 2.5 2.5L14 8l2 2.5v3h-11zM7 6.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z",
   },
   {
+    // No `roles` key, unlike its neighbours: staff post to the network feed as
+    // themselves, so the tab is theirs too. What changes with role is the scope
+    // of the list inside, which the server decides from the token.
+    to: ROUTES.HOTEL_FEED,
+    label: "Feed",
+    icon: "M6.5 3.2h10.3a1 1 0 0 1 1 1v9.3M3.2 6.5v9.8a1 1 0 0 0 1 1h9.8a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1H4.2a1 1 0 0 0-1 1zm2.1 8.4 2.8-3.1 1.9 2 1.7-1.8 1.6 1.7",
+  },
+  {
     to: ROUTES.HOTEL_PRIVILEGES,
     label: "Privileges",
     roles: ADMIN,

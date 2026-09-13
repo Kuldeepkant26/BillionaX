@@ -1,0 +1,95 @@
+/*
+ * The panel tab strip, in the shape GuestContentPage established: cards rather
+ * than an underline row, because each tab carries a line of explanation as well
+ * as a label.
+ *
+ * Its own file rather than importing that page's module, for one reason: that
+ * grid is hardcoded to three columns, and the admin Feed has four. Editing it
+ * would have changed a working screen to suit a new one, so the layout rule is
+ * auto-fit here and the rest is the same.
+ */
+.tabs {
+  display: grid;
+  /* Fits as many as the width allows and wraps the rest, so three tabs and four
+     both look deliberate. */
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+  border-radius: var(--rad);
+  border: 1px solid var(--line);
+  background: var(--card);
+  cursor: pointer;
+  text-align: left;
+  color: var(--fg);
+  font: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tab:hover {
+  border-color: var(--acc);
+}
+
+.tab b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.tab i {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--dim);
+  margin-top: 3px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.icon {
+  flex: none;
+  width: 19px;
+  height: 19px;
+  fill: var(--dim);
+}
+
+.on {
+  border-color: var(--acc);
+  background: var(--soft, var(--chip));
+  box-shadow: inset 0 0 0 1px var(--acc);
+}
+
+.on .icon {
+  fill: var(--acc);
+}
+
+.on b {
+  color: var(--acc);
+}
+
+@media (max-width: 700px) {
+  .tabs {
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    gap: 7px;
+  }
+  .tab {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 10px 8px;
+    gap: 5px;
+  }
+  /* The hint is the first thing to go when there is no room for it: the label
+     alone still says which tab this is. */
+  .tab i {
+    display: none;
+  }
+}
