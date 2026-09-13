@@ -1,0 +1,83 @@
+/*
+ * Residual CSS for HowItWorks.
+ *
+ * Layout, spacing and type live in Tailwind utilities in the JSX. What stays
+ * here is what a utility cannot express: the connector rule drawn between the
+ * step icons, and the soft ring behind each icon (a tinted wash of the active
+ * accent, which no single token carries).
+ */
+
+/*
+ * Four steps that stay on one line at every width.
+ *
+ * Not a scroll row like .offerRow above it: the whole point of the diagram is
+ * that a guest takes in all four stages at a glance, so a step hidden off the
+ * right edge would defeat it. The columns shrink instead — 1fr each with the
+ * arrow gutters sized to their content.
+ */
+.steps {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+  align-items: start;
+  gap: 0;
+}
+
+/*
+ * The accent, washed back to a ground.
+ *
+ * color-mix rather than var(--acc-soft): that token is a flat neutral in the
+ * default themes, so on an accented theme (Ember, Clay) the ring would lose
+ * the hotel's colour entirely. Mixing keeps the ring tied to whatever accent
+ * is active, at a weight that stays quiet behind the glyph.
+ */
+.ring {
+  background: color-mix(in srgb, var(--acc) 11%, transparent);
+  color: var(--acc);
+}
+
+/* The last step is the payoff, so its ring carries the accent at full strength
+   the way the Pay tile does — the eye lands on the reward, not the stay. */
+.ringPayoff {
+  background: var(--acc);
+  color: var(--acc-fg);
+}
+
+/*
+ * The arrow between steps, drawn rather than typed.
+ *
+ * A "→" character would inherit the text colour and sit on the baseline of a
+ * line box that does not exist here; this is a rule with a chevron, centred
+ * against the icon row above the labels.
+ */
+.arrow {
+  position: relative;
+  width: 14px;
+  /* Half the 44px ring, so the rule meets the icons' centre line. */
+  margin-top: 22px;
+  height: 1px;
+  background: var(--line);
+  justify-self: center;
+}
+.arrow::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  border-top: 1.5px solid var(--dim);
+  border-right: 1.5px solid var(--dim);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+/* Under ~340px the four columns plus arrows cannot hold a readable label, so
+   the arrows collapse and the steps become a 2x2 block. */
+@media (max-width: 340px) {
+  .steps {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 18px;
+  }
+  .arrow {
+    display: none;
+  }
+}
