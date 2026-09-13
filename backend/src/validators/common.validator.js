@@ -143,7 +143,18 @@ export const createBillRules = [
     .isInt({ min: 0 })
     .withMessage("Price must be a whole number of paise")
     .toInt(),
+  /**
+   * Which hotel service this line was charged to.
+   *
+   * Deliberately NOT .isIn(...): the valid set is per-hotel now, and a
+   * validator cannot see the tenant. The real guard is downstream — a name the
+   * hotel does not have finds nothing in the caps map and falls back to the
+   * tier cap, which is never more permissive than before services existed.
+   */
+  body("lineItems.*.service").optional({ values: "falsy" }).isString().trim().isLength({ max: 60 }),
   body("taxPercent").optional({ values: "falsy" }).isFloat({ min: 0, max: 100 }).toFloat(),
+  // The BILL-level outlet, unchanged — a separate, older concept from the
+  // per-line service above, and still drawn from the fixed list.
   body("outlet").optional({ values: "falsy" }).isIn(OUTLETS).withMessage("Choose a valid outlet"),
 ];
 

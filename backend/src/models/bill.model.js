@@ -37,6 +37,28 @@ const lineItemSchema = new mongoose.Schema(
      * arithmetic here ever changes.
      */
     amountPaise: { type: Number, required: true, min: 0 },
+
+    /**
+     * Which hotel service this line was charged to, by NAME.
+     *
+     * A string rather than a ref, for the same receipt reason as amountPaise:
+     * renaming or deleting a HotelService must not change what an already-sent
+     * bill says it was for.
+     *
+     * Deliberately NOT enum-locked, unlike the bill-level `outlet` below — the
+     * whole point of services is that a hotel names its own.
+     */
+    service: { type: String, trim: true, maxlength: 60 },
+
+    /**
+     * The paise of THIS line that coins were allowed to cover, frozen at
+     * creation alongside amountPaise and for the same reason.
+     *
+     * PRE-TAX, and therefore an audit trail rather than an authority: these do
+     * NOT sum to the bill's coinAllowancePaise whenever tax is charged. That
+     * field is the one redemption is checked against.
+     */
+    coinAllowancePaise: { type: Number, default: 0, min: 0 },
   },
   { _id: false }
 );
@@ -100,6 +122,25 @@ const billSchema = new mongoose.Schema(
     platformFeePercent: { type: Number, required: true, min: 0, max: 100 },
     tierCapPercent: { type: Number, required: true, min: 0, max: 100 },
     tierAtBill: { type: String },
+
+    /**
+     * The absolute ceiling, in paise, that coins may cover on this bill — the
+     * SUM of the per-line allowances, resolved from each line's service at
+     * creation and frozen here.
+     *
+     * An amount rather than a percentage, because with per-line services no
+     * single percentage describes the bill: ₹2000 at 20% beside ₹3000 at 0% is
+     * ₹400, which is 8% of the total and a rate nobody set. Storing the
+     * resolved figure is also what preserves the freezing contract above — a
+     * hotel changing a service's cap mid-checkout cannot reprice a bill the
+     * guest is already looking at.
+     *
+     * `null` — NOT 0 — on every bill raised before services existed.
+     * computeBillCoins reads null as "fall back to tierCapPercent", while 0 is
+     * a real answer meaning "no coins here". The two must never share a value,
+     * which is why every read of this field tests `== null` and never falsiness.
+     */
+    coinAllowancePaise: { type: Number, default: null, min: 0 },
 
     status: {
       type: String,

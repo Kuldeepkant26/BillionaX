@@ -5,6 +5,7 @@ import {
   computeBillCoins,
   computeBillSplit,
   computeBillTotals,
+  computeCoinAllowance,
   computePlatformFee,
   toRupees,
 } from "../utils/coinMath.js";
@@ -18,6 +19,7 @@ import { User } from "../models/user.model.js";
 import { GuestHotelMembership } from "../models/guestHotelMembership.model.js";
 import { CoinTransaction } from "../models/coinTransaction.model.js";
 import { getSettings } from "./settings.service.js";
+import { resolveServiceCaps } from "./hotelService.service.js";
 import { pushLedgerEvent } from "./notification.service.js";
 import { emitToGuest, emitToHotel } from "../realtime/emitter.js";
 import { getPaymentProvider, isDemoPayments } from "../payments/index.js";
@@ -65,6 +67,11 @@ export const searchGuests = async ({ hotelId, q, page = 1, limit = 10 }) => {
   const rx = searchRegex(term);
   if (!rx) return { items: [], total: 0, page: safePage, limit: safeLimit };
 
+  // The composer needs the guest's tier cap to preview the allowance on an
+  // UNTAGGED line. Without it staff would see a different number from the one
+  // the server resolves, which is worse than showing none at all.
+  const hotel = await Hotel.findById(hotelId).select("tierCaps").lean();
+
   const [result] = await GuestHotelMembership.aggregate([
     { $match: { hotelId: new mongoose.Types.ObjectId(String(hotelId)) } },
     {
@@ -99,6 +106,9 @@ export const searchGuests = async ({ hotelId, q, page = 1, limit = 10 }) => {
       avatarUrl: m.guest.avatarUrl || null,
       tier: m.tier,
       balance: m.balance,
+      // The fallback rate for a line with no service on it — same resolution
+      // createBill uses, so the composer's preview cannot disagree with it.
+      tierCapPercent: tierCapFor(hotel, m.tier),
       memberNo: m.memberNo,
       joinedAt: m.joinedAt,
     })),
@@ -135,20 +145,44 @@ export const revealGuestEmail = async ({ hotelId, guestId }) => {
  * Shares every line of arithmetic with createBill so the figure staff see and
  * the figure that gets stored cannot diverge.
  */
-export const priceBill = ({ lineItems, taxPercent }) => {
+export const priceBill = ({ lineItems, taxPercent, serviceCaps = null, tierCapPercent = 0 }) => {
   const priced = (lineItems || []).map((item) => {
     const qty = Math.max(1, Math.trunc(Number(item?.qty) || 0));
     const unitPricePaise = Math.max(0, Math.trunc(Number(item?.unitPricePaise) || 0));
 
     return {
       description: String(item?.description || "").trim(),
+      // This mapper drops every key it does not name, so a line's service has
+      // to be listed here or it never reaches the document.
+      service: item?.service ? String(item.service).trim() : undefined,
       qty,
       unitPricePaise,
       amountPaise: qty * unitPricePaise,
     };
   });
 
-  return { lineItems: priced, ...computeBillTotals({ lineItems: priced, taxPercent }) };
+  const totals = computeBillTotals({ lineItems: priced, taxPercent });
+
+  // No caps map means the caller wants totals only — the /price preview, which
+  // predates services. The allowance is then the tier cap on every line, which
+  // is exactly the pre-services answer.
+  const allowance = computeCoinAllowance({
+    lineItems: priced,
+    taxPercent,
+    totalPaise: totals.totalPaise,
+    tierCapPercent,
+    capPercentFor: (line) =>
+      serviceCaps && line.service ? serviceCaps.get(line.service.toLowerCase()) ?? null : null,
+  });
+
+  return {
+    lineItems: priced.map((line, i) => ({
+      ...line,
+      coinAllowancePaise: allowance.perLineAllowancePaise[i],
+    })),
+    ...totals,
+    coinAllowancePaise: allowance.allowancePaise,
+  };
 };
 
 /**
@@ -163,9 +197,13 @@ export const createBill = async ({ hotelId, guestId, staffId, lineItems, taxPerc
 
   const settings = await getSettings();
 
-  const [hotel, membership] = await Promise.all([
+  const [hotel, membership, serviceCaps] = await Promise.all([
     Hotel.findById(hotelId).lean(),
     GuestHotelMembership.findOne({ guestId, hotelId }).lean(),
+    // Joins the existing reads rather than adding a round trip. An empty Map is
+    // a valid answer: a hotel with no services has every line fall back to the
+    // tier cap, which is the pre-services behaviour.
+    resolveServiceCaps(hotelId),
   ]);
 
   if (!hotel) throw new ApiError(404, "Hotel not found");
@@ -188,7 +226,8 @@ export const createBill = async ({ hotelId, guestId, staffId, lineItems, taxPerc
     );
   }
 
-  const priced = priceBill({ lineItems, taxPercent });
+  const tierCapPercent = tierCapFor(hotel, membership.tier);
+  const priced = priceBill({ lineItems, taxPercent, serviceCaps, tierCapPercent });
 
   if (!priced.lineItems.length) throw new ApiError(400, "Add at least one item to the bill");
   if (priced.totalPaise <= 0) throw new ApiError(400, "A bill must come to more than zero");
@@ -209,7 +248,12 @@ export const createBill = async ({ hotelId, guestId, staffId, lineItems, taxPerc
     // Frozen at creation so a later settings change cannot silently reprice a
     // bill the guest has already been shown.
     platformFeePercent: settings.platformFeePercent,
-    tierCapPercent: tierCapFor(hotel, membership.tier),
+    // Still written, still the fallback: it is what an untagged line prices at,
+    // and what the panel shows as the guest's tier allowance.
+    tierCapPercent,
+    // The authoritative ceiling. Frozen here and read back at payment, so a
+    // hotel changing a service's cap mid-checkout cannot reprice this bill.
+    coinAllowancePaise: priced.coinAllowancePaise,
     tierAtBill: membership.tier,
     isDemo: isDemoPayments(),
     expiresAt: new Date(Date.now() + settings.voucherTtlMinutes * 60_000),
@@ -238,11 +282,16 @@ export const shapeBill = (bill, hotel, coinBalance = null) => ({
   hotel: hotel ? { name: hotel.name, logoUrl: hotel.logoUrl || null } : undefined,
   guestId: String(bill.guestId),
   outlet: bill.outlet || null,
+  // Mapped field by field, so anything new has to be named here or it never
+  // reaches the browser — and the guest's slider would silently fall back to
+  // the tier cap with no error anywhere.
   lineItems: bill.lineItems.map((i) => ({
     description: i.description,
+    service: i.service || null,
     qty: i.qty,
     unitPricePaise: i.unitPricePaise,
     amountPaise: i.amountPaise,
+    coinAllowancePaise: i.coinAllowancePaise ?? 0,
   })),
   subtotalPaise: bill.subtotalPaise,
   taxPercent: bill.taxPercent,
@@ -252,6 +301,9 @@ export const shapeBill = (bill, hotel, coinBalance = null) => ({
   coinsDiscountPaise: bill.coinsDiscountPaise,
   payablePaise: bill.payablePaise,
   tierCapPercent: bill.tierCapPercent,
+  // `?? null`, never `|| null`: 0 means "no coins on this bill" and must reach
+  // the client as 0, not as "fall back to the tier cap".
+  coinAllowancePaise: bill.coinAllowancePaise ?? null,
   coinBalance,
   status: bill.status,
   expiresAt: bill.expiresAt,
@@ -553,6 +605,11 @@ export const startBillPayment = async ({ billId, guestId, coinsRequested = 0 }) 
     balance: membership.balance,
     totalPaise: bill.totalPaise,
     tierCapPercent: bill.tierCapPercent,
+    // Read off the BILL, never re-resolved from HotelService. A hotel dropping
+    // a service to 0% while the guest is at checkout must not reprice a bill
+    // already on their screen — the same contract tierCapPercent has always had.
+    // `?? null` so a frozen 0 stays 0 rather than falling back.
+    coinAllowancePaise: bill.coinAllowancePaise ?? null,
   });
 
   const { platformCommissionPaise, hotelAmountPaise } = computeBillSplit({
