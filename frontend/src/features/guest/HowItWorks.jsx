@@ -82,9 +82,10 @@ const GiftIcon = () => (
  * `rate` and `cap` are therefore optional rather than defaulted: a hotel that
  * has not configured them gets the plain wording, never an invented figure.
  *
- * Four short columns and nothing else. The tier footnote and the per-step
- * captions that used to sit here were explaining an explainer — the icons and
- * the numbers already carry it, and the guest's tier is on the card above.
+ * Four columns of icon, label and value, and nothing else. The tier footnote
+ * and the per-step captions that used to sit here were explaining an explainer
+ * — the icons and the numbers already carry it, and the guest's tier and
+ * property are both on the card above.
  */
 export const HowItWorks = ({ rate, cap }) => {
   const steps = [
@@ -102,14 +103,12 @@ export const HowItWorks = ({ rate, cap }) => {
       icon: <CoinsIcon />,
       label: "Earn",
       detail: rate ? `${rate}% back` : "coins back",
-      foot: "in coins",
     },
     {
       key: "redeem",
       icon: <RedeemIcon />,
       label: "Redeem at",
       detail: "the hotel",
-      foot: "at checkout",
     },
     {
       key: "reward",
@@ -159,11 +158,6 @@ export const HowItWorks = ({ rate, cap }) => {
                 <b className="block font-display text-[13px] font-semibold leading-[1.25] mt-[3px] tracking-[-0.2px] wrap-anywhere">
                   {step.detail}
                 </b>
-                {step.foot && (
-                  <span className="block text-[10px] text-muted leading-[1.3] mt-[3px]">
-                    {step.foot}
-                  </span>
-                )}
               </div>
 
               {i < steps.length - 1 && <i className={styles.arrow} aria-hidden="true" />}
