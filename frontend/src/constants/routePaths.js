@@ -11,6 +11,7 @@ export const ROUTES = {
   APP_VIDEO: "/app/watch/:contentId",
   APP_ALERTS: "/app/alerts",
   APP_PROFILE: "/app/profile",
+  APP_FAQ: "/app/faq",
   APP_FEED: "/app/feed",
   APP_FEED_SAVED: "/app/feed/saved",
   APP_FEED_POST: "/app/feed/p/:postId",

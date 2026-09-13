@@ -7,6 +7,7 @@ import { GUEST_THEMES } from "../../store/slices/themeSlice.js";
 import { Button, Card, Field, Input, Modal, Skeleton } from "../../components/common/index.jsx";
 import { AvatarUpload } from "../../features/guest/AvatarUpload.jsx";
 import { formatCoins, maskPhone } from "../../utils/format.js";
+import { ROUTES } from "../../constants/routePaths.js";
 
 // Shared by the two stat tiles below.
 const statLabel = "block no-underline text-[9.5px] tracking-[0.08em] uppercase text-muted";
@@ -39,6 +40,8 @@ const ProfilePage = () => {
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const totalCoins = memberships.reduce((sum, m) => sum + (m.balance || 0), 0);
 
@@ -82,6 +85,7 @@ const ProfilePage = () => {
   };
 
   const signOut = async () => {
+    setSigningOut(true);
     try {
       await logoutApi();
     } catch {
@@ -171,9 +175,66 @@ const ProfilePage = () => {
         ))}
       </Card>
 
-      <Button variant="ghost" block onClick={signOut}>
+      {/* A link row rather than a button: it navigates, and everything else on
+          this screen that navigates looks like this. */}
+      <button
+        type="button"
+        onClick={() => navigate(ROUTES.APP_FAQ)}
+        className="flex items-center gap-3 w-full bg-card border border-hairline rounded-token px-3.75 py-3.5 mb-3.5 text-left cursor-pointer transition-[border-color] duration-150 hover:border-accent"
+      >
+        <span className="grid place-items-center w-9 h-9 rounded-full bg-chip text-accent flex-none">
+          <svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor"
+            strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="10" cy="10" r="7.4" />
+            <path d="M7.9 7.8a2.2 2.2 0 0 1 4.2.8c0 1.5-2.1 1.9-2.1 3.1" />
+            <path d="M10 14.4h.01" />
+          </svg>
+        </span>
+        <span className="min-w-0 flex-1">
+          <b className="block text-[13px] font-semibold text-ink">Questions</b>
+          <i className="not-italic block text-[11px] text-muted mt-0.5">
+            How coins, bills and tiers work
+          </i>
+        </span>
+        <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor"
+          strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+          className="text-muted flex-none" aria-hidden="true">
+          <path d="M8 4l6 6-6 6" />
+        </svg>
+      </button>
+
+      <Button variant="ghost" block onClick={() => setConfirmSignOut(true)}>
         Sign out
       </Button>
+
+      {/* Mirrors the panel's confirm, down to the wording of the two buttons:
+          signing out is cheap to undo but annoying to do by accident, and a
+          guest's coins live behind it. */}
+      <Modal
+        open={confirmSignOut}
+        title="Sign out?"
+        onClose={() => !signingOut && setConfirmSignOut(false)}
+        footer={
+          <div className="flex items-center gap-[9px]">
+            <Button
+              variant="ghost"
+              block
+              onClick={() => setConfirmSignOut(false)}
+              disabled={signingOut}
+            >
+              Stay signed in
+            </Button>
+            <Button block onClick={signOut} disabled={signingOut}>
+              {signingOut ? "Signing out…" : "Sign out"}
+            </Button>
+          </div>
+        }
+      >
+        <p className="confirm-text">
+          {user?.name ? <b>{user.name}</b> : "You"} will be signed out on this device. Your coins
+          and memberships stay exactly as they are.
+        </p>
+      </Modal>
 
       <Modal
         open={open}

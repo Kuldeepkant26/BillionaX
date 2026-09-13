@@ -1,0 +1,188 @@
+/*
+ * The FAQ accordion.
+ *
+ * In CSS rather than utilities because the open/close transition is the whole
+ * point of the screen: it animates grid-template-rows from 0fr to 1fr, which
+ * is the one technique that eases to the answer's OWN height. A max-height
+ * guess either clips a long answer or leaves it hanging on a timer that
+ * finishes before the text does.
+ */
+
+.back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--dim);
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+
+.back:hover {
+  color: var(--fg);
+}
+
+.head {
+  margin-bottom: 22px;
+}
+
+.head h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.7px;
+  color: var(--fg);
+}
+
+.head p {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+
+.section {
+  margin-bottom: 20px;
+}
+
+/* One card per group, with the rows divided inside it rather than floating as
+   separate cards — a dozen separate cards on a phone reads as a list of
+   buttons, not a document. */
+.card {
+  margin-top: 9px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--rad);
+  overflow: hidden;
+}
+
+.item + .item {
+  border-top: 1px solid var(--line);
+}
+
+/* The open row lifts off the card slightly, so the answer reads as belonging
+   to the question above it rather than to the row below. */
+.itemOpen {
+  background: var(--bg2);
+}
+
+.question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 15px 14px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: left;
+  color: var(--fg);
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.question:hover {
+  background: var(--chip);
+}
+
+.chevron {
+  flex: none;
+  color: var(--dim);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), color 150ms ease;
+}
+
+.itemOpen .chevron {
+  transform: rotate(180deg);
+  color: var(--acc);
+}
+
+/*
+ * 0fr -> 1fr is what makes this ease to the content's own height. The child
+ * needs min-height: 0 and overflow: hidden or it refuses to be compressed.
+ */
+.answerWrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* `hidden` is overridden here because the element must stay in the layout to
+   animate; the attribute is kept on the markup for assistive tech, and the
+   rows collapse to zero height which is what actually hides it. */
+.answerWrap[hidden] {
+  display: grid;
+}
+
+.itemOpen .answerWrap {
+  grid-template-rows: 1fr;
+}
+
+.answerInner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.answerInner p {
+  margin: 0 0 10px;
+  padding: 0 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--dim);
+}
+
+.answerInner p:first-child {
+  padding-top: 1px;
+}
+
+.answerInner p:last-child {
+  margin-bottom: 15px;
+}
+
+.foot {
+  margin: 24px 0 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--dim);
+  text-align: center;
+}
+
+.home {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--rad-sm);
+  background: var(--card);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--fg);
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.home:hover {
+  border-color: var(--acc);
+  color: var(--acc);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .answerWrap,
+  .chevron,
+  .question,
+  .home,
+  .back {
+    transition: none;
+  }
+}
