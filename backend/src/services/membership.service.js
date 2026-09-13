@@ -4,6 +4,7 @@ import { TIERS, TIER_VALUES, TX_TYPES, NOTIFICATION_KINDS } from "../config/cons
 import { resolveTierByNights } from "../utils/coinMath.js";
 import { Hotel } from "../models/hotel.model.js";
 import { GuestHotelMembership } from "../models/guestHotelMembership.model.js";
+import { HotelService } from "../models/hotelService.model.js";
 import { CoinTransaction } from "../models/coinTransaction.model.js";
 import { User } from "../models/user.model.js";
 import { getSettings } from "./settings.service.js";
@@ -322,18 +323,82 @@ export const updateGuestProfile = async ({ guestId, name, email, phone, avatarUr
   return { ...guest.toSafeObject(), coinsMoved };
 };
 
-export const getMembershipsForGuest = async (guestId) =>
-  GuestHotelMembership.find({ guestId })
-    // tierCaps is needed so the guest app can show their max discount.
-    .populate("hotelId", "name slug city logoUrl tierCaps")
-    .sort({ lastActivityAt: -1 });
+// tierCaps is needed so the guest app can show their max discount, and
+// tierEarnRates so the "how it works" explainer on home can quote the rate
+// this guest actually earns rather than a marketing figure.
+const HOTEL_FIELDS = "name slug city logoUrl tierCaps tierEarnRates earnRatePercent";
+
+/**
+ * The best coin rate a guest can actually get at each of their hotels.
+ *
+ * The tier cap is only the fallback for a line nobody tagged; what a guest can
+ * genuinely save is the HIGHEST rate their tier gets across that hotel's
+ * services. Quoting the tier cap as their maximum understates it wherever a
+ * hotel has set a service above it — which is the whole point of per-service
+ * caps — so the home screen would tell a Platinum guest "save 10%" at a hotel
+ * offering them 50% at the restaurant.
+ *
+ * One aggregate across every hotel the guest belongs to, keyed by hotel and
+ * tier, rather than a query per membership.
+ *
+ * Only ACTIVE services count: a hidden one cannot be billed to, so promising
+ * its rate would be promising something unreachable.
+ */
+const bestServiceCapByHotel = async (memberships) => {
+  const hotelIds = memberships.map((m) => m.hotelId?._id || m.hotelId).filter(Boolean);
+
+  if (!hotelIds.length) return new Map();
+
+  const rows = await HotelService.aggregate([
+    { $match: { hotelId: { $in: hotelIds }, isActive: true } },
+    {
+      $group: {
+        _id: "$hotelId",
+        SILVER: { $max: "$coinCaps.SILVER" },
+        GOLD: { $max: "$coinCaps.GOLD" },
+        PLATINUM: { $max: "$coinCaps.PLATINUM" },
+      },
+    },
+  ]);
+
+  return new Map(rows.map((r) => [String(r._id), r]));
+};
+
+export const getMembershipsForGuest = async (guestId) => {
+  const memberships = await GuestHotelMembership.find({ guestId })
+    .populate("hotelId", HOTEL_FIELDS)
+    .sort({ lastActivityAt: -1 })
+    .lean();
+
+  const best = await bestServiceCapByHotel(memberships);
+
+  return memberships.map((m) => {
+    const caps = best.get(String(m.hotelId?._id || m.hotelId));
+    const serviceCap = caps?.[m.tier];
+    const tierCap = m.hotelId?.tierCaps?.[m.tier];
+
+    return {
+      ...m,
+      /**
+       * The headline "save up to" figure for this guest at this hotel.
+       *
+       * The larger of their tier cap and their best service rate, because both
+       * are genuinely reachable: an untagged line prices at the tier cap, and a
+       * line tagged to the best service prices at that. `??` at each step — a
+       * hotel that has set every service to 0 means it, and a falsy test would
+       * quietly fall back to the tier cap it deliberately overrode.
+       */
+      maxSavePercent: Math.max(serviceCap ?? 0, tierCap ?? 0),
+    };
+  });
+};
 
 export const getMembershipOrFail = async ({ guestId, hotelId }) => {
   if (!mongoose.isValidObjectId(hotelId)) throw new ApiError(400, "Invalid hotel id");
 
   const membership = await GuestHotelMembership.findOne({ guestId, hotelId }).populate(
     "hotelId",
-    "name slug city logoUrl tierCaps"
+    HOTEL_FIELDS
   );
   if (!membership) throw new ApiError(404, "You are not a member at this hotel");
   return membership;

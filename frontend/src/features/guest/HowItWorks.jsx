@@ -113,14 +113,11 @@ export const HowItWorks = ({ rate, cap }) => {
     {
       key: "reward",
       icon: <GiftIcon />,
-      // "Typically", not "up to": each outlet sets its own share now, so a
-      // hotel may allow more at the restaurant than this and nothing at the
-      // spa. The tier rate is still what an untagged line prices at, which is
-      // what makes it the honest typical figure rather than a ceiling.
-      // One word, like the other three labels. "Typically save" wrapped onto
-      // two lines in a ~70px column and pushed this step's number below its
-      // neighbours', which made the row look misaligned rather than emphatic.
-      label: "Save",
+      // "Up to" is accurate again now that `cap` is the guest's best REACHABLE
+      // rate — the highest their tier gets at any of this hotel's services, not
+      // the tier fallback. It was a ceiling that undersold them before, which
+      // is why this briefly read "typically".
+      label: "Save up to",
       detail: cap ? `${cap}%` : "on extras",
       payoff: true,
     },

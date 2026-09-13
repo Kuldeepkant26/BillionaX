@@ -77,7 +77,18 @@ const GuestHomePage = () => {
     );
   }
 
-  const cap = active?.hotelId?.tierCaps?.[active?.tier];
+  /**
+   * The best rate this guest can actually reach at this hotel.
+   *
+   * Resolved server-side (membership.service.js) as the larger of their tier
+   * cap and the highest rate their tier gets at any of the hotel's services —
+   * the tier cap alone would understate it wherever a hotel has set an outlet
+   * above it, which is the whole point of per-service caps.
+   *
+   * `??` so a hotel that has genuinely set everything to 0 shows 0, and only a
+   * payload from an older build with no such field falls back.
+   */
+  const cap = active?.maxSavePercent ?? active?.hotelId?.tierCaps?.[active?.tier];
   // Mirrors coin.service.js: the guest's tier rate, falling back to the
   // hotel-wide one, so the explainer quotes the figure a stay would actually
   // credit rather than a number chosen for the screen.
@@ -222,12 +233,11 @@ const GuestHomePage = () => {
           <u className={statLabel}>Redeemed</u>
           <b className={statValue}>{formatCoins(active?.lifetimeRedeemed)}</b>
         </span>
-        {/* "Typical", not "Max", since per-service caps landed: this is the
-            guest's tier rate, which is what an untagged line still prices at,
-            but a hotel may set a particular outlet higher or lower. Promising
-            a maximum the bill can exceed would be the wrong way round. */}
+        {/* "Max" again, and truthfully so: cap is now the best rate this guest
+            can actually reach here, not the tier fallback that a well-set
+            outlet could quietly exceed. */}
         <span className="bg-card border border-hairline rounded-token-sm px-2.5 py-[11px] text-center">
-          <u className={statLabel}>Typical discount</u>
+          <u className={statLabel}>Max discount</u>
           <b className={statValue}>{cap ? `${cap}%` : "—"}</b>
         </span>
       </div>
