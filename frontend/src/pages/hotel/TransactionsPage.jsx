@@ -15,6 +15,14 @@ import { PageHead } from "../../features/panel/PageHead.jsx";
 import { formatCoins, formatCurrency, formatDateTime, formatPaise } from "../../utils/format.js";
 
 const TYPES = ["", "EARN", "REDEEM", "WELCOME", "ADJUSTMENT"];
+/**
+ * The seven original outlets, kept for the HISTORICAL filter below.
+ *
+ * Hotels now define their own services (see the hotel panel's Services
+ * screen), but this filter runs over bills ALREADY SENT, whose outlet values
+ * are exactly these seven. Fetching live services here would make a renamed or
+ * deleted service hide its own history.
+ */
 const OUTLETS = ["Restaurant", "Room Service", "Spa", "Bar", "Cafe", "Laundry", "Other"];
 const TONE = { EARN: "ok", WELCOME: "ok", REDEEM: "acc", ADJUSTMENT: undefined };
 

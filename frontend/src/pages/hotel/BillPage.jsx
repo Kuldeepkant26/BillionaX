@@ -34,6 +34,15 @@ import styles from "./BillPage.module.css";
  * click, not a restart.
  */
 
+/**
+ * The BILL-LEVEL outlet, which is a separate and older thing from the per-line
+ * service picked above it.
+ *
+ * Still the fixed seven because Bill.outlet is still enum-locked to them: it
+ * tags the bill for history and reporting, and has nothing to do with what
+ * coins may cover. The per-line Service dropdown is the one that reads this
+ * hotel's own list.
+ */
 const OUTLETS = ["Restaurant", "Room Service", "Spa", "Bar", "Cafe", "Laundry", "Other"];
 
 const TIER_TONE = { SILVER: undefined, GOLD: "warn", PLATINUM: "ok" };

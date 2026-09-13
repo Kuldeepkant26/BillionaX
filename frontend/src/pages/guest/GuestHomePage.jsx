@@ -8,6 +8,7 @@ import { videoPoster } from "../../utils/upload.js";
 import { MembershipCard } from "../../features/guest/MembershipCard.jsx";
 import { HotelSwitcher } from "../../features/guest/HotelSwitcher.jsx";
 import { HotelShowcase } from "../../features/guest/HotelShowcase.jsx";
+import { HowItWorks } from "../../features/guest/HowItWorks.jsx";
 import { OfferArt } from "../../features/guest/OfferArt.jsx";
 import { Empty, ErrorState } from "../../components/common/index.jsx";
 import { HomeSkeleton } from "../../features/guest/GuestSkeletons.jsx";
@@ -77,6 +78,11 @@ const GuestHomePage = () => {
   }
 
   const cap = active?.hotelId?.tierCaps?.[active?.tier];
+  // Mirrors coin.service.js: the guest's tier rate, falling back to the
+  // hotel-wide one, so the explainer quotes the figure a stay would actually
+  // credit rather than a number chosen for the screen.
+  const earnRate =
+    active?.hotelId?.tierEarnRates?.[active?.tier] ?? active?.hotelId?.earnRatePercent;
 
   return (
     <div>
@@ -216,8 +222,12 @@ const GuestHomePage = () => {
           <u className={statLabel}>Redeemed</u>
           <b className={statValue}>{formatCoins(active?.lifetimeRedeemed)}</b>
         </span>
+        {/* "Typical", not "Max", since per-service caps landed: this is the
+            guest's tier rate, which is what an untagged line still prices at,
+            but a hotel may set a particular outlet higher or lower. Promising
+            a maximum the bill can exceed would be the wrong way round. */}
         <span className="bg-card border border-hairline rounded-token-sm px-2.5 py-[11px] text-center">
-          <u className={statLabel}>Max discount</u>
+          <u className={statLabel}>Typical discount</u>
           <b className={statValue}>{cap ? `${cap}%` : "—"}</b>
         </span>
       </div>
@@ -225,6 +235,15 @@ const GuestHomePage = () => {
       {/* The hotel's gallery. Falls back to stock photography until they
           upload their own, so this is never an empty frame. */}
       <HotelShowcase slides={contentData?.content} hotelName={active?.hotelId?.name} />
+
+      {/* The explainer, using this guest's own rate and cap — see HowItWorks
+          for why nothing here is defaulted to a marketing figure. */}
+      <HowItWorks
+        hotelName={active?.hotelId?.name}
+        tier={active?.tier}
+        rate={earnRate}
+        cap={cap}
+      />
 
       {/* Already filtered to this guest's tier by the API — anything they are
           not entitled to never reaches the payload. */}
