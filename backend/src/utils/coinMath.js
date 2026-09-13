@@ -106,13 +106,95 @@ export const computeBillSplit = ({ payablePaise, feePercent }) => {
 };
 
 /**
+ * The coin allowance for a set of priced lines, in paise.
+ *
+ * Each line's allowance is a share of its OWN pre-tax amount, set by the
+ * service it was charged to, and the summed base is then grossed up by the tax
+ * rate once. That mirrors computeBillTotals exactly, and for the reason its
+ * comment gives: tax belongs to the bill, not the line, and applying it per
+ * line rounds N times and lands a rupee or two off what a guest gets adding it
+ * up themselves.
+ *
+ * Grossing up rather than stopping at the pre-tax figure is what lets a 100%
+ * service actually settle a bill in full — otherwise the tax would always be
+ * unreachable. Clamped to totalPaise regardless, so no combination of rates can
+ * authorise more than the bill is worth.
+ *
+ * `capPercentFor(line)` returns that line's own percent, or null when it has no
+ * service tagged — in which case it falls back to tierCapPercent, which is both
+ * the pre-services behaviour and what a hotel with no service records still
+ * gets.
+ *
+ * FLOOR DISCIPLINE: once per line, then once on the gross-up. Never rounds up,
+ * so the allowance can only ever be under the true share — the rule at the top
+ * of this file.
+ */
+export const computeCoinAllowance = ({
+  lineItems = [],
+  taxPercent = 0,
+  totalPaise = 0,
+  tierCapPercent = 0,
+  capPercentFor = () => null,
+}) => {
+  const fallback = Math.min(100, Math.max(0, Number(tierCapPercent) || 0));
+
+  const perLineAllowancePaise = lineItems.map((line) => {
+    const amount = Math.max(0, Math.trunc(Number(line?.amountPaise) || 0));
+
+    // `?? fallback`, NEVER `|| fallback`: 0 is a hotel saying "no coins at the
+    // spa" and must survive. `||` would quietly promote it to the tier cap,
+    // which is the exact bug per-service caps exist to prevent.
+    const raw = capPercentFor(line);
+    const percent = Math.min(100, Math.max(0, Number(raw ?? fallback) || 0));
+
+    return Math.floor((amount * percent) / 100);
+  });
+
+  const baseAllowancePaise = perLineAllowancePaise.reduce((sum, n) => sum + n, 0);
+
+  const rate = Math.max(0, Number(taxPercent) || 0);
+  const grossed = baseAllowancePaise + Math.floor((baseAllowancePaise * rate) / 100);
+
+  return {
+    // Belt and braces against the clamp in computeBillCoins: an allowance above
+    // the total would drive payablePaise negative.
+    allowancePaise: Math.min(grossed, Math.max(0, Math.trunc(Number(totalPaise) || 0))),
+    // PRE-TAX, and frozen per line as such. Note the sum of these does NOT
+    // equal allowancePaise whenever tax > 0 or the clamp bites — they are the
+    // audit trail, allowancePaise is the authority.
+    perLineAllowancePaise,
+    baseAllowancePaise,
+  };
+};
+
+/**
  * How many coins the guest may put against a bill, and what is left to pay.
  *
  * The paise-denominated sibling of computeRedemption. Coins stay a rupee count
  * because that is what a coin is; only the money is paise.
+ *
+ * TWO SHAPES, ONE ANSWER. A bill raised since per-service caps carries
+ * `coinAllowancePaise` — an absolute figure resolved from each line's service
+ * and frozen at creation. A bill raised before carries only `tierCapPercent`.
+ * Both must keep working forever: bills are financial history, and no migration
+ * could invent per-line services for a bill nobody itemised that way.
+ *
+ * The `== null` check is explicit, never a falsy test. An allowance of 0 is the
+ * whole point of a 0% service, and `coinAllowancePaise || derive()` would hand
+ * a spa-only bill the guest's full tier cap.
  */
-export const computeBillCoins = ({ coinsRequested, balance, totalPaise, tierCapPercent }) => {
-  const capPaise = Math.floor((totalPaise * Math.max(0, Number(tierCapPercent) || 0)) / 100);
+export const computeBillCoins = ({
+  coinsRequested,
+  balance,
+  totalPaise,
+  tierCapPercent,
+  coinAllowancePaise = null,
+}) => {
+  const capPaise =
+    coinAllowancePaise == null
+      ? Math.floor((totalPaise * Math.max(0, Number(tierCapPercent) || 0)) / 100)
+      : Math.max(0, Math.min(Math.trunc(Number(coinAllowancePaise)), totalPaise));
+
   // A coin is worth ₹1, so the cap in coins is the cap in whole rupees.
   const capCoins = toRupees(capPaise);
 
@@ -126,6 +208,7 @@ export const computeBillCoins = ({ coinsRequested, balance, totalPaise, tierCapP
   return {
     coinsApplied,
     capCoins,
+    capPaise,
     coinsDiscountPaise,
     payablePaise: Math.max(0, totalPaise - coinsDiscountPaise),
   };
