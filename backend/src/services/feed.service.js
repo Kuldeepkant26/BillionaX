@@ -363,3 +363,437 @@ export const deletePost = async ({ postId, actor }) => {
 
   return { removed: true };
 };
+
+/* ---- likes and saves -------------------------------------------------- */
+
+/**
+ * Toggles the caller's like and returns the new state.
+ *
+ * The shape is video.service.js's idempotent toggle with one addition: the
+ * materialised counter. Read the delta carefully — it is the whole trick.
+ *
+ * A duplicate-key error means a concurrent request already inserted the row.
+ * That is the desired end state, so it is success rather than a 500; and delta
+ * stays 0, so the retry cannot increment a counter the first request already
+ * moved. The unique index is the deduplication primitive and the $inc rides on
+ * whether the insert actually happened.
+ *
+ * $inc rather than a computed set, so two devices tapping at once cannot
+ * clobber each other's write.
+ */
+export const toggleLike = async ({ postId, userId }) => {
+  if (!mongoose.isValidObjectId(postId)) throw new ApiError(404, "Post not found");
+
+  const exists = await FeedPost.exists({ _id: postId, isDeleted: false });
+  if (!exists) throw new ApiError(404, "Post not found");
+
+  const removed = await FeedPostLike.findOneAndDelete({ postId, userId });
+
+  let delta = 0;
+  if (removed) {
+    delta = -1;
+  } else {
+    try {
+      await FeedPostLike.create({ postId, userId });
+      delta = 1;
+    } catch (error) {
+      if (error?.code !== 11000) throw error;
+    }
+  }
+
+  const updated = delta
+    ? await FeedPost.findByIdAndUpdate(
+        postId,
+        { $inc: { likeCount: delta } },
+        { new: true, select: "likeCount" }
+      ).lean()
+    : await FeedPost.findById(postId).select("likeCount").lean();
+
+  // Clamped on read as a cheap guard against drift; scripts/recountFeed.js is
+  // what actually repairs it.
+  return { likeCount: Math.max(0, updated?.likeCount || 0), likedByMe: !removed };
+};
+
+/**
+ * Who liked a post, newest first — the panel's likes drill-down.
+ *
+ * Served by the {postId, createdAt} index on FeedPostLike.
+ */
+export const listPostLikes = async ({ postId, page = 1, limit = 25 }) => {
+  if (!mongoose.isValidObjectId(postId)) throw new ApiError(404, "Post not found");
+
+  const exists = await FeedPost.exists({ _id: postId, isDeleted: false });
+  if (!exists) throw new ApiError(404, "Post not found");
+
+  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 25));
+  const safePage = Math.max(1, Number(page) || 1);
+
+  const rows = await FeedPostLike.find({ postId })
+    .sort({ createdAt: -1 })
+    .limit(safeLimit + 1)
+    .skip((safePage - 1) * safeLimit)
+    .populate("userId", AUTHOR_FIELDS)
+    .lean();
+
+  const hasMore = rows.length > safeLimit;
+  const page_ = hasMore ? rows.slice(0, safeLimit) : rows;
+
+  return {
+    items: page_.map((r) => ({
+      id: r.userId?._id ? String(r.userId._id) : null,
+      name: r.userId?.name || "Guest",
+      avatarUrl: r.userId?.avatarUrl || null,
+      // A liker's CURRENT role: this is a list of people, not of authored rows,
+      // so there is no historical claim to freeze.
+      isVerified: isVerified(r.userId?.role),
+      likedAt: r.createdAt,
+    })),
+    page: safePage,
+    limit: safeLimit,
+    hasMore,
+  };
+};
+
+/**
+ * Toggles the caller's bookmark. No counter — saves are private, and nothing
+ * displays how many people saved a post.
+ */
+export const toggleSave = async ({ postId, userId }) => {
+  if (!mongoose.isValidObjectId(postId)) throw new ApiError(404, "Post not found");
+
+  const exists = await FeedPost.exists({ _id: postId, isDeleted: false });
+  if (!exists) throw new ApiError(404, "Post not found");
+
+  const removed = await FeedSave.findOneAndDelete({ postId, userId });
+  if (!removed) {
+    try {
+      await FeedSave.create({ postId, userId });
+    } catch (error) {
+      if (error?.code !== 11000) throw error;
+    }
+  }
+
+  return { savedByMe: !removed };
+};
+
+/**
+ * The caller's saved posts, most-recently-saved first.
+ *
+ * Sorted by when they SAVED it rather than when it was written — that is what a
+ * bookmark list means, and it is why FeedSave carries its own createdAt index.
+ *
+ * A post deleted after being saved is filtered out here rather than removing
+ * the save row on delete: the row is harmless, and sweeping every saver's
+ * bookmarks on one delete is unbounded work for something nobody sees.
+ */
+export const listSavedPosts = async ({ userId, page = 1, limit = 18 }) => {
+  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 18));
+  const safePage = Math.max(1, Number(page) || 1);
+
+  const saves = await FeedSave.find({ userId })
+    .sort({ createdAt: -1 })
+    .limit(safeLimit + 1)
+    .skip((safePage - 1) * safeLimit)
+    .populate({
+      path: "postId",
+      match: { isDeleted: false },
+      populate: { path: "authorId", select: AUTHOR_FIELDS },
+    })
+    .lean();
+
+  const hasMore = saves.length > safeLimit;
+  const page_ = hasMore ? saves.slice(0, safeLimit) : saves;
+
+  // populate+match leaves null where the post is gone.
+  const docs = page_.map((s) => s.postId).filter(Boolean);
+
+  return { items: await decorate(docs, userId), page: safePage, limit: safeLimit, hasMore };
+};
+
+/* ---- comments --------------------------------------------------------- */
+
+/**
+ * Shapes comment documents for the client.
+ *
+ * One query for the whole page, not one per row: like and reply counts are
+ * materialised on the comment, so only the caller's own like state — the one
+ * thing that cannot be stored on a row everybody shares — has to be fetched.
+ */
+const decorateComments = async (docs, userId) => {
+  if (!docs.length) return [];
+
+  const ids = docs.map((d) => d._id);
+  const myLikes = await FeedCommentLike.find({ commentId: { $in: ids }, userId })
+    .select("commentId")
+    .lean();
+  const likedByMe = new Set(myLikes.map((r) => String(r.commentId)));
+
+  return docs.map((c) => {
+    const id = String(c._id);
+    return {
+      id,
+      body: c.body,
+      createdAt: c.createdAt,
+      parentId: c.parentId ? String(c.parentId) : null,
+      likeCount: Math.max(0, c.likeCount || 0),
+      replyCount: Math.max(0, c.replyCount || 0),
+      likedByMe: likedByMe.has(id),
+      author: shapeAuthor(c.authorId, c.authorRole),
+    };
+  });
+};
+
+/**
+ * One page of TOP-LEVEL comments on a post, newest first.
+ *
+ * Replies are excluded and fetched per-comment on demand: a thread where one
+ * comment has forty replies should not make the first page of the others wait,
+ * and most replies are never expanded.
+ */
+export const listComments = async ({ postId, userId, page = 1, limit = 20 }) => {
+  if (!mongoose.isValidObjectId(postId)) throw new ApiError(404, "Post not found");
+
+  const exists = await FeedPost.exists({ _id: postId, isDeleted: false });
+  if (!exists) throw new ApiError(404, "Post not found");
+
+  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 20));
+  const safePage = Math.max(1, Number(page) || 1);
+
+  const docs = await FeedComment.find({ postId, parentId: null, isDeleted: false })
+    .sort({ createdAt: -1 })
+    .limit(safeLimit + 1)
+    .skip((safePage - 1) * safeLimit)
+    .populate("authorId", AUTHOR_FIELDS)
+    .lean();
+
+  const hasMore = docs.length > safeLimit;
+  const items = await decorateComments(hasMore ? docs.slice(0, safeLimit) : docs, userId);
+
+  return { items, page: safePage, limit: safeLimit, hasMore };
+};
+
+/**
+ * Every reply under one comment, OLDEST first.
+ *
+ * Ascending because a reply thread reads as a conversation, unlike the
+ * top-level list where the newest comment is the interesting one. Not
+ * paginated: one level of threading keeps these short, and a reader who
+ * expanded them asked to see them.
+ */
+export const listReplies = async ({ commentId, userId }) => {
+  if (!mongoose.isValidObjectId(commentId)) throw new ApiError(404, "Comment not found");
+
+  const parent = await FeedComment.exists({ _id: commentId });
+  if (!parent) throw new ApiError(404, "Comment not found");
+
+  const docs = await FeedComment.find({ parentId: commentId, isDeleted: false })
+    .sort({ createdAt: 1 })
+    .populate("authorId", AUTHOR_FIELDS)
+    .lean();
+
+  return { items: await decorateComments(docs, userId) };
+};
+
+/**
+ * Posts a comment, or a reply when parentId is given.
+ *
+ * A reply to a reply is rejected rather than silently flattened: the caller
+ * would otherwise get back a comment whose parent is not the one it named.
+ *
+ * postAuthorId is denormalised from the post here — that is what later lets a
+ * post's author moderate their own thread with a filter instead of a second
+ * query. See feedComment.model.js.
+ */
+export const addComment = async ({ postId, actor, body, parentId = null }) => {
+  if (!mongoose.isValidObjectId(postId)) throw new ApiError(404, "Post not found");
+
+  const post = await FeedPost.findOne({ _id: postId, isDeleted: false })
+    .select("_id authorId")
+    .lean();
+  if (!post) throw new ApiError(404, "Post not found");
+
+  let parent = null;
+  if (parentId) {
+    if (!mongoose.isValidObjectId(parentId)) throw new ApiError(404, "Comment not found");
+    parent = await FeedComment.findOne({ _id: parentId, postId, isDeleted: false })
+      .select("_id parentId")
+      .lean();
+    if (!parent) throw new ApiError(404, "Comment not found");
+    // One level only.
+    if (parent.parentId) throw new ApiError(400, "You cannot reply to a reply");
+  }
+
+  const text = String(body || "").trim();
+  if (!text) {
+    throw new ApiError(400, "Write something first", [
+      { field: "body", message: "Write something first" },
+    ]);
+  }
+
+  const created = await FeedComment.create({
+    postId,
+    authorId: actor._id,
+    authorRole: actor.role,
+    postAuthorId: post.authorId,
+    body: text,
+    parentId: parent ? parent._id : null,
+  });
+
+  // Both counters move here. The post's commentCount counts replies too: the
+  // number beside the icon means "how much conversation is on this post",
+  // which is what a reader takes it to mean.
+  await Promise.all([
+    FeedPost.updateOne({ _id: postId }, { $inc: { commentCount: 1 } }),
+    parent ? FeedComment.updateOne({ _id: parent._id }, { $inc: { replyCount: 1 } }) : null,
+  ]);
+
+  const populated = await FeedComment.findById(created._id)
+    .populate("authorId", AUTHOR_FIELDS)
+    .lean();
+
+  const [comment] = await decorateComments([populated], actor._id);
+  return { comment };
+};
+
+/** Toggles a like on a comment. Same idempotent-toggle shape as toggleLike. */
+export const toggleCommentLike = async ({ commentId, userId }) => {
+  if (!mongoose.isValidObjectId(commentId)) throw new ApiError(404, "Comment not found");
+
+  const exists = await FeedComment.exists({ _id: commentId, isDeleted: false });
+  if (!exists) throw new ApiError(404, "Comment not found");
+
+  const removed = await FeedCommentLike.findOneAndDelete({ commentId, userId });
+
+  let delta = 0;
+  if (removed) {
+    delta = -1;
+  } else {
+    try {
+      await FeedCommentLike.create({ commentId, userId });
+      delta = 1;
+    } catch (error) {
+      if (error?.code !== 11000) throw error;
+    }
+  }
+
+  const updated = delta
+    ? await FeedComment.findByIdAndUpdate(
+        commentId,
+        { $inc: { likeCount: delta } },
+        { new: true, select: "likeCount" }
+      ).lean()
+    : await FeedComment.findById(commentId).select("likeCount").lean();
+
+  return { likeCount: Math.max(0, updated?.likeCount || 0), likedByMe: !removed };
+};
+
+/**
+ * Removes a comment: its author, the author of the post it sits on, or the
+ * platform admin.
+ *
+ * "The author of the post" is what lets a hotel admin moderate their own thread
+ * without being able to touch anyone else's — the global equivalent of
+ * video.service.js's hotelId filter. postAuthorId is on the row, so this stays
+ * one atomic filtered update rather than a read, a comparison and a write.
+ *
+ * Removing a top-level comment tombstones its replies with it; leaving them
+ * would render a thread hanging off a comment that is gone. Returns how many
+ * rows went, so the caller can correct the post's count without a re-fetch.
+ */
+export const deleteComment = async ({ commentId, actor }) => {
+  if (!mongoose.isValidObjectId(commentId)) throw new ApiError(404, "Comment not found");
+
+  const filter =
+    actor.role === ROLES.MAIN_ADMIN
+      ? { _id: commentId, isDeleted: false }
+      : {
+          _id: commentId,
+          isDeleted: false,
+          $or: [{ authorId: actor._id }, { postAuthorId: actor._id }],
+        };
+
+  const updated = await FeedComment.findOneAndUpdate(
+    filter,
+    { $set: { isDeleted: true } },
+    { new: true }
+  ).lean();
+
+  if (!updated) throw new ApiError(404, "Comment not found");
+
+  // Only a top-level comment can own replies, so this is a no-op for a reply.
+  let removedReplies = 0;
+  if (!updated.parentId) {
+    const swept = await FeedComment.updateMany(
+      { parentId: updated._id, isDeleted: false },
+      { $set: { isDeleted: true } }
+    );
+    removedReplies = swept.modifiedCount || 0;
+    // The tombstone's own replyCount is zeroed alongside them. Nothing reads a
+    // deleted comment, so this is invisible in the app — but leaving it saying
+    // "3 replies" when all three are gone is a lie in the data, and it is drift
+    // that recountFeed.js would report forever.
+    if (removedReplies) {
+      await FeedComment.updateOne({ _id: updated._id }, { $set: { replyCount: 0 } });
+    }
+  } else {
+    await FeedComment.updateOne({ _id: updated.parentId }, { $inc: { replyCount: -1 } });
+  }
+
+  const removed = 1 + removedReplies;
+  await FeedPost.updateOne({ _id: updated.postId }, { $inc: { commentCount: -removed } });
+
+  return { removed };
+};
+
+/**
+ * Comments on posts the caller wrote, newest first — the "someone is talking to
+ * you" surface, pulled rather than pushed.
+ *
+ * One indexed query on {postAuthorId, isDeleted, createdAt}. Deliberately NOT
+ * routed through notify(): that path requires a guestId and toasts on arrival,
+ * and a hotel admin has neither a guest record nor a toast surface. A pull
+ * inbox is also the right shape for a panel tab, which is where this is read.
+ *
+ * A grouped activity feed ("Ravi and 12 others liked your post") is the
+ * intended successor, and it should be its own FeedActivity collection with
+ * server-side grouping — NOT rows in Notification, which would flood the coin
+ * ledger's Alerts screen with the highest-frequency event in the system.
+ */
+export const listCommentInbox = async ({ userId, page = 1, limit = 25 }) => {
+  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 25));
+  const safePage = Math.max(1, Number(page) || 1);
+
+  const filter = { postAuthorId: userId, isDeleted: false, authorId: { $ne: userId } };
+
+  const [docs, total] = await Promise.all([
+    FeedComment.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(safeLimit)
+      .skip((safePage - 1) * safeLimit)
+      .populate("authorId", AUTHOR_FIELDS)
+      .populate({ path: "postId", select: "images caption isDeleted" })
+      .lean(),
+    FeedComment.countDocuments(filter),
+  ]);
+
+  // The panel is a table, so this returns `total` rather than `hasMore` —
+  // matching the convention every other panel list follows.
+  const shaped = await decorateComments(docs, userId);
+
+  return {
+    items: shaped.map((c, i) => ({
+      ...c,
+      post: docs[i].postId
+        ? {
+            id: String(docs[i].postId._id),
+            image: docs[i].postId.images?.[0] || null,
+            caption: docs[i].postId.caption || "",
+            isDeleted: Boolean(docs[i].postId.isDeleted),
+          }
+        : null,
+    })),
+    total,
+    page: safePage,
+    limit: safeLimit,
+  };
+};

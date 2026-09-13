@@ -4,6 +4,7 @@ import { protect } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import { feedUploadLimiter } from "../middlewares/rateLimiter.middleware.js";
 import {
+  commentRules,
   feedCaptionRules,
   feedPostRules,
   objectIdParam,
@@ -40,6 +41,10 @@ router.use(protect);
 
 router.get("/", paginationRules, validate, feedController.listFeed);
 
+// Before /posts/:postId, or "saved" is matched as an id and objectIdParam
+// rejects a perfectly valid route with a confusing 422.
+router.get("/saved", paginationRules, validate, feedController.listSavedPosts);
+
 router.get("/posts/:postId", objectIdParam("postId"), validate, feedController.getPost);
 
 router.get(
@@ -68,5 +73,63 @@ router.delete("/posts/:postId", objectIdParam("postId"), validate, feedControlle
 // Rate-limited: it is called once per image, so it is the one authenticated
 // endpoint a single account can loop on to burn the Cloudinary quota.
 router.post("/upload-signature", feedUploadLimiter, feedController.createFeedImageUpload);
+
+/* ---- likes and saves -------------------------------------------------- */
+
+router.post("/posts/:postId/like", objectIdParam("postId"), validate, feedController.toggleLike);
+
+router.get(
+  "/posts/:postId/likes",
+  objectIdParam("postId"),
+  paginationRules,
+  validate,
+  feedController.listPostLikes
+);
+
+router.post("/posts/:postId/save", objectIdParam("postId"), validate, feedController.toggleSave);
+
+/* ---- comments --------------------------------------------------------- */
+
+router.get(
+  "/posts/:postId/comments",
+  objectIdParam("postId"),
+  paginationRules,
+  validate,
+  feedController.listComments
+);
+
+router.post(
+  "/posts/:postId/comments",
+  objectIdParam("postId"),
+  commentRules,
+  validate,
+  feedController.addComment
+);
+
+// MUST precede /comments/:commentId/replies. Express matches in declaration
+// order, so with these the other way round "inbox" is read as a commentId and
+// objectIdParam 422s on a valid route.
+router.get("/comments/inbox", paginationRules, validate, feedController.listCommentInbox);
+
+router.get(
+  "/comments/:commentId/replies",
+  objectIdParam("commentId"),
+  validate,
+  feedController.listReplies
+);
+
+router.post(
+  "/comments/:commentId/like",
+  objectIdParam("commentId"),
+  validate,
+  feedController.toggleCommentLike
+);
+
+router.delete(
+  "/comments/:commentId",
+  objectIdParam("commentId"),
+  validate,
+  feedController.deleteComment
+);
 
 export default router;

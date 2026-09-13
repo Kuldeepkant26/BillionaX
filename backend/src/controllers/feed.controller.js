@@ -93,3 +93,94 @@ export const createFeedImageUpload = asyncHandler(async (req, res) => {
   });
   res.status(200).json(new ApiResponse(200, data));
 });
+
+/* ---- likes and saves -------------------------------------------------- */
+
+export const toggleLike = asyncHandler(async (req, res) => {
+  const data = await feedService.toggleLike({
+    postId: req.params.postId,
+    userId: req.user._id,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const listPostLikes = asyncHandler(async (req, res) => {
+  const data = await feedService.listPostLikes({
+    postId: req.params.postId,
+    page: req.query.page,
+    limit: req.query.limit,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const toggleSave = asyncHandler(async (req, res) => {
+  const data = await feedService.toggleSave({
+    postId: req.params.postId,
+    userId: req.user._id,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const listSavedPosts = asyncHandler(async (req, res) => {
+  const data = await feedService.listSavedPosts({
+    userId: req.user._id,
+    page: req.query.page,
+    limit: req.query.limit,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+/* ---- comments --------------------------------------------------------- */
+
+export const listComments = asyncHandler(async (req, res) => {
+  const data = await feedService.listComments({
+    postId: req.params.postId,
+    userId: req.user._id,
+    page: req.query.page,
+    limit: req.query.limit,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const addComment = asyncHandler(async (req, res) => {
+  const data = await feedService.addComment({
+    postId: req.params.postId,
+    actor: req.user,
+    body: req.body.body,
+    parentId: req.body.parentId || null,
+  });
+  res.status(201).json(new ApiResponse(201, data, "Comment posted"));
+});
+
+export const listReplies = asyncHandler(async (req, res) => {
+  const data = await feedService.listReplies({
+    commentId: req.params.commentId,
+    userId: req.user._id,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const toggleCommentLike = asyncHandler(async (req, res) => {
+  const data = await feedService.toggleCommentLike({
+    commentId: req.params.commentId,
+    userId: req.user._id,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const deleteComment = asyncHandler(async (req, res) => {
+  const data = await feedService.deleteComment({
+    commentId: req.params.commentId,
+    actor: req.user,
+  });
+  res.status(200).json(new ApiResponse(200, data, "Deleted"));
+});
+
+export const listCommentInbox = asyncHandler(async (req, res) => {
+  const data = await feedService.listCommentInbox({
+    userId: req.user._id,
+    page: req.query.page,
+    limit: req.query.limit,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
