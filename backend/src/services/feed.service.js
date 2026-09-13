@@ -13,6 +13,7 @@ import {
   publicIdFromUrl,
   resourceTypeFromUrl,
 } from "./upload.service.js";
+import { emitToFeed } from "../realtime/emitter.js";
 
 /**
  * The global feed.
@@ -298,6 +299,25 @@ export const createPost = async ({ actor, images, caption = "" }) => {
 
   const doc = await FeedPost.findById(created._id).populate("authorId", AUTHOR_FIELDS).lean();
   const [post] = await decorate([doc], actor._id);
+
+  /**
+   * An ID, not the post.
+   *
+   * This reaches every connected socket, and a populated post with ten URLs and
+   * a 2200-character caption is ~2KB of that times every reader. The envelope is
+   * ~80 bytes and carries the same information, because the client's job on
+   * receiving it is NOT to render the post — it is to raise a "new posts" pill
+   * whose tap refetches from the top.
+   *
+   * The socket carries notice; HTTP carries truth. That also means a post
+   * deleted a second later can never leave a phantom row on someone's screen.
+   */
+  emitToFeed("feed:post", {
+    id: String(created._id),
+    createdAt: created.createdAt,
+    // So a reader is not told about their own post arriving.
+    authorId: String(actor._id),
+  });
 
   return { post };
 };

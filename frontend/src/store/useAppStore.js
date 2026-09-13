@@ -6,6 +6,7 @@ import { createUiSlice } from "./slices/uiSlice.js";
 import { createThemeSlice } from "./slices/themeSlice.js";
 import { createNotificationSlice } from "./slices/notificationSlice.js";
 import { createBillSlice } from "./slices/billSlice.js";
+import { createFeedSlice } from "./slices/feedSlice.js";
 
 export const useAppStore = create()(
   devtools(
@@ -17,6 +18,8 @@ export const useAppStore = create()(
         ...createThemeSlice(...args),
         ...createNotificationSlice(...args),
         ...createBillSlice(...args),
+        // Contributes nothing to partialize, on purpose — see feedSlice.js.
+        ...createFeedSlice(...args),
       }),
       {
         name: "gw-storage",

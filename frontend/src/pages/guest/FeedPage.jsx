@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { listFeed } from "../../api/feed.api.js";
 import { useFeedList } from "../../hooks/useFeedList.js";
 import { useFeedActions } from "../../hooks/useFeedActions.js";
+import { useFeedRealtime } from "../../hooks/useFeedRealtime.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import { FeedPostCard } from "../../features/guest/FeedPostCard.jsx";
 import { FeedSkeleton } from "../../features/guest/GuestSkeletons.jsx";
@@ -32,6 +33,25 @@ const FeedPage = () => {
     useFeedList(fetcher, { cacheKey: "feed.global" });
 
   const { like, save, remove } = useFeedActions({ patch: patchPost, remove: removePost });
+
+  const newPostCount = useAppStore((s) => s.newPostCount);
+  const bumpNewPosts = useAppStore((s) => s.bumpNewPosts);
+  const clearNewPosts = useAppStore((s) => s.clearNewPosts);
+
+  useFeedRealtime({
+    onNewPost: bumpNewPosts,
+    // On reconnect and on tab focus, silently re-read the top of the feed. A
+    // push missed while the tab was backgrounded therefore heals itself, which
+    // is why none of this needs a delivery queue.
+    onResync: () => refresh({ quiet: true }),
+  });
+
+  /** The pill's tap: jump to the top and pull the newest page. */
+  const showNewPosts = useCallback(() => {
+    clearNewPosts();
+    globalThis.scrollTo({ top: 0, behavior: "smooth" });
+    refresh();
+  }, [clearNewPosts, refresh]);
 
   const sentinel = useRef(null);
   useEffect(() => {
@@ -94,6 +114,22 @@ const FeedPage = () => {
         </div>
       </header>
 
+      {newPostCount > 0 && (
+        <div className="sticky top-2 z-30 flex justify-center pointer-events-none mb-2">
+          <button
+            type="button"
+            onClick={showNewPosts}
+            className="pointer-events-auto flex items-center gap-1.5 px-3.5 h-9 rounded-full bg-accent text-accent-fg border-0 text-xs font-semibold shadow-md cursor-pointer"
+          >
+            <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor"
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M10 16V4M5 9l5-5 5 5" />
+            </svg>
+            {newPostCount} new post{newPostCount === 1 ? "" : "s"}
+          </button>
+        </div>
+      )}
+
       {!items.length ? (
         <Empty title="Nothing here yet" hint="Be the first to share a photo." />
       ) : (
@@ -147,6 +183,9 @@ const FeedPage = () => {
           onClose={() => setComposing(false)}
           onPosted={() => {
             setComposing(false);
+            // The refresh below brings their own post to the top, so any pill
+            // raised while the composer was open has already been answered.
+            clearNewPosts();
             refresh();
           }}
         />

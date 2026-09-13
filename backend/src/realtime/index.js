@@ -4,7 +4,7 @@ import { logger } from "../utils/logger.js";
 import { verifyAccessToken } from "../utils/token.util.js";
 import { User } from "../models/user.model.js";
 import { ROLES } from "../config/constants.js";
-import { attachIo, detachIo, guestRoom, hotelRoom } from "./emitter.js";
+import { attachIo, detachIo, guestRoom, hotelRoom, FEED_ROOM } from "./emitter.js";
 
 let io = null;
 
@@ -59,8 +59,15 @@ export const createRealtime = (httpServer) => {
     if ((role === ROLES.HOTEL_ADMIN || role === ROLES.HOTEL_STAFF) && hotelId) {
       socket.join(hotelRoom(hotelId));
     }
-    // MAIN_ADMIN joins no hotel room: they have no hotelId, and a room named
+    // MAIN_ADMIN joins no HOTEL room: they have no hotelId, and a room named
     // from client input is exactly the leak requireSameHotel prevents.
+
+    // Everyone joins the feed room, MAIN_ADMIN included — it is the only room
+    // they are ever in. That is consistent with the rule above rather than an
+    // exception to it: the danger there is a room named from CLIENT INPUT, and
+    // this name is a constant. The feed is global, so there is nothing to scope
+    // it by and nothing to forge.
+    socket.join(FEED_ROOM);
 
     // A socket outlives its 15-minute access token, and socket.io only checks
     // credentials at handshake. Bound the connection to the token's lifetime so
