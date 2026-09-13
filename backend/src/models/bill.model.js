@@ -76,6 +76,14 @@ const billSchema = new mongoose.Schema(
     // name attached to it.
     staffId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
 
+    /**
+     * HISTORICAL. Staff used to label a whole bill with one outlet; they now
+     * tag each line with a service instead, and nothing writes this any more.
+     *
+     * Kept on the schema — not dropped — because 17 bills and the filters and
+     * reports over them still read it. A new bill simply has no value here, and
+     * every consumer already guards for that.
+     */
     outlet: { type: String, trim: true, enum: OUTLETS },
 
     lineItems: {

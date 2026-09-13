@@ -34,17 +34,6 @@ import styles from "./BillPage.module.css";
  * click, not a restart.
  */
 
-/**
- * The BILL-LEVEL outlet, which is a separate and older thing from the per-line
- * service picked above it.
- *
- * Still the fixed seven because Bill.outlet is still enum-locked to them: it
- * tags the bill for history and reporting, and has nothing to do with what
- * coins may cover. The per-line Service dropdown is the one that reads this
- * hotel's own list.
- */
-const OUTLETS = ["Restaurant", "Room Service", "Spa", "Bar", "Cafe", "Laundry", "Other"];
-
 const TIER_TONE = { SILVER: undefined, GOLD: "warn", PLATINUM: "ok" };
 
 const STATUS_TONE = {
@@ -124,7 +113,6 @@ const BillPage = () => {
   const [guest, setGuest] = useState(null);
   const [lines, setLines] = useState([blankLine()]);
   const [taxPercent, setTaxPercent] = useState("");
-  const [outlet, setOutlet] = useState("");
   const [sending, setSending] = useState(false);
   // The bill currently being voided, so only its own row shows a busy state
   // rather than every button in the list going dead at once.
@@ -247,7 +235,6 @@ const BillPage = () => {
   const reset = () => {
     setLines([blankLine()]);
     setTaxPercent("");
-    setOutlet("");
   };
 
   const usableLines = lines.filter(
@@ -261,7 +248,6 @@ const BillPage = () => {
     try {
       await createBill({
         guestId: guest.guestId,
-        outlet: outlet || undefined,
         taxPercent: Number(taxPercent) || 0,
         lineItems: usableLines.map((line) => ({
           description: line.description.trim(),
@@ -536,6 +522,10 @@ const BillPage = () => {
                 + Add another item
               </button>
 
+              {/* Tax alone. The bill-level Outlet picker that used to sit here
+                  is gone: every line already names its service, so asking for
+                  a second, coarser label was asking staff to say the same
+                  thing twice — and the two could disagree. */}
               <div className={styles.meta}>
                 <Field label="Tax %">
                   <Input
@@ -546,16 +536,6 @@ const BillPage = () => {
                     value={taxPercent}
                     onChange={(e) => setTaxPercent(e.target.value)}
                   />
-                </Field>
-                <Field label="Outlet">
-                  <Select value={outlet} onChange={(e) => setOutlet(e.target.value)}>
-                    <option value="">Not set</option>
-                    {OUTLETS.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </Select>
                 </Field>
               </div>
 

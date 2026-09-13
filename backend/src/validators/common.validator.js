@@ -153,9 +153,10 @@ export const createBillRules = [
    */
   body("lineItems.*.service").optional({ values: "falsy" }).isString().trim().isLength({ max: 60 }),
   body("taxPercent").optional({ values: "falsy" }).isFloat({ min: 0, max: 100 }).toFloat(),
-  // The BILL-level outlet, unchanged — a separate, older concept from the
-  // per-line service above, and still drawn from the fixed list.
-  body("outlet").optional({ values: "falsy" }).isIn(OUTLETS).withMessage("Choose a valid outlet"),
+  // No bill-level `outlet` rule any more. Every line names its own service, so
+  // asking for a second, coarser label meant staff saying the same thing twice
+  // — with two answers that could disagree. The QUERY filters above still
+  // accept one, because they read bills raised before that changed.
 ];
 
 /** Guest search on the bill screen. Two characters minimum, capped at 64. */

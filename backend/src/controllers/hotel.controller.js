@@ -478,7 +478,6 @@ export const createBill = asyncHandler(async (req, res) => {
     staffId: req.user._id,
     lineItems: req.body.lineItems,
     taxPercent: req.body.taxPercent,
-    outlet: req.body.outlet,
   });
   res.status(201).json(new ApiResponse(201, { bill }, "Bill sent"));
 });

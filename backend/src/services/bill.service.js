@@ -40,6 +40,25 @@ import { canAcceptPayments } from "./onboarding.service.js";
 
 const tierCapFor = (hotel, tier) => hotel?.tierCaps?.[tier] ?? 0;
 
+/**
+ * The one service a bill was for, or undefined when it was for several.
+ *
+ * Staff used to label the whole bill with an outlet on top of tagging each
+ * line; that second, coarser answer was the same fact said twice and could
+ * disagree with the lines. The ledger still wants a name where one is
+ * unambiguous — it is what the guest's notification reads — so it is derived
+ * here instead of asked for.
+ *
+ * Deliberately NOT the largest line's service: putting "Spa" on a bill that was
+ * mostly spa but partly dinner would be a claim the receipt does not support.
+ * Unanimous or nothing.
+ */
+const outletFromLines = (lineItems = []) => {
+  const named = lineItems.map((l) => l?.service).filter(Boolean);
+  if (!named.length || named.length !== lineItems.length) return undefined;
+  return named.every((s) => s === named[0]) ? named[0] : undefined;
+};
+
 /* ----------------------------------------------------------------- search -- */
 
 /**
@@ -204,7 +223,7 @@ export const priceBill = ({
  * three. The guest is pushed the bill and the hotel's own panel is told too,
  * so a second staff member sees it appear.
  */
-export const createBill = async ({ hotelId, guestId, staffId, lineItems, taxPercent, outlet }) => {
+export const createBill = async ({ hotelId, guestId, staffId, lineItems, taxPercent }) => {
   if (!mongoose.isValidObjectId(guestId)) throw new ApiError(404, "Guest not found");
 
   const settings = await getSettings();
@@ -257,7 +276,6 @@ export const createBill = async ({ hotelId, guestId, staffId, lineItems, taxPerc
     guestId,
     membershipId: membership._id,
     staffId,
-    outlet,
     lineItems: priced.lineItems,
     subtotalPaise: priced.subtotalPaise,
     taxPercent: Math.max(0, Number(taxPercent) || 0),
@@ -793,7 +811,17 @@ export const markBillPaid = async ({ billId, guestId, providerPaymentId, signatu
               balanceAfter: debited.balance,
               billAmount: billAmountRupees,
               cashPayable: cashPayableRupees,
-              outlet: bill.outlet,
+              /**
+               * Where the money went, for the ledger and the guest's "coins off
+               * at the Spa" notification.
+               *
+               * Taken from the LINES now that staff no longer label the bill
+               * itself. Only set when every line agrees: a mixed bill has no one
+               * true answer, and picking the biggest line would put a name on
+               * the row that the receipt does not support. Undefined is what the
+               * notification already handles — it simply drops the "at X".
+               */
+              outlet: outletFromLines(bill.lineItems),
               platformFee: computePlatformFee({
                 cashPayable: cashPayableRupees,
                 feePercent: bill.platformFeePercent,
