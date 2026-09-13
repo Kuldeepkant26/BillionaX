@@ -114,7 +114,13 @@ export const deleteHotelService = async ({ id, hotelId }) => {
 };
 
 /**
- * name -> coinCapPercent for one hotel, for resolving a bill's allowance.
+ * name -> { SILVER, GOLD, PLATINUM } for one hotel, for resolving a bill's
+ * allowance.
+ *
+ * Returns the whole caps object rather than one tier's rate, because the caller
+ * knows the guest and this does not: createBill resolves the map once and
+ * applies the bill's own tier to it, which keeps the tier a property of the
+ * BILL rather than of this lookup.
  *
  * Lowercased on both sides to match the unique index's collation: staff pick
  * from a dropdown so the case will agree, but a bill posted by an integration
@@ -130,6 +136,6 @@ export const deleteHotelService = async ({ id, hotelId }) => {
  * exactly the behaviour before services existed.
  */
 export const resolveServiceCaps = async (hotelId) => {
-  const rows = await HotelService.find({ hotelId }).select("name coinCapPercent").lean();
-  return new Map(rows.map((row) => [row.name.trim().toLowerCase(), row.coinCapPercent]));
+  const rows = await HotelService.find({ hotelId }).select("name coinCaps").lean();
+  return new Map(rows.map((row) => [row.name.trim().toLowerCase(), row.coinCaps || {}]));
 };

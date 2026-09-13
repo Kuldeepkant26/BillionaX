@@ -22,6 +22,67 @@ const rs = (rupees) => rupees * 100;
 const capsFor = (map) => (line) =>
   line?.service ? map.get(String(line.service).toLowerCase()) ?? null : null;
 
+/**
+ * Per-tier caps, resolved the way priceBill does it: the map holds all three
+ * rates and the caller applies the bill's own tier.
+ */
+describe("per-tier service caps", () => {
+  const perTier = new Map([
+    ["restaurant", { SILVER: 20, GOLD: 35, PLATINUM: 50 }],
+    ["spa", { SILVER: 0, GOLD: 0, PLATINUM: 0 }],
+  ]);
+
+  const capsForTier = (tier) => (line) => {
+    if (!line?.service || !tier) return null;
+    return perTier.get(String(line.service).toLowerCase())?.[tier] ?? null;
+  };
+
+  const lines = [
+    { amountPaise: rs(2000), service: "Restaurant" },
+    { amountPaise: rs(3000), service: "Spa" },
+  ];
+
+  it("prices the same bill differently for each tier", () => {
+    const at = (tier) =>
+      computeCoinAllowance({
+        lineItems: lines,
+        totalPaise: rs(5000),
+        tierCapPercent: 10,
+        capPercentFor: capsForTier(tier),
+      }).allowancePaise;
+
+    assert.equal(at("SILVER"), rs(400));
+    assert.equal(at("GOLD"), rs(700));
+    assert.equal(at("PLATINUM"), rs(1000));
+  });
+
+  it("keeps a 0% service at zero for every tier", () => {
+    // The rate a hotel set to zero must not be rescued by a higher tier's
+    // generosity, nor by the tier cap behind it.
+    for (const tier of ["SILVER", "GOLD", "PLATINUM"]) {
+      const { allowancePaise } = computeCoinAllowance({
+        lineItems: [{ amountPaise: rs(3000), service: "Spa" }],
+        totalPaise: rs(3000),
+        tierCapPercent: 30,
+        capPercentFor: capsForTier(tier),
+      });
+      assert.equal(allowancePaise, 0, `${tier} must get nothing at a 0% service`);
+    }
+  });
+
+  it("falls back to the tier cap when the tier is unknown", () => {
+    // A bill whose tier could not be resolved must not silently take one
+    // service's rate — it takes the guest's own cap, as before services.
+    const { allowancePaise } = computeCoinAllowance({
+      lineItems: [{ amountPaise: rs(1000), service: "Restaurant" }],
+      totalPaise: rs(1000),
+      tierCapPercent: 10,
+      capPercentFor: capsForTier(null),
+    });
+    assert.equal(allowancePaise, rs(100));
+  });
+});
+
 describe("computeCoinAllowance", () => {
   const caps = new Map([
     ["restaurant", 20],

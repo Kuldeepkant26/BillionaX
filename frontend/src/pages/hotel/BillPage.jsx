@@ -151,13 +151,17 @@ const BillPage = () => {
   // was just hidden must still preview at the rate the hotel set, which is what
   // the server will resolve.
   const capByService = useMemo(
-    () => new Map((servicesData?.items || []).map((s) => [s.name.toLowerCase(), s.coinCapPercent])),
+    () => new Map((servicesData?.items || []).map((s) => [s.name.toLowerCase(), s.coinCaps || {}])),
     [servicesData]
   );
 
   // The fallback for a line with no service on it. Comes from the search
   // result so it is the same number createBill resolves.
   const tierCap = guest?.tierCapPercent ?? 0;
+
+  // Which of a service's three rates this guest gets. Hoisted to a plain value
+  // so the memo below can depend on it directly.
+  const tier = guest?.tier || null;
 
   /*
    * Subscribes to this hotel's bill events.
@@ -217,7 +221,9 @@ const BillPage = () => {
     const base = lines.reduce((sum, line) => {
       const qty = Math.max(0, Math.trunc(Number(line.qty) || 0));
       const amount = qty * rupeesToPaise(line.price);
-      const raw = line.service ? capByService.get(line.service.toLowerCase()) : null;
+      // This guest's own tier rate at that service, mirroring priceBill.
+      const caps = line.service ? capByService.get(line.service.toLowerCase()) : null;
+      const raw = tier ? caps?.[tier] : null;
       const pct = Math.min(100, Math.max(0, Number(raw ?? tierCap) || 0));
       return sum + Math.floor((amount * pct) / 100);
     }, 0);
@@ -225,7 +231,7 @@ const BillPage = () => {
     const allowancePaise = Math.min(base + Math.floor((base * percent) / 100), totalPaise);
 
     return { subtotalPaise, taxPaise, totalPaise, allowancePaise };
-  }, [lines, taxPercent, capByService, tierCap]);
+  }, [lines, taxPercent, capByService, tierCap, tier]);
 
   const setLine = (index, patch) =>
     setLines((current) => current.map((line, i) => (i === index ? { ...line, ...patch } : line)));
@@ -487,12 +493,18 @@ const BillPage = () => {
                       aria-label={`Service for item ${index + 1}`}
                     >
                       <option value="">Not set</option>
-                      {services.map((s) => (
-                        <option key={s._id} value={s.name}>
-                          {s.name}
-                          {s.coinCapPercent > 0 ? ` · ${s.coinCapPercent}%` : " · no coins"}
-                        </option>
-                      ))}
+                      {services.map((s) => {
+                        // The rate THIS guest gets, not a range: staff are
+                        // billing one person, and three numbers in a dropdown
+                        // would be noise at the counter.
+                        const pct = tier ? s.coinCaps?.[tier] : null;
+                        return (
+                          <option key={s._id} value={s.name}>
+                            {s.name}
+                            {pct == null ? "" : pct > 0 ? ` · ${pct}%` : " · no coins"}
+                          </option>
+                        );
+                      })}
                     </Select>
                     <Input
                       type="number"

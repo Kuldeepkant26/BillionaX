@@ -316,14 +316,14 @@ export const privilegeRules = [
 ];
 
 /**
- * A hotel's billable service and the coin cap on it.
+ * A hotel's billable service and its per-tier coin caps.
  *
  * Every rule optional so one chain serves POST and PATCH alike — on create the
  * model's `required: true` on name is what enforces it.
  *
- * NOTE coinCapPercent is `.optional()` and NOT `.optional({ values: "falsy" })`.
- * The falsy form would discard a posted 0, and 0 is the value that means "coins
- * are not accepted here" — the whole point of the field.
+ * NOTE each cap is `.optional()` and NOT `.optional({ values: "falsy" })`. The
+ * falsy form would discard a posted 0, and 0 is the value that means "coins are
+ * not accepted here" — the whole point of the field.
  */
 export const serviceRules = [
   body("name")
@@ -332,11 +332,13 @@ export const serviceRules = [
     .trim()
     .isLength({ min: 1, max: 60 })
     .withMessage("Name the service"),
-  body("coinCapPercent")
-    .optional()
-    .isFloat({ min: 0, max: 100 })
-    .withMessage("Between 0 and 100")
-    .toFloat(),
+  ...TIER_VALUES.map((tier) =>
+    body(`coinCaps.${tier}`)
+      .optional()
+      .isFloat({ min: 0, max: 100 })
+      .withMessage("Between 0 and 100")
+      .toFloat()
+  ),
   body("isActive").optional().isBoolean().toBoolean(),
   body("sortOrder").optional().isInt({ min: 0 }).toInt(),
 ];

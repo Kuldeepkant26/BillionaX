@@ -16,10 +16,17 @@ import {
 } from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
 
-const BLANK = { name: "", coinCapPercent: 10, isActive: true };
+const TIERS = ["SILVER", "GOLD", "PLATINUM"];
+const TIER_LABEL = { SILVER: "Silver", GOLD: "Gold", PLATINUM: "Platinum" };
+
+const BLANK = { name: "", SILVER: 10, GOLD: 10, PLATINUM: 10, isActive: true };
+
+/** True when all three tiers are the same, i.e. the simple form is enough. */
+const isUniform = (caps) =>
+  Number(caps.SILVER) === Number(caps.GOLD) && Number(caps.GOLD) === Number(caps.PLATINUM);
 
 /**
- * The outlets this hotel bills to, and how far coins go at each.
+ * The outlets this hotel bills to, and how far coins go at each per tier.
  *
  * Its own page rather than a section of Settings, and the reason is that
  * page's shape: its dirty check is a shallow compare over flat scalar keys
@@ -27,10 +34,16 @@ const BLANK = { name: "", coinCapPercent: 10, isActive: true };
  * cannot express. This is the PrivilegesPage shape instead — a list, a modal,
  * and a refetch after each mutation.
  *
- * The cap REPLACES the tier cap on any line billed to the service, so 0 here
+ * The caps REPLACE the tier cap on any line billed to the service, so 0 here
  * genuinely means "coins are not accepted at this outlet" rather than "unset".
  * The table says so in as many words, because it is the consequential setting
  * on the screen and nothing else on it looks dangerous.
+ *
+ * The form asks for ONE number until a manager asks for three. Most outlets run
+ * a single rate, and making every service three decisions would tax the common
+ * case to serve the rarer one — so the per-tier sliders are a toggle away
+ * rather than always on. The three tiers are held as flat form keys, matching
+ * how HotelSettingsPage flattens its own nested config.
  */
 const ServicesPage = () => {
   const [open, setOpen] = useState(false);
@@ -40,6 +53,8 @@ const ServicesPage = () => {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(null);
+  // Whether the modal is showing three sliders or one.
+  const [perTier, setPerTier] = useState(false);
 
   const toastSuccess = useAppStore((s) => s.toastSuccess);
   const toastError = useAppStore((s) => s.toastError);
@@ -53,23 +68,40 @@ const ServicesPage = () => {
       [key]: e.target.type === "checkbox" ? e.target.checked : e.target.value,
     }));
 
+  /**
+   * In simple mode one slider drives all three tiers, so switching to per-tier
+   * starts from what the manager already set rather than resetting it.
+   */
+  const setCap = (tier) => (e) => {
+    const value = e.target.value;
+    setForm((f) => (perTier ? { ...f, [tier]: value } : { ...f, SILVER: value, GOLD: value, PLATINUM: value }));
+  };
+
   const startNew = () => {
     setEditing(null);
     setForm(BLANK);
+    setPerTier(false);
     setErrors({});
     setMessage("");
     setOpen(true);
   };
 
   const startEdit = (item) => {
+    const caps = item.coinCaps || {};
     setEditing(item);
     setForm({
       name: item.name || "",
-      // `??`, not `||`: a service set to 0 must open its form showing 0, not
+      // `??`, not `||`: a tier set to 0 must open its form showing 0, not
       // silently reset to the default the moment a manager clicks edit.
-      coinCapPercent: item.coinCapPercent ?? 0,
+      SILVER: caps.SILVER ?? 0,
+      GOLD: caps.GOLD ?? 0,
+      PLATINUM: caps.PLATINUM ?? 0,
       isActive: item.isActive,
     });
+    // A service whose tiers already differ opens showing them — collapsing it
+    // to one slider would misrepresent what is saved, and the first edit would
+    // flatten the other two tiers without the manager noticing.
+    setPerTier(!isUniform(caps));
     setErrors({});
     setMessage("");
     setOpen(true);
@@ -82,7 +114,11 @@ const ServicesPage = () => {
 
     const payload = {
       name: form.name.trim(),
-      coinCapPercent: Number(form.coinCapPercent) || 0,
+      coinCaps: {
+        SILVER: Number(form.SILVER) || 0,
+        GOLD: Number(form.GOLD) || 0,
+        PLATINUM: Number(form.PLATINUM) || 0,
+      },
       isActive: form.isActive,
     };
 
@@ -181,13 +217,27 @@ const ServicesPage = () => {
                 <b>{item.name}</b>
               </td>
               <td className="tnum text-right">
-                {item.coinCapPercent > 0 ? (
-                  `${item.coinCapPercent}%`
-                ) : (
-                  // The one setting on this screen with a consequence a manager
-                  // might not expect, so it says what it does rather than "0%".
-                  <Badge tone="bad">No coins</Badge>
-                )}
+                {(() => {
+                  const caps = item.coinCaps || {};
+                  const every = TIERS.map((t) => caps[t] ?? 0);
+
+                  // Nothing anywhere accepts coins — the one setting on this
+                  // screen with a consequence a manager might not expect, so it
+                  // says what it does rather than showing "0%".
+                  if (every.every((n) => n === 0)) return <Badge tone="bad">No coins</Badge>;
+
+                  // One number when the tiers agree, which is most services.
+                  // Three only when they genuinely differ, so the column stays
+                  // scannable instead of reading "10 / 10 / 10" seven times.
+                  if (isUniform(caps)) return `${every[0]}%`;
+
+                  return (
+                    <span title="Silver / Gold / Platinum">
+                      {every.join(" / ")}
+                      <span className="text-muted">%</span>
+                    </span>
+                  );
+                })()}
               </td>
               <td>
                 <button
@@ -238,25 +288,69 @@ const ServicesPage = () => {
           />
         </Field>
 
-        <Field
-          label="Coins may cover"
-          error={errors.coinCapPercent}
-          hint={
-            Number(form.coinCapPercent) > 0
-              ? `Up to ${form.coinCapPercent}% of anything billed to this service can be paid with coins, whatever the guest's tier.`
-              : "Coins cannot be used on this service at all."
-          }
-        >
-          <Slider
-            value={form.coinCapPercent}
-            onChange={change("coinCapPercent")}
-            min={0}
-            max={100}
-            step={1}
-            unit="%"
-            error={errors.coinCapPercent}
-          />
-        </Field>
+        {perTier ? (
+          <>
+            {TIERS.map((tier) => (
+              <Field
+                key={tier}
+                label={`${TIER_LABEL[tier]} members`}
+                error={errors[`coinCaps.${tier}`]}
+                hint={
+                  Number(form[tier]) > 0
+                    ? undefined
+                    : `${TIER_LABEL[tier]} members cannot use coins here.`
+                }
+              >
+                <Slider
+                  value={form[tier]}
+                  onChange={setCap(tier)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  unit="%"
+                  error={errors[`coinCaps.${tier}`]}
+                />
+              </Field>
+            ))}
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              // Levels the three to Silver's value, so the simple slider is not
+              // showing one number while two others are quietly different.
+              onClick={() => {
+                setForm((f) => ({ ...f, GOLD: f.SILVER, PLATINUM: f.SILVER }));
+                setPerTier(false);
+              }}
+            >
+              Use one rate for every tier
+            </button>
+          </>
+        ) : (
+          <>
+            <Field
+              label="Coins may cover"
+              error={errors["coinCaps.SILVER"]}
+              hint={
+                Number(form.SILVER) > 0
+                  ? `Up to ${form.SILVER}% of anything billed to this service can be paid with coins.`
+                  : "Coins cannot be used on this service at all."
+              }
+            >
+              <Slider
+                value={form.SILVER}
+                onChange={setCap("SILVER")}
+                min={0}
+                max={100}
+                step={1}
+                unit="%"
+                error={errors["coinCaps.SILVER"]}
+              />
+            </Field>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPerTier(true)}>
+              Set a different rate per tier
+            </button>
+          </>
+        )}
 
         {editing && editing.name !== form.name.trim() && (
           <p className="hint">

@@ -145,7 +145,13 @@ export const revealGuestEmail = async ({ hotelId, guestId }) => {
  * Shares every line of arithmetic with createBill so the figure staff see and
  * the figure that gets stored cannot diverge.
  */
-export const priceBill = ({ lineItems, taxPercent, serviceCaps = null, tierCapPercent = 0 }) => {
+export const priceBill = ({
+  lineItems,
+  taxPercent,
+  serviceCaps = null,
+  tierCapPercent = 0,
+  tier = null,
+}) => {
   const priced = (lineItems || []).map((item) => {
     const qty = Math.max(1, Math.trunc(Number(item?.qty) || 0));
     const unitPricePaise = Math.max(0, Math.trunc(Number(item?.unitPricePaise) || 0));
@@ -171,8 +177,14 @@ export const priceBill = ({ lineItems, taxPercent, serviceCaps = null, tierCapPe
     taxPercent,
     totalPaise: totals.totalPaise,
     tierCapPercent,
-    capPercentFor: (line) =>
-      serviceCaps && line.service ? serviceCaps.get(line.service.toLowerCase()) ?? null : null,
+    // The guest's own tier rate at that service. `?? null` at each step, never
+    // `||`: a service set to 0 for this tier means coins are refused there, and
+    // a falsy test would fall back to the tier cap instead.
+    capPercentFor: (line) => {
+      if (!serviceCaps || !line.service || !tier) return null;
+      const caps = serviceCaps.get(line.service.toLowerCase());
+      return caps?.[tier] ?? null;
+    },
   });
 
   return {
@@ -227,7 +239,15 @@ export const createBill = async ({ hotelId, guestId, staffId, lineItems, taxPerc
   }
 
   const tierCapPercent = tierCapFor(hotel, membership.tier);
-  const priced = priceBill({ lineItems, taxPercent, serviceCaps, tierCapPercent });
+  const priced = priceBill({
+    lineItems,
+    taxPercent,
+    serviceCaps,
+    tierCapPercent,
+    // The tier decides WHICH of a service's three rates applies. Taken from the
+    // membership at creation, so it is frozen with everything else.
+    tier: membership.tier,
+  });
 
   if (!priced.lineItems.length) throw new ApiError(400, "Add at least one item to the bill");
   if (priced.totalPaise <= 0) throw new ApiError(400, "A bill must come to more than zero");

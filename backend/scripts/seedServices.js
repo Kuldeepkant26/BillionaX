@@ -48,8 +48,9 @@ const run = async () => {
 
     if (!DRY) await HotelService.insertMany(missing);
     created += missing.length;
+    const caps = missing[0].coinCaps;
     logger.info(
-      `${hotel.name}: +${missing.length} at ${missing[0].coinCapPercent}% ` +
+      `${hotel.name}: +${missing.length} at ${caps.SILVER}/${caps.GOLD}/${caps.PLATINUM}% ` +
         `(${missing.map((m) => m.name).join(", ")})`
     );
   }
