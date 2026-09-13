@@ -316,6 +316,40 @@ export const commentRules = [
   body("parentId").optional({ values: "falsy" }).isMongoId().withMessage("Invalid comment id"),
 ];
 
+/**
+ * A feed post: one to ten images, and an optional caption.
+ *
+ * Shape only. Whether those URLs are ones we actually host is a SECURITY
+ * question and is answered by assertOwnImages in feed.service.js — the browser
+ * uploads directly to Cloudinary, so the URL we are handed back is
+ * client-supplied and cannot be trusted from its shape alone.
+ */
+export const feedPostRules = [
+  body("images")
+    .isArray({ min: 1, max: 10 })
+    .withMessage("Add between 1 and 10 images"),
+  // A wildcard, matching the tiers.* pattern above: it only runs against
+  // elements that exist, so an absent array produces zero element checks and
+  // the isArray rule is what reports the real problem. Not marked optional, or
+  // a [null] element would slip through.
+  body("images.*")
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 500 })
+    .withMessage("Invalid image"),
+  body("caption").optional({ values: "falsy" }).isString().trim().isLength({ max: 2200 }),
+];
+
+/** Editing a post. The caption is the only mutable field — see feedPost.model.js. */
+export const feedCaptionRules = [
+  body("caption")
+    .optional({ values: "falsy" })
+    .isString()
+    .trim()
+    .isLength({ max: 2200 })
+    .withMessage("A caption is 2200 characters at most"),
+];
+
 export const settingsRules = [
   body("welcomeCredit").optional().isInt({ min: 0 }).toInt(),
   body("defaultEarnRatePercent").optional().isFloat({ min: 0, max: 100 }).toFloat(),

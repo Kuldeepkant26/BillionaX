@@ -2,7 +2,13 @@ import { Router } from "express";
 import * as feedController from "../controllers/feed.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
-import { objectIdParam, paginationRules } from "../validators/common.validator.js";
+import { feedUploadLimiter } from "../middlewares/rateLimiter.middleware.js";
+import {
+  feedCaptionRules,
+  feedPostRules,
+  objectIdParam,
+  paginationRules,
+} from "../validators/common.validator.js";
 
 const router = Router();
 
@@ -43,5 +49,24 @@ router.get(
   validate,
   feedController.listUserPosts
 );
+
+/* ---- writing ---------------------------------------------------------- */
+
+router.post("/posts", feedPostRules, validate, feedController.createPost);
+
+// Caption only. A post's images are immutable — see feedPost.model.js.
+router.patch(
+  "/posts/:postId",
+  objectIdParam("postId"),
+  feedCaptionRules,
+  validate,
+  feedController.updatePost
+);
+
+router.delete("/posts/:postId", objectIdParam("postId"), validate, feedController.deletePost);
+
+// Rate-limited: it is called once per image, so it is the one authenticated
+// endpoint a single account can loop on to burn the Cloudinary quota.
+router.post("/upload-signature", feedUploadLimiter, feedController.createFeedImageUpload);
 
 export default router;

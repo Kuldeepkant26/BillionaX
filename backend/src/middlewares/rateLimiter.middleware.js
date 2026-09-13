@@ -33,3 +33,17 @@ export const redeemLimiter = build({
   max: 20,
   message: "Too many verification attempts, please slow down",
 });
+
+/**
+ * Feed image signatures.
+ *
+ * Unlike an avatar or a logo this endpoint is called in a LOOP — once per image,
+ * so ten times for one carousel — which makes it the one authenticated endpoint
+ * a single account can hammer to burn the Cloudinary quota unattended. The cap
+ * is generous enough for real posting and finite enough to bound that.
+ */
+export const feedUploadLimiter = build({
+  windowMs: 10 * 60 * 1000,
+  max: 60,
+  message: "Too many uploads, please wait a few minutes",
+});

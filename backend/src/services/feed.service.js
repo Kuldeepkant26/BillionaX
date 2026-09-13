@@ -7,6 +7,12 @@ import { FeedPostLike } from "../models/feedPostLike.model.js";
 import { FeedComment } from "../models/feedComment.model.js";
 import { FeedCommentLike } from "../models/feedCommentLike.model.js";
 import { FeedSave } from "../models/feedSave.model.js";
+import {
+  destroyAsset,
+  isOwnCloudinaryUrl,
+  publicIdFromUrl,
+  resourceTypeFromUrl,
+} from "./upload.service.js";
 
 /**
  * The global feed.
@@ -208,4 +214,152 @@ export const listUserPosts = async ({ targetUserId, userId, page = 1, limit = 18
     limit: safeLimit,
     hasMore,
   };
+};
+
+/* ---- writing -------------------------------------------------------- */
+
+/**
+ * Refuses any image that is not on our own Cloudinary account.
+ *
+ * Uploads happen in the BROWSER, so the URLs we are asked to store are
+ * client-supplied — this is the gate that stops a post pointing at an arbitrary
+ * host that then gets fetched by every viewer on the network.
+ *
+ * Lifted from content.service.js's assertOwnImage, with one difference: it
+ * reports WHICH image failed. With ten of them "that image could not be
+ * verified" tells the composer nothing it can act on.
+ */
+const assertOwnImages = (images) => {
+  const list = Array.isArray(images) ? images : [];
+
+  if (list.length < 1 || list.length > 10) {
+    throw new ApiError(400, "Add between 1 and 10 images", [
+      { field: "images", message: "Add between 1 and 10 images" },
+    ]);
+  }
+
+  list.forEach((url, i) => {
+    if (!isOwnCloudinaryUrl(url)) {
+      throw new ApiError(400, "One of those images could not be verified", [
+        { field: `images[${i}]`, message: "Unrecognised image source" },
+      ]);
+    }
+  });
+
+  // Rejected rather than silently de-duplicated: the same URL twice is always a
+  // client bug (a double-add), and the delete sweep would otherwise try to
+  // destroy one public_id twice.
+  if (new Set(list).size !== list.length) {
+    throw new ApiError(400, "That post has the same image twice", [
+      { field: "images", message: "Remove the duplicate" },
+    ]);
+  }
+};
+
+/**
+ * Best-effort removal of every image on a post.
+ *
+ * An orphaned file is cheaper than a delete that refuses to complete, so this
+ * never throws. Scoped by resource type because destroy on the wrong pipeline
+ * reports "not found" and quietly leaves the file behind.
+ *
+ * Note there is no replaceAsset equivalent here, and that is deliberate: a
+ * post's images are immutable (only its caption can be edited), so there is
+ * never an old asset to compare against a new one. That comparison — public_ids
+ * rather than URLs — is the subtle part of content.service.js, and not having
+ * an edit path means not having to get it right.
+ */
+const removeAssets = (images = []) => {
+  for (const url of images) {
+    const publicId = publicIdFromUrl(url);
+    if (publicId) destroyAsset(publicId, resourceTypeFromUrl(url)).catch(() => {});
+  }
+};
+
+/**
+ * Publishes a post.
+ *
+ * authorRole and authorHotelId are copied from the actor at write time — see
+ * feedPost.model.js for why the tick is stored rather than joined.
+ */
+export const createPost = async ({ actor, images, caption = "" }) => {
+  assertOwnImages(images);
+
+  const created = await FeedPost.create({
+    authorId: actor._id,
+    authorRole: actor.role,
+    authorHotelId: actor.hotelId || null,
+    images,
+    caption: String(caption || "").trim(),
+  });
+
+  const doc = await FeedPost.findById(created._id).populate("authorId", AUTHOR_FIELDS).lean();
+  const [post] = await decorate([doc], actor._id);
+
+  return { post };
+};
+
+/**
+ * Edits a caption. The author only, and the caption only.
+ *
+ * The filter is the authorisation — the same discipline as the deletes below,
+ * so there is no window between checking who owns the post and writing to it.
+ */
+export const updateCaption = async ({ postId, actor, caption }) => {
+  if (!mongoose.isValidObjectId(postId)) throw new ApiError(404, "Post not found");
+
+  const updated = await FeedPost.findOneAndUpdate(
+    { _id: postId, authorId: actor._id, isDeleted: false },
+    { $set: { caption: String(caption || "").trim() } },
+    { new: true }
+  )
+    .populate("authorId", AUTHOR_FIELDS)
+    .lean();
+
+  // A post that exists but belongs to someone else is reported as missing
+  // rather than forbidden: the caller has no business knowing it is there.
+  if (!updated) throw new ApiError(404, "Post not found");
+
+  const [post] = await decorate([updated], actor._id);
+  return { post };
+};
+
+/**
+ * Removes a post: its author, or the platform admin.
+ *
+ * Written as two filtered branches rather than one read-then-check. The filter
+ * IS the authorisation, so there is no window in which the row could change
+ * between the check and the write — the discipline video.service.js follows.
+ *
+ * MAIN_ADMIN takes its own unfiltered branch rather than being folded into the
+ * author filter with an $or, so that deletedBy records who actually did it and
+ * an admin's removal stays distinguishable from an author's in the audit.
+ */
+export const deletePost = async ({ postId, actor }) => {
+  if (!mongoose.isValidObjectId(postId)) throw new ApiError(404, "Post not found");
+
+  const filter =
+    actor.role === ROLES.MAIN_ADMIN
+      ? { _id: postId, isDeleted: false }
+      : { _id: postId, authorId: actor._id, isDeleted: false };
+
+  const removed = await FeedPost.findOneAndUpdate(
+    filter,
+    { $set: { isDeleted: true, deletedBy: actor._id, deletedAt: new Date() } },
+    { new: true }
+  ).lean();
+
+  if (!removed) throw new ApiError(404, "Post not found");
+
+  // Destroyed now rather than on a nightly sweep: a deleted post's photographs
+  // staying live on a public CDN URL is precisely the thing being deleted.
+  // deletedAt and its partial index exist so scripts/sweepFeedAssets.js can
+  // catch the ones this best-effort call failed to remove.
+  removeAssets(removed.images);
+
+  // Comments go with the post, the same way deleting a comment sweeps its
+  // replies — leaving them would render a thread hanging off nothing.
+  await FeedComment.updateMany({ postId, isDeleted: false }, { $set: { isDeleted: true } });
+
+  return { removed: true };
 };
