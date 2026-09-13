@@ -74,23 +74,28 @@ const GiftIcon = () => (
  * The four-stage explainer beneath the gallery on the guest home screen.
  *
  * Every number shown is the guest's OWN — the rate their current tier earns at
- * this hotel, and the cap that same tier can redeem up to. A guest reading
- * this and then recording a stay should see the arithmetic match; a generic
+ * this hotel, and the typical share that tier can redeem. A guest reading this
+ * and then recording a stay should see the arithmetic match; a generic
  * "up to 30%" that their Silver membership could never reach would be worse
  * than no number at all.
  *
  * `rate` and `cap` are therefore optional rather than defaulted: a hotel that
- * has not configured them gets the plain sentence, never an invented figure.
+ * has not configured them gets the plain wording, never an invented figure.
+ *
+ * Four short columns and nothing else. The tier footnote and the per-step
+ * captions that used to sit here were explaining an explainer — the icons and
+ * the numbers already carry it, and the guest's tier is on the card above.
  */
-export const HowItWorks = ({ hotelName, tier, rate, cap }) => {
+export const HowItWorks = ({ rate, cap }) => {
   const steps = [
     {
       key: "stay",
       icon: <HotelIcon />,
       label: "Stay at",
-      // Falls back to the generic noun, so the step still reads as a sentence
-      // before a hotel is picked.
-      detail: hotelName || "your hotel",
+      // The generic noun, not the hotel's name: a long name wrapped onto three
+      // lines in a ~70px column and pushed the whole row out of shape, and the
+      // guest is already looking at the property they picked.
+      detail: "Hotel",
     },
     {
       key: "earn",
@@ -113,9 +118,11 @@ export const HowItWorks = ({ hotelName, tier, rate, cap }) => {
       // hotel may allow more at the restaurant than this and nothing at the
       // spa. The tier rate is still what an untagged line prices at, which is
       // what makes it the honest typical figure rather than a ceiling.
-      label: "Typically save",
+      // One word, like the other three labels. "Typically save" wrapped onto
+      // two lines in a ~70px column and pushed this step's number below its
+      // neighbours', which made the row look misaligned rather than emphatic.
+      label: "Save",
       detail: cap ? `${cap}%` : "on extras",
-      foot: "varies by outlet",
       payoff: true,
     },
   ];
@@ -164,15 +171,6 @@ export const HowItWorks = ({ hotelName, tier, rate, cap }) => {
           ))}
         </div>
 
-        {/* Names the tier the numbers above belong to. Without it a Silver
-            guest and a Platinum guest see different figures on the same screen
-            with nothing explaining why. */}
-        {tier && (rate || cap) && (
-          <p className="text-[10.5px] text-muted text-center leading-[1.45] mt-4 mb-0">
-            Your {tier.charAt(0) + tier.slice(1).toLowerCase()} rate at this hotel. Earn more
-            nights to move up a tier.
-          </p>
-        )}
       </div>
     </section>
   );

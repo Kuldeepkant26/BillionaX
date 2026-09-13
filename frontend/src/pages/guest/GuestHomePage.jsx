@@ -238,12 +238,7 @@ const GuestHomePage = () => {
 
       {/* The explainer, using this guest's own rate and cap — see HowItWorks
           for why nothing here is defaulted to a marketing figure. */}
-      <HowItWorks
-        hotelName={active?.hotelId?.name}
-        tier={active?.tier}
-        rate={earnRate}
-        cap={cap}
-      />
+      <HowItWorks rate={earnRate} cap={cap} />
 
       {/* Already filtered to this guest's tier by the API — anything they are
           not entitled to never reaches the payload. */}
