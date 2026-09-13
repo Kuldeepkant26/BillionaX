@@ -3,6 +3,7 @@ import {
   cancelBill,
   createBill,
   listBills,
+  listServices,
   revealGuestEmail,
   searchGuests,
 } from "../../api/hotel.api.js";
@@ -44,7 +45,7 @@ const STATUS_TONE = {
   EXPIRED: undefined,
 };
 
-const blankLine = () => ({ description: "", qty: "1", price: "" });
+const blankLine = (service = "") => ({ description: "", service, qty: "1", price: "" });
 
 /**
  * One search result.
@@ -128,6 +129,27 @@ const BillPage = () => {
     []
   );
 
+  // The outlets this hotel bills to, for the per-line picker. Read once: the
+  // list changes when a manager edits it, not while a bill is being composed.
+  const { data: servicesData } = useAsync(() => listServices({ limit: 100 }), []);
+
+  const services = useMemo(
+    () => (servicesData?.items || []).filter((s) => s.isActive),
+    [servicesData]
+  );
+
+  // Every service, INCLUDING hidden ones — a line already naming a service that
+  // was just hidden must still preview at the rate the hotel set, which is what
+  // the server will resolve.
+  const capByService = useMemo(
+    () => new Map((servicesData?.items || []).map((s) => [s.name.toLowerCase(), s.coinCapPercent])),
+    [servicesData]
+  );
+
+  // The fallback for a line with no service on it. Comes from the search
+  // result so it is the same number createBill resolves.
+  const tierCap = guest?.tierCapPercent ?? 0;
+
   /*
    * Subscribes to this hotel's bill events.
    *
@@ -172,14 +194,37 @@ const BillPage = () => {
 
     const percent = Math.max(0, Number(taxPercent) || 0);
     const taxPaise = Math.floor((subtotalPaise * percent) / 100);
+    const totalPaise = subtotalPaise + taxPaise;
 
-    return { subtotalPaise, taxPaise, totalPaise: subtotalPaise + taxPaise };
-  }, [lines, taxPercent]);
+    /**
+     * What coins may cover, previewed the same way computeCoinAllowance
+     * resolves it: each line's own share of its PRE-TAX amount, summed, then
+     * grossed up by tax once.
+     *
+     * `?? tierCap`, never `|| tierCap` — a service set to 0% means coins are
+     * refused there, and `||` would show staff the guest's full tier allowance
+     * on a bill the server will price at nothing.
+     */
+    const base = lines.reduce((sum, line) => {
+      const qty = Math.max(0, Math.trunc(Number(line.qty) || 0));
+      const amount = qty * rupeesToPaise(line.price);
+      const raw = line.service ? capByService.get(line.service.toLowerCase()) : null;
+      const pct = Math.min(100, Math.max(0, Number(raw ?? tierCap) || 0));
+      return sum + Math.floor((amount * pct) / 100);
+    }, 0);
+
+    const allowancePaise = Math.min(base + Math.floor((base * percent) / 100), totalPaise);
+
+    return { subtotalPaise, taxPaise, totalPaise, allowancePaise };
+  }, [lines, taxPercent, capByService, tierCap]);
 
   const setLine = (index, patch) =>
     setLines((current) => current.map((line, i) => (i === index ? { ...line, ...patch } : line)));
 
-  const addLine = () => setLines((current) => [...current, blankLine()]);
+  // Carries the previous line's service forward: five restaurant items should
+  // need the picker touched once, not five times.
+  const addLine = () =>
+    setLines((current) => [...current, blankLine(current[current.length - 1]?.service || "")]);
 
   const removeLine = (index) =>
     setLines((current) => (current.length === 1 ? [blankLine()] : current.filter((_, i) => i !== index)));
@@ -205,6 +250,7 @@ const BillPage = () => {
         taxPercent: Number(taxPercent) || 0,
         lineItems: usableLines.map((line) => ({
           description: line.description.trim(),
+          service: line.service || undefined,
           qty: Math.trunc(Number(line.qty)),
           unitPricePaise: rupeesToPaise(line.price),
         })),
@@ -409,6 +455,7 @@ const BillPage = () => {
             <>
               <div className={styles.lineHead}>
                 <span>Item</span>
+                <span>Service</span>
                 <span>Qty</span>
                 <span>Price</span>
                 <span />
@@ -422,6 +469,22 @@ const BillPage = () => {
                       value={line.description}
                       onChange={(e) => setLine(index, { description: e.target.value })}
                     />
+                    {/* Per line, not per bill: what coins may cover is decided
+                        service by service, so a spa treatment on a restaurant
+                        bill is capped at the spa's rate. */}
+                    <Select
+                      value={line.service}
+                      onChange={(e) => setLine(index, { service: e.target.value })}
+                      aria-label={`Service for item ${index + 1}`}
+                    >
+                      <option value="">Not set</option>
+                      {services.map((s) => (
+                        <option key={s._id} value={s.name}>
+                          {s.name}
+                          {s.coinCapPercent > 0 ? ` · ${s.coinCapPercent}%` : " · no coins"}
+                        </option>
+                      ))}
+                    </Select>
                     <Input
                       type="number"
                       min="1"
@@ -492,10 +555,22 @@ const BillPage = () => {
                 </div>
               </div>
 
-              <p className={styles.note}>
-                {guest.name} can put up to {guest.tier.toLowerCase()}-tier coins against this when
-                they pay — the amount they are charged is worked out on their phone.
-              </p>
+              {/* The real figure, not the vague prose this replaced. Staff get
+                  asked "how much can I use my coins for?" across the desk and
+                  could not answer it before. */}
+              {totals.allowancePaise > 0 ? (
+                <p className={styles.note}>
+                  Up to <b>{formatPaise(totals.allowancePaise)}</b> of this bill can be paid with
+                  coins.{" "}
+                  {guest.balance * 100 < totals.allowancePaise
+                    ? `${guest.name} holds ${formatCoins(guest.balance)}, so that is their limit.`
+                    : `${guest.name} chooses how many to use when they pay.`}
+                </p>
+              ) : (
+                <p className={styles.note}>
+                  Coins can&rsquo;t be used on this bill — none of these services accept them.
+                </p>
+              )}
 
               <Button block onClick={send} disabled={!usableLines.length || sending}>
                 {sending ? "Sending…" : `Send bill · ${formatPaise(totals.totalPaise)}`}

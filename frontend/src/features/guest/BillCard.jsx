@@ -33,9 +33,23 @@ export const BillCard = ({
   const effectiveBalance = bill.coinBalance ?? balance ?? 0;
 
   const capCoins = useMemo(() => {
-    const capPaise = Math.floor((bill.totalPaise * (bill.tierCapPercent || 0)) / 100);
+    /**
+     * TWO SHAPES, mirroring computeBillCoins on the server — the platform's
+     * only two copies of this rule, and they must move together.
+     *
+     * A bill raised since per-service caps carries an absolute allowance,
+     * already resolved from each line's service. One raised before carries only
+     * a percentage. The `== null` test is explicit and never falsy: an
+     * allowance of 0 means "coins are refused on this bill", and reading it as
+     * absent would show a slider the server will clamp to nothing.
+     */
+    const capPaise =
+      bill.coinAllowancePaise == null
+        ? Math.floor((bill.totalPaise * (bill.tierCapPercent || 0)) / 100)
+        : Math.min(bill.coinAllowancePaise, bill.totalPaise);
+
     return Math.min(Math.floor(capPaise / 100), Math.floor(effectiveBalance));
-  }, [bill.totalPaise, bill.tierCapPercent, effectiveBalance]);
+  }, [bill.totalPaise, bill.tierCapPercent, bill.coinAllowancePaise, effectiveBalance]);
 
   const [coins, setCoins] = useState(0);
 
@@ -113,11 +127,23 @@ export const BillCard = ({
             step={1}
           />
 
+          {/* An amount, not a percentage. With per-service caps there is often
+              no single rate that describes a bill — ₹2000 at 20% beside ₹3000
+              at 0% is neither of those numbers — but the amount is always
+              true. */}
           <p className={styles.coinsHint}>
-            {bill.tierCapPercent}% of this bill can be paid with coins at your tier. You have{" "}
+            Up to {formatPaise(capCoins * 100)} of this bill can be paid with coins. You have{" "}
             {formatCoins(effectiveBalance)}.
           </p>
         </div>
+      )}
+
+      {/* The slider is hidden when nothing can be applied, which on a bill of
+          nothing but a no-coins service would look like the feature is broken.
+          Guarded on actually holding coins, so a guest with none is not told
+          about something they could not have used anyway. */}
+      {capCoins === 0 && effectiveBalance > 0 && (
+        <p className={styles.coinsHint}>Coins can&rsquo;t be used on this bill.</p>
       )}
 
       <div className={styles.actions}>
