@@ -8,6 +8,7 @@ import { useAppStore } from "../../store/useAppStore.js";
 import { FeedPostCard } from "../../features/guest/FeedPostCard.jsx";
 import { FeedSkeleton } from "../../features/guest/GuestSkeletons.jsx";
 import { FeedCommentSheet } from "../../features/guest/FeedCommentSheet.jsx";
+import { LikesSheet } from "../../features/guest/LikesSheet.jsx";
 import { FeedComposer } from "../../features/guest/FeedComposer.jsx";
 import { Button, Empty, ErrorState, Spinner } from "../../components/common/index.jsx";
 import { ROUTES } from "../../constants/routePaths.js";
@@ -26,6 +27,7 @@ const FeedPage = () => {
   const user = useAppStore((s) => s.user);
 
   const [commentsFor, setCommentsFor] = useState(null);
+  const [likesFor, setLikesFor] = useState(null);
   const [composing, setComposing] = useState(false);
 
   const fetcher = useCallback((params) => listFeed(params), []);
@@ -141,6 +143,7 @@ const FeedPage = () => {
               onToggleLike={like}
               onToggleSave={save}
               onOpenComments={setCommentsFor}
+              onOpenLikes={setLikesFor}
               onDelete={remove}
               canDelete={canDelete(post)}
             />
@@ -177,6 +180,8 @@ const FeedPage = () => {
           }
         />
       )}
+
+      {likesFor && <LikesSheet post={likesFor} onClose={() => setLikesFor(null)} />}
 
       {composing && (
         <FeedComposer

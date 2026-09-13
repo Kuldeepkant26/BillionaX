@@ -17,23 +17,7 @@
   margin: 14px 0;
 }
 
-.seeLikes {
-  display: block;
-  margin: -6px 0 16px 13px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--acc);
-  cursor: pointer;
-}
-
-.seeLikes:hover {
-  text-decoration: underline;
-}
-
-/* ---- author line, shared by the likes modal and the inbox ---- */
+/* ---- author line, used by the comment inbox ---- */
 
 .who {
   display: flex;
@@ -81,17 +65,6 @@
   font-style: normal;
   font-size: 11px;
   color: var(--dim);
-}
-
-.people {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 13px;
-  max-height: 50vh;
-  overflow-y: auto;
 }
 
 /* ---- comment inbox ---- */

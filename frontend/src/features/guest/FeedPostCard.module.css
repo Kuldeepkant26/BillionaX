@@ -190,13 +190,25 @@
   padding: 0 13px 12px;
 }
 
+/* A button, but it must read as the plain bold count it replaced — the
+   affordance is that the number is tappable, not that it looks like a control. */
 .likes {
   display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
   font-size: 13px;
   font-weight: 700;
   color: var(--fg);
   font-variant-numeric: tabular-nums;
   margin-bottom: 3px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.likes:hover {
+  color: var(--dim);
 }
 
 .caption,

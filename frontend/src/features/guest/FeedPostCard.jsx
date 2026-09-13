@@ -60,6 +60,7 @@ export const FeedPostCard = ({
   onToggleLike,
   onToggleSave,
   onOpenComments,
+  onOpenLikes,
   onDelete,
   canDelete = false,
   showCaption = true,
@@ -161,9 +162,12 @@ export const FeedPostCard = ({
 
       <div className={styles.body}>
         {post.likeCount > 0 && (
-          <b className={styles.likes}>
+          // The count is the way in to who liked it, the way it is everywhere
+          // else. A separate "see likes" link would be a second control for
+          // something the number already names.
+          <button type="button" className={styles.likes} onClick={() => onOpenLikes?.(post)}>
             {post.likeCount.toLocaleString()} {post.likeCount === 1 ? "like" : "likes"}
-          </b>
+          </button>
         )}
 
         {showCaption && post.caption && (

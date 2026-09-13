@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getPost } from "../../api/feed.api.js";
 import { useAsync } from "../../hooks/useAsync.js";
@@ -6,6 +6,7 @@ import { useFeedActions } from "../../hooks/useFeedActions.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import { FeedPostCard } from "../../features/guest/FeedPostCard.jsx";
 import { FeedComments } from "../../features/guest/FeedComments.jsx";
+import { LikesSheet } from "../../features/guest/LikesSheet.jsx";
 import { FeedSkeleton } from "../../features/guest/GuestSkeletons.jsx";
 import { ErrorState } from "../../components/common/index.jsx";
 import { ROUTES } from "../../constants/routePaths.js";
@@ -21,6 +22,7 @@ const FeedPostPage = () => {
   const { postId } = useParams();
   const navigate = useNavigate();
   const user = useAppStore((s) => s.user);
+  const [likesOpen, setLikesOpen] = useState(false);
 
   const { data, error, loading, run, setData } = useAsync(() => getPost(postId), [postId], {
     cacheKey: "feed.post",
@@ -76,6 +78,7 @@ const FeedPostPage = () => {
         post={post}
         onToggleLike={like}
         onToggleSave={save}
+        onOpenLikes={() => setLikesOpen(true)}
         onDelete={remove}
         canDelete={canDelete}
         // The thread is right below; a "view comments" button would scroll to
@@ -92,6 +95,8 @@ const FeedPostPage = () => {
           }
         />
       </div>
+
+      {likesOpen && <LikesSheet post={post} onClose={() => setLikesOpen(false)} />}
     </>
   );
 };

@@ -5,7 +5,6 @@ import {
   listHotelPosts,
   listMyPosts,
   listModerationPosts,
-  listPostLikes,
 } from "../../api/feed.api.js";
 import { useAsync } from "../../hooks/useAsync.js";
 import { useFeedList } from "../../hooks/useFeedList.js";
@@ -17,8 +16,9 @@ import { initials, timeAgo } from "../../utils/format.js";
 import { FeedPostCard } from "../guest/FeedPostCard.jsx";
 import { FeedComposer } from "../guest/FeedComposer.jsx";
 import { FeedCommentSheet } from "../guest/FeedCommentSheet.jsx";
+import { LikesSheet } from "../guest/LikesSheet.jsx";
 import { VerifiedTick } from "../guest/VerifiedTick.jsx";
-import { Button, Empty, ErrorState, Modal, Spinner } from "../../components/common/index.jsx";
+import { Button, Empty, ErrorState, Spinner } from "../../components/common/index.jsx";
 import styles from "./PanelFeed.module.css";
 
 /**
@@ -56,31 +56,6 @@ const Who = ({ name, avatar, verified, size = 28, sub }) => {
   );
 };
 
-/** Who liked a post — opened from a post's like count. */
-const LikesModal = ({ post, onClose }) => {
-  const { data, loading } = useAsync(() => listPostLikes(post.id, { limit: 50 }), [post.id], {
-    cacheKey: "feed.postLikes",
-  });
-
-  return (
-    <Modal open title={`${post.likeCount} ${post.likeCount === 1 ? "like" : "likes"}`} onClose={onClose}>
-      {loading && !data ? (
-        <Spinner />
-      ) : !data?.items?.length ? (
-        <Empty title="No likes yet" />
-      ) : (
-        <ul className={styles.people}>
-          {data.items.map((p) => (
-            <li key={p.id}>
-              <Who name={p.name} avatar={p.avatarUrl} verified={p.isVerified} sub={timeAgo(p.likedAt)} />
-            </li>
-          ))}
-        </ul>
-      )}
-    </Modal>
-  );
-};
-
 /** A scrolling list of posts with the panel's own chrome around it. */
 const PostList = ({ fetcher, cacheKey, emptyTitle, emptyHint, onCompose }) => {
   const user = useAppStore((s) => s.user);
@@ -107,21 +82,17 @@ const PostList = ({ fetcher, cacheKey, emptyTitle, emptyHint, onCompose }) => {
       ) : (
         <div className={styles.column}>
           {items.map((post) => (
-            <div key={post.id}>
-              <FeedPostCard
-                post={post}
-                onToggleLike={like}
-                onToggleSave={save}
-                onOpenComments={setCommentsFor}
-                onDelete={remove}
-                canDelete={post.author?.id === user?.id || user?.role === "MAIN_ADMIN"}
-              />
-              {post.likeCount > 0 && (
-                <button type="button" className={styles.seeLikes} onClick={() => setLikesFor(post)}>
-                  See who liked this
-                </button>
-              )}
-            </div>
+            <FeedPostCard
+              key={post.id}
+              post={post}
+              onToggleLike={like}
+              onToggleSave={save}
+              onOpenComments={setCommentsFor}
+              // The like count itself opens the list, same as in the guest app.
+              onOpenLikes={setLikesFor}
+              onDelete={remove}
+              canDelete={post.author?.id === user?.id || user?.role === "MAIN_ADMIN"}
+            />
           ))}
 
           {hasMore && (
@@ -144,7 +115,7 @@ const PostList = ({ fetcher, cacheKey, emptyTitle, emptyHint, onCompose }) => {
         />
       )}
 
-      {likesFor && <LikesModal post={likesFor} onClose={() => setLikesFor(null)} />}
+      {likesFor && <LikesSheet post={likesFor} onClose={() => setLikesFor(null)} />}
     </>
   );
 };
@@ -248,6 +219,7 @@ const Moderation = () => {
   const [page, setPage] = useState(1);
   const user = useAppStore((s) => s.user);
   const [commentsFor, setCommentsFor] = useState(null);
+  const [likesFor, setLikesFor] = useState(null);
 
   const { data, error, loading, run, setData } = useAsync(
     () => listModerationPosts({ page, role: filters.role || undefined, q: filters.q || undefined }),
@@ -327,6 +299,7 @@ const Moderation = () => {
               onToggleLike={like}
               onToggleSave={save}
               onOpenComments={setCommentsFor}
+              onOpenLikes={setLikesFor}
               onDelete={remove}
               // The platform admin may remove anything.
               canDelete={user?.role === "MAIN_ADMIN"}
@@ -353,6 +326,8 @@ const Moderation = () => {
       {commentsFor && (
         <FeedCommentSheet post={commentsFor} onClose={() => setCommentsFor(null)} />
       )}
+
+      {likesFor && <LikesSheet post={likesFor} onClose={() => setLikesFor(null)} />}
     </>
   );
 };
