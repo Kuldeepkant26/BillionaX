@@ -2,10 +2,12 @@ import { ApiError } from "../utils/ApiError.js";
 import { ROLES, HOTEL_SCOPED_ROLES } from "../config/constants.js";
 import { generateRawToken } from "../utils/token.util.js";
 import { buildDefaultPrivileges } from "../config/defaultContent.js";
+import { buildDefaultServices } from "../config/defaultServices.js";
 import { destroyAsset, isOwnCloudinaryUrl, publicIdFromUrl } from "./upload.service.js";
 import { Hotel } from "../models/hotel.model.js";
 import { User } from "../models/user.model.js";
 import { Content } from "../models/content.model.js";
+import { HotelService } from "../models/hotelService.model.js";
 import { searchRegex } from "../utils/regex.util.js";
 import { logger } from "../utils/logger.js";
 
@@ -41,6 +43,20 @@ export const createHotel = async (payload) => {
     await Content.insertMany(buildDefaultPrivileges(hotel._id));
   } catch (error) {
     logger.warn(`Default privileges not created for ${hotel.name}: ${error.message}`);
+  }
+
+  // The outlets it can bill to, each carrying the coin cap for that service.
+  // Its own try/catch rather than sharing the one above, so a failure in either
+  // seed cannot suppress the other.
+  //
+  // Non-fatal for a stronger reason than privileges: a hotel with no service
+  // rows falls back to its tier caps on every line, which is exactly the
+  // behaviour before services existed. The failure mode is "no new feature",
+  // never "no coins" or "unlimited coins".
+  try {
+    await HotelService.insertMany(buildDefaultServices(hotel));
+  } catch (error) {
+    logger.warn(`Default services not created for ${hotel.name}: ${error.message}`);
   }
 
   return hotel;

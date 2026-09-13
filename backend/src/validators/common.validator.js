@@ -304,6 +304,32 @@ export const privilegeRules = [
   body("tiers.*").isIn(TIER_VALUES).withMessage("Unknown tier"),
 ];
 
+/**
+ * A hotel's billable service and the coin cap on it.
+ *
+ * Every rule optional so one chain serves POST and PATCH alike — on create the
+ * model's `required: true` on name is what enforces it.
+ *
+ * NOTE coinCapPercent is `.optional()` and NOT `.optional({ values: "falsy" })`.
+ * The falsy form would discard a posted 0, and 0 is the value that means "coins
+ * are not accepted here" — the whole point of the field.
+ */
+export const serviceRules = [
+  body("name")
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 60 })
+    .withMessage("Name the service"),
+  body("coinCapPercent")
+    .optional()
+    .isFloat({ min: 0, max: 100 })
+    .withMessage("Between 0 and 100")
+    .toFloat(),
+  body("isActive").optional().isBoolean().toBoolean(),
+  body("sortOrder").optional().isInt({ min: 0 }).toInt(),
+];
+
 /** A guest's comment on a video. Plain text, always rendered as text. */
 export const commentRules = [
   body("body")

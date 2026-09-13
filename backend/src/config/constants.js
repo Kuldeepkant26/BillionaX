@@ -103,6 +103,19 @@ export const PURCHASE_STATUS = Object.freeze({
 
 export const PURCHASE_STATUS_VALUES = Object.values(PURCHASE_STATUS);
 
+/**
+ * The seven outlets the platform shipped with.
+ *
+ * NO LONGER THE AUTHORITATIVE SET. Each hotel now owns its own services — see
+ * hotelService.model.js — and this list survives for exactly two jobs:
+ *
+ *   1. The seed for a new hotel's services (config/defaultServices.js).
+ *   2. The enum on Bill.outlet and the historical filters over it, which read
+ *      values written before services existed.
+ *
+ * Adding a name here does NOT give any hotel a new service; a hotel adds one
+ * from its own panel.
+ */
 export const OUTLETS = Object.freeze([
   "Restaurant",
   "Room Service",

@@ -7,6 +7,7 @@ import * as contentService from "../services/content.service.js";
 import * as reportService from "../services/report.service.js";
 import * as rebateService from "../services/rebate.service.js";
 import * as hotelService from "../services/hotel.service.js";
+import * as hotelServiceService from "../services/hotelService.service.js";
 import * as membershipService from "../services/membership.service.js";
 import * as uploadService from "../services/upload.service.js";
 import * as videoService from "../services/video.service.js";
@@ -236,6 +237,48 @@ export const videos = contentHandlers(CONTENT_KINDS.VIDEO);
 // Note the admin list passes no `tier`, so a manager sees every privilege
 // regardless of who it targets — they are managing them, not consuming them.
 export const privileges = contentHandlers(CONTENT_KINDS.PRIVILEGE);
+
+// ---- services ----
+//
+// The hotel's billable outlets and the coin cap on each. Not folded into
+// contentHandlers: a service is not content a guest reads, it is billing
+// configuration, and its cap has to be resolvable by createBill.
+
+export const listServices = asyncHandler(async (req, res) => {
+  const { isActive, page = 1, limit = 100 } = req.query;
+  const data = await hotelServiceService.listHotelServices({
+    hotelId: hotelIdFor(req),
+    isActive,
+    page: Number(page),
+    limit: Number(limit),
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const createService = asyncHandler(async (req, res) => {
+  const item = await hotelServiceService.createHotelService({
+    hotelId: hotelIdFor(req),
+    ...req.body,
+  });
+  res.status(201).json(new ApiResponse(201, { item }, "Saved"));
+});
+
+export const updateService = asyncHandler(async (req, res) => {
+  const item = await hotelServiceService.updateHotelService({
+    id: req.params.id,
+    hotelId: hotelIdFor(req),
+    patch: req.body,
+  });
+  res.status(200).json(new ApiResponse(200, { item }, "Updated"));
+});
+
+export const deleteService = asyncHandler(async (req, res) => {
+  await hotelServiceService.deleteHotelService({
+    id: req.params.id,
+    hotelId: hotelIdFor(req),
+  });
+  res.status(200).json(new ApiResponse(200, null, "Deleted"));
+});
 
 // ---- staff ----
 

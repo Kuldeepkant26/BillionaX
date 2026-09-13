@@ -26,6 +26,7 @@ import {
   purchaseFilterRules,
   contentFilterRules,
   monthlyReportRules,
+  serviceRules,
 } from "../validators/common.validator.js";
 
 const router = Router();
@@ -160,6 +161,33 @@ router.delete(
   objectIdParam("id"),
   validate,
   hotelController.privileges.remove
+);
+
+/* ---- services ---------------------------------------------------------- */
+
+// The GET is deliberately NOT adminOnly, unlike every route above it: the
+// billing screen is used by HOTEL_STAFF, who need the service dropdown to have
+// anything in it. Writing them stays a manager's job. Hotel scoping is free —
+// requireSameHotel is applied at router level.
+router.get("/services", paginationRules, validate, hotelController.listServices);
+router.post("/services", adminOnly, serviceRules, validate, hotelController.createService);
+// Body rules on PATCH as well as POST, for the reason the privileges block
+// above gives: an unvalidated PATCH is how a bad percent reaches Mongoose and
+// surfaces as a 500 instead of a 422 naming the field.
+router.patch(
+  "/services/:id",
+  adminOnly,
+  objectIdParam("id"),
+  serviceRules,
+  validate,
+  hotelController.updateService
+);
+router.delete(
+  "/services/:id",
+  adminOnly,
+  objectIdParam("id"),
+  validate,
+  hotelController.deleteService
 );
 
 router.get("/staff", adminOnly, paginationRules, staffFilterRules, validate, hotelController.listStaff);
