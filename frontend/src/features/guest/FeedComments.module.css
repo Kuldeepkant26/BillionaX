@@ -1,0 +1,204 @@
+/*
+ * The comment thread. Adapted from VideoComments.module.css, minus its
+ * fixed-height scroll frame and bottom fade: those exist because the video page
+ * has an up-next rail below the thread. Here the comments are the content, so
+ * the sheet scrolls as a whole.
+ */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* The composer sits ABOVE the list and outside its scroll: it must stay
+   reachable no matter how far down the thread the reader has gone. */
+.composer {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 2px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg2);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--acc);
+}
+
+.post {
+  flex: none;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--acc);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.post:disabled {
+  color: var(--dim);
+  opacity: 0.55;
+  cursor: default;
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-top: 4px;
+}
+
+.ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row,
+.reply {
+  display: flex;
+  gap: 10px;
+  padding: 9px 2px;
+}
+
+.reply {
+  padding-left: 0;
+  padding-top: 8px;
+}
+
+.rowBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.avatar {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--dim);
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+
+.text b {
+  font-weight: 650;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-top: 3px;
+}
+
+.meta i {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.metaBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dim);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.metaBtn:hover {
+  color: var(--fg);
+}
+
+.danger:hover {
+  color: var(--bad);
+}
+
+/* The "View 3 replies" toggle, with the short rule Instagram uses to signal
+   that what follows is nested under this comment. */
+.repliesToggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 7px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--dim);
+  cursor: pointer;
+}
+
+.repliesToggle:hover {
+  color: var(--fg);
+}
+
+.rule {
+  display: block;
+  width: 22px;
+  height: 1px;
+  background: var(--line);
+}
+
+.muted {
+  margin: 10px 2px;
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.loadMore {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 9px;
+  border: 0;
+  border-radius: var(--rad-sm);
+  background: var(--chip);
+  color: var(--fg);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.loadMore:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

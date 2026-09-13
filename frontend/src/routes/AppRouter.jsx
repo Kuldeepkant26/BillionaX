@@ -15,6 +15,8 @@ import {
   VideoSkeleton,
   ProfileSkeleton,
   PaySkeleton,
+  FeedSkeleton,
+  FeedGridSkeleton,
 } from "../features/guest/GuestSkeletons.jsx";
 
 import GuestLayout from "../components/layout/GuestLayout.jsx";
@@ -35,6 +37,10 @@ const OfferPage = lazy(() => import("../pages/guest/OfferPage.jsx"));
 const VideoPage = lazy(() => import("../pages/guest/VideoPage.jsx"));
 const NotificationsPage = lazy(() => import("../pages/guest/NotificationsPage.jsx"));
 const ProfilePage = lazy(() => import("../pages/guest/ProfilePage.jsx"));
+const FeedPage = lazy(() => import("../pages/guest/FeedPage.jsx"));
+const FeedPostPage = lazy(() => import("../pages/guest/FeedPostPage.jsx"));
+const FeedProfilePage = lazy(() => import("../pages/guest/FeedProfilePage.jsx"));
+const SavedPostsPage = lazy(() => import("../pages/guest/SavedPostsPage.jsx"));
 
 const HotelDashboardPage = lazy(() => import("../pages/hotel/HotelDashboardPage.jsx"));
 const BillPage = lazy(() => import("../pages/hotel/BillPage.jsx"));
@@ -111,6 +117,13 @@ const router = createBrowserRouter([
         ...guestRoute(<NotificationsPage />, <ListSkeleton label="Loading your alerts" />),
       },
       { path: "app/profile", ...guestRoute(<ProfilePage />, <ProfileSkeleton />) },
+      // The feed. "saved" is a literal and must not be read as a :postId, which
+      // is why the post and profile drill-downs sit under /p/ and /u/ rather
+      // than directly under /app/feed/.
+      { path: "app/feed", ...guestRoute(<FeedPage />, <FeedSkeleton />) },
+      { path: "app/feed/saved", ...guestRoute(<SavedPostsPage />, <FeedGridSkeleton />) },
+      { path: "app/feed/p/:postId", ...guestRoute(<FeedPostPage />, <FeedSkeleton />) },
+      { path: "app/feed/u/:userId", ...guestRoute(<FeedProfilePage />, <FeedGridSkeleton />) },
     ],
   },
 

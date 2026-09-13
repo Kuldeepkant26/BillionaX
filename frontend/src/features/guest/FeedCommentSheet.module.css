@@ -1,0 +1,99 @@
+.back {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.45);
+  backdrop-filter: blur(2px);
+  animation: fade 140ms ease;
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  /* Matches the guest shell, so the sheet lines up with the feed above it
+     rather than spanning a wide desktop window. */
+  max-width: 460px;
+  /* svh, not vh: on mobile Safari vh includes the collapsing toolbar, which
+     puts the composer under it. */
+  height: 76svh;
+  max-height: 76svh;
+  padding: 0 14px calc(10px + env(safe-area-inset-bottom));
+  background: var(--card);
+  border-radius: var(--rad) var(--rad) 0 0;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  box-shadow: var(--shadow);
+  animation: rise 190ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 0 8px;
+  flex: none;
+}
+
+.head h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--fg);
+}
+
+.head button {
+  position: absolute;
+  right: 0;
+  top: 10px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--dim);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.head button:hover {
+  background: var(--chip);
+  color: var(--fg);
+}
+
+/* The drag handle. Decorative — the sheet is dismissed by the scrim, Escape or
+   the close button; this only signals "this panel came up from the bottom". */
+.grab {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .back,
+  .sheet {
+    animation: none;
+  }
+}

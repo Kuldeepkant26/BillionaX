@@ -1,0 +1,107 @@
+/*
+ * The carousel track. In CSS rather than utilities because scroll-snap, the
+ * hidden scrollbar and the ::-webkit- pseudo-element have no Tailwind
+ * equivalents worth the arbitrary-value noise.
+ */
+.track {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  /* A fixed box for every post, so the feed does not reflow as images land and
+     the reader's scroll position stays where they put it. 4:5 is the tallest
+     portrait Instagram allows and reads well on a phone. */
+  aspect-ratio: 4 / 5;
+  background: var(--chip);
+  /* Hidden rather than styled: a scrollbar under a photo looks like a defect.
+     The dots are the affordance. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.track::-webkit-scrollbar {
+  display: none;
+}
+
+.snap {
+  scroll-snap-type: x mandatory;
+}
+
+.frame {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  /* contain, not cover: a photo posted in portrait or landscape should be shown
+     whole. Cropping to fill the box is how you cut someone's head off. */
+  object-fit: contain;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  user-select: none;
+}
+
+/* Stands in for an image that would not load, so the well reads as "this photo
+   is missing" rather than as a rendering failure. */
+.broken {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--dim);
+}
+
+.broken i {
+  font-style: normal;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* "3/7", top right — the Instagram affordance that says there is more to swipe. */
+.counter {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.55);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 17px;
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+
+.dots {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.dot,
+.dotOn {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.dot {
+  background: rgb(255 255 255 / 0.55);
+}
+
+.dotOn {
+  background: #fff;
+  transform: scale(1.15);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot,
+  .dotOn {
+    transition: none;
+  }
+}

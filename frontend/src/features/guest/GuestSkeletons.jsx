@@ -173,3 +173,47 @@ export const ProfileSkeleton = () => (
     <Skeleton h={140} radius="var(--rad)" style={{ marginTop: 14 }} />
   </SkeletonScreen>
 );
+
+/**
+ * Two post cards, shaped like the real thing: a 4:5 image well between a header
+ * row and an action bar. Matching the real proportions is the point — a
+ * skeleton of the wrong height re-flows the page the moment content lands.
+ */
+export const FeedSkeleton = () => (
+  <SkeletonScreen label="Loading the feed">
+    {[0, 1].map((i) => (
+      <div key={i} className={i ? "mt-3.5" : ""}>
+        <div className="flex items-center gap-2.5 p-2.5">
+          <Skeleton w={32} h={32} radius="50%" />
+          <span className="flex-1 min-w-0">
+            <Skeleton w="40%" h={12} />
+            <Skeleton w="22%" h={9} style={{ marginTop: 6 }} />
+          </span>
+        </div>
+        <Skeleton h={0} style={{ aspectRatio: "4 / 5", height: "auto" }} radius="var(--rad)" />
+        <div className="px-3 pt-2.5">
+          <Skeleton w="30%" h={12} />
+          <Skeleton w="80%" h={11} style={{ marginTop: 7 }} />
+        </div>
+      </div>
+    ))}
+  </SkeletonScreen>
+);
+
+/** The 3-across square grid behind a profile or the saved screen. */
+export const FeedGridSkeleton = () => (
+  <SkeletonScreen label="Loading posts">
+    <div className="flex items-center gap-[13px]">
+      <Skeleton w={64} h={64} radius="50%" />
+      <span className="flex-1 min-w-0">
+        <Skeleton w="52%" h={16} />
+        <Skeleton w="30%" h={11} style={{ marginTop: 7 }} />
+      </span>
+    </div>
+    <div className="grid grid-cols-3 gap-0.75 mt-4.5">
+      {Array.from({ length: 9 }, (_, i) => (
+        <Skeleton key={i} h={0} style={{ aspectRatio: "1", height: "auto" }} radius={0} />
+      ))}
+    </div>
+  </SkeletonScreen>
+);

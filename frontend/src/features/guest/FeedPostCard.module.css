@@ -1,0 +1,261 @@
+/*
+ * One post row. Utilities would do most of this, but the descendant selectors
+ * into the avatar's <img>, the line-clamp and the hover states read far better
+ * as a stylesheet than as five arbitrary-value classes per element.
+ */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--rad);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+/* ---- header ---- */
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+  color: inherit;
+  text-decoration: none;
+}
+
+.whoText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.whoText b {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--fg);
+  /* The name truncates; the tick must not, or a long name would push the badge
+     out of the row entirely. */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.whoText i {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.avatar {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--dim);
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ---- options menu ---- */
+
+.menuWrap {
+  position: relative;
+  flex: none;
+}
+
+.iconBtn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--dim);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.iconBtn:hover {
+  background: var(--chip);
+  color: var(--fg);
+}
+
+/* Sits under the menu and over everything else, so one tap anywhere dismisses. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: transparent;
+  border: 0;
+  cursor: default;
+}
+
+.menu {
+  position: absolute;
+  top: 34px;
+  right: 0;
+  z-index: 41;
+  min-width: 150px;
+  padding: 5px;
+  border-radius: var(--rad-sm);
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.menuDanger {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: calc(var(--rad-sm) - 3px);
+  background: none;
+  color: var(--bad);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuDanger:hover {
+  background: color-mix(in srgb, var(--bad) 12%, transparent);
+}
+
+/* ---- action bar ---- */
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 8px 2px;
+}
+
+.action,
+.liked,
+.saved {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--fg);
+  transition: transform 120ms ease, color 120ms ease;
+}
+
+.action:active,
+.liked:active,
+.saved:active {
+  transform: scale(0.88);
+}
+
+.liked {
+  color: var(--bad);
+}
+
+.saved {
+  color: var(--acc);
+}
+
+/* Bookmark to the far right, the way every feed lays this out. */
+.pushRight {
+  margin-left: auto;
+}
+
+/* ---- body ---- */
+
+.body {
+  padding: 0 13px 12px;
+}
+
+.likes {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 3px;
+}
+
+.caption,
+.captionClamped {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+
+.captionClamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.captionName {
+  font-weight: 650;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.more,
+.viewAll,
+.permalink {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 0;
+  background: none;
+  border: 0;
+  font-size: 12.5px;
+  color: var(--dim);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.more:hover,
+.viewAll:hover,
+.permalink:hover {
+  color: var(--fg);
+}
+
+.viewAll,
+.permalink {
+  display: block;
+}
+
+.permalink {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action,
+  .liked,
+  .saved {
+    transition: none;
+  }
+}

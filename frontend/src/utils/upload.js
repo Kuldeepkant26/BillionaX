@@ -174,3 +174,19 @@ export const avatarUrl = (url, size = 128) => {
     `/image/upload/w_${size * dpr},h_${size * dpr},c_fill,g_face,f_auto,q_auto/`
   );
 };
+
+/**
+ * A feed photo at display width, in whatever shape it was taken.
+ *
+ * NOT avatarUrl. That one is square, c_fill and g_face — right for a face in a
+ * circle, wrong for a photograph: it would crop a landscape shot to a square
+ * centred on a face that may not be in it. c_limit only ever scales DOWN, so a
+ * small image is left alone rather than upscaled.
+ *
+ * f_auto/q_auto is where the saving is; the crop was never the point.
+ */
+export const feedImage = (url, width = 460) => {
+  if (!url || !url.includes("/image/upload/")) return url;
+  const dpr = Math.min(2, Math.round(globalThis.devicePixelRatio || 1));
+  return url.replace("/image/upload/", `/image/upload/w_${width * dpr},c_limit,f_auto,q_auto/`);
+};

@@ -11,6 +11,10 @@ export const ROUTES = {
   APP_VIDEO: "/app/watch/:contentId",
   APP_ALERTS: "/app/alerts",
   APP_PROFILE: "/app/profile",
+  APP_FEED: "/app/feed",
+  APP_FEED_SAVED: "/app/feed/saved",
+  APP_FEED_POST: "/app/feed/p/:postId",
+  APP_FEED_PROFILE: "/app/feed/u/:userId",
 
   // hotel panel
   HOTEL_LOGIN: "/hotel/login",
@@ -23,6 +27,7 @@ export const ROUTES = {
   HOTEL_PRIVILEGES: "/hotel/privileges",
   HOTEL_STAFF: "/hotel/staff",
   HOTEL_SETTINGS: "/hotel/settings",
+  HOTEL_FEED: "/hotel/feed",
 
   // admin panel
   ADMIN_LOGIN: "/admin/login",
@@ -34,12 +39,15 @@ export const ROUTES = {
   ADMIN_TRANSACTIONS: "/admin/transactions",
   ADMIN_PAYMENTS: "/admin/payments",
   ADMIN_SETTINGS: "/admin/settings",
+  ADMIN_FEED: "/admin/feed",
 };
 
 export const joinPath = (slug) => `/join/${slug}`;
 export const adminHotelPath = (id) => `/admin/hotels/${id}`;
 export const videoPath = (contentId) => `/app/watch/${contentId}`;
 export const offerPath = (contentId) => `/app/offers/${contentId}`;
+export const feedPostPath = (postId) => `/app/feed/p/${postId}`;
+export const feedProfilePath = (userId) => `/app/feed/u/${userId}`;
 
 /** Where each role belongs after signing in. */
 export const homeForRole = (role) =>

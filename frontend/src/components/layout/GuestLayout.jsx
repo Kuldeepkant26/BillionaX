@@ -12,7 +12,15 @@ import styles from "./GuestLayout.module.css";
 
 const NAV = [
   { to: ROUTES.APP, label: "Home", end: true, icon: "M3 8.5L10 3l7 5.5V17a1 1 0 0 1-1 1h-3v-5H7v5H4a1 1 0 0 1-1-1z" },
-  { to: ROUTES.APP_PAY, label: "Pay", icon: "M3 6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1H5a2 2 0 0 0 0 4h12v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" },
+  // Pay used to sit here. It moved out of the nav rather than away: it is the
+  // primary quick action on the home screen, so a tab of its own was a second
+  // door to the same room. /app/pay is untouched — GuestHomePage and BillPopup
+  // still navigate there, and old notification hrefs still resolve.
+  //
+  // Hand-written path, like every icon here — the app ships no icon library.
+  // A stack of photos: back frame, front frame, and the mountain-and-sun mark
+  // that reads as a picture at 19px.
+  { to: ROUTES.APP_FEED, label: "Feed", icon: "M6.5 3.2h10.3a1 1 0 0 1 1 1v9.3M3.2 6.5v9.8a1 1 0 0 0 1 1h9.8a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1H4.2a1 1 0 0 0-1 1zm2.1 8.4 2.8-3.1 1.9 2 1.7-1.8 1.6 1.7" },
   { to: ROUTES.APP_OFFERS, label: "Offers", icon: "M10 2l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4L5.5 15.8l.9-5L2.8 7.3l5-.7z" },
   // Hand-written path, matching the other icons — the app ships no icon library.
   { to: ROUTES.APP_ALERTS, label: "Alerts", badge: true, icon: "M10 2.6a4.6 4.6 0 0 0-4.6 4.6c0 3.5-1.2 4.6-1.2 4.6h11.6s-1.2-1.1-1.2-4.6A4.6 4.6 0 0 0 10 2.6zM8.4 14.4a1.7 1.7 0 0 0 3.2 0z" },
