@@ -60,3 +60,30 @@
 .on svg {
   filter: var(--nav-glow);
 }
+
+/*
+ * The six-tab bar.
+ *
+ * Applied only when the admin has switched the feed on — five tabs still
+ * spread across the full width with no overflow at all. What is here is the
+ * scrollbar suppression: a visible track inside a 58px frosted pill reads as
+ * a rendering fault, and the tabs cut off at the edge are their own affordance.
+ *
+ * Scroll snapping keeps a tab from coming to rest half-clipped, which is what
+ * makes the crowded bar still feel like a set of discrete targets rather than
+ * a strip of content.
+ */
+.scroller {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+}
+
+.scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.scroller .navItem {
+  scroll-snap-align: center;
+}

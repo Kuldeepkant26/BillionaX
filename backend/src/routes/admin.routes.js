@@ -22,6 +22,9 @@ import {
   paymentSettingsRules,
   onboardingRules,
   bankVerificationRules,
+  supportMessageRules,
+  supportPartyRule,
+  searchRule,
 } from "../validators/common.validator.js";
 
 const router = Router();
@@ -118,5 +121,43 @@ router.delete("/payments", adminController.clearPaymentSettings);
 
 router.get("/settings", adminController.getSettings);
 router.patch("/settings", settingsRules, validate, adminController.updateSettings);
+
+/* ---- support inbox ---------------------------------------------------- */
+
+// Registered before /support/:userId would be — "unread-count" must not be
+// read as a user id, the same ordering trap as /hotels/cities above.
+router.get("/support/unread-count", adminController.supportUnreadCount);
+// ?party=GUEST|HOTEL selects the channel on each of these; it defaults to the
+// guest queue, so a client that predates the hotel channel is unaffected.
+router.get(
+  "/support",
+  paginationRules,
+  searchRule,
+  supportPartyRule,
+  validate,
+  adminController.listSupportThreads
+);
+router.get(
+  "/support/:userId",
+  objectIdParam("userId"),
+  supportPartyRule,
+  validate,
+  adminController.getSupportThread
+);
+router.post(
+  "/support/:userId/read",
+  objectIdParam("userId"),
+  supportPartyRule,
+  validate,
+  adminController.markSupportThreadRead
+);
+router.post(
+  "/support/:userId/messages",
+  objectIdParam("userId"),
+  supportMessageRules,
+  supportPartyRule,
+  validate,
+  adminController.replyToSupportThread
+);
 
 export default router;

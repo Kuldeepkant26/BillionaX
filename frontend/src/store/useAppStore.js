@@ -7,6 +7,7 @@ import { createThemeSlice } from "./slices/themeSlice.js";
 import { createNotificationSlice } from "./slices/notificationSlice.js";
 import { createBillSlice } from "./slices/billSlice.js";
 import { createFeedSlice } from "./slices/feedSlice.js";
+import { createSupportSlice } from "./slices/supportSlice.js";
 
 export const useAppStore = create()(
   devtools(
@@ -20,6 +21,9 @@ export const useAppStore = create()(
         ...createBillSlice(...args),
         // Contributes nothing to partialize, on purpose — see feedSlice.js.
         ...createFeedSlice(...args),
+        // Also contributes nothing to partialize — see supportSlice.js for why
+        // feedEnabled in particular must not be persisted.
+        ...createSupportSlice(...args),
       }),
       {
         name: "gw-storage",

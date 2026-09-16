@@ -66,3 +66,15 @@ export const confirmBill = (billId, payload) =>
 
 export const cancelBill = (billId) =>
   api.post(`/guest/bills/${billId}/cancel`).then(unwrap);
+
+/* ---- help centre chat ------------------------------------------------- */
+
+/** The whole conversation, oldest first — see the backend's support.service.js. */
+export const listSupportMessages = () => api.get("/guest/support/messages").then(unwrap);
+
+export const supportUnreadCount = () => api.get("/guest/support/unread-count").then(unwrap);
+
+export const markSupportRead = () => api.post("/guest/support/read").then(unwrap);
+
+export const sendSupportMessage = (body) =>
+  api.post("/guest/support/messages", { body }).then(unwrap);

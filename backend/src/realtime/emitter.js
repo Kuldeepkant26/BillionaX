@@ -21,6 +21,18 @@ export const detachIo = () => {
 export const hasIo = () => io !== null;
 
 export const guestRoom = (guestId) => `guest:${guestId}`;
+
+/**
+ * A room of one account, whatever its role.
+ *
+ * Distinct from guestRoom, which only guests join. This is what lets a
+ * PRIVATE message reach one staff account without going through the hotel
+ * room that its colleagues also sit in — the support channel's threads are
+ * per account, so the property is the wrong unit of delivery.
+ *
+ * Named from the token's own id in realtime/index.js, never from client input.
+ */
+export const userRoom = (userId) => `user:${userId}`;
 export const hotelRoom = (hotelId) => `hotel:${hotelId}`;
 
 /**
@@ -33,9 +45,32 @@ export const hotelRoom = (hotelId) => `hotel:${hotelId}`;
  */
 export const FEED_ROOM = "feed";
 
+/**
+ * The main-admin room.
+ *
+ * Like FEED_ROOM this has no id, but for the opposite reason: there is one
+ * support queue and every MAIN_ADMIN watches the same one. The name is a
+ * constant and membership is decided from the token's role in realtime/
+ * index.js, so nothing here is named from client input.
+ */
+export const ADMIN_ROOM = "admins";
+
 export const emitToGuest = (guestId, event, payload) => {
   if (!io || !guestId) return false;
   io.to(guestRoom(guestId)).emit(event, payload);
+  return true;
+};
+
+/**
+ * Sends to one account's own sockets, across every tab and device it has open.
+ *
+ * Used for anything private to a person rather than to their hotel — today the
+ * support thread echo. Preferred over emitToHotel whenever the payload is not
+ * something a colleague should read.
+ */
+export const emitToUser = (userId, event, payload) => {
+  if (!io || !userId) return false;
+  io.to(userRoom(userId)).emit(event, payload);
   return true;
 };
 
@@ -65,5 +100,19 @@ export const emitToHotel = (hotelId, event, payload) => {
 export const emitToFeed = (event, payload) => {
   if (!io) return false;
   io.to(FEED_ROOM).emit(event, payload);
+  return true;
+};
+
+/**
+ * Broadcasts to every signed-in main admin.
+ *
+ * Bounded by how few main admins exist, which is what makes a roomful of
+ * support traffic acceptable here when the same volume would not be on
+ * emitToFeed. It carries the support queue: a guest's message and an admin's
+ * reply, so a second admin watching the same inbox sees both.
+ */
+export const emitToAdmins = (event, payload) => {
+  if (!io) return false;
+  io.to(ADMIN_ROOM).emit(event, payload);
   return true;
 };

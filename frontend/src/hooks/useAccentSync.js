@@ -16,6 +16,7 @@ import { useAppStore } from "../store/useAppStore.js";
 export const useAccentSync = () => {
   const setAccent = useAppStore((s) => s.setAccent);
   const setFont = useAppStore((s) => s.setFont);
+  const setFeedEnabled = useAppStore((s) => s.setFeedEnabled);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,6 +26,10 @@ export const useAccentSync = () => {
         if (data?.themePreset) setAccent(data.themePreset, data.themeCustomColor);
         // The typeface rides on the same call for the same reason.
         if (data?.fontPreset) setFont(data.fontPreset);
+        // Not guarded on truthiness, unlike the presets above: `false` is a
+        // meaningful value here, and `if (data.feedEnabled)` would make the
+        // switch impossible to turn OFF.
+        if (data && "feedEnabled" in data) setFeedEnabled(data.feedEnabled);
       })
       .catch(() => {
         // The persisted (or default) accent already painted the app; a failed

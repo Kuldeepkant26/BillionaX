@@ -1,5 +1,6 @@
 import PanelLayout from "./PanelLayout.jsx";
 import { ROUTES } from "../../constants/routePaths.js";
+import { useAdminSupportBadge } from "../../hooks/useAdminSupportBadge.js";
 
 const NAV = [
   {
@@ -19,8 +20,23 @@ const NAV = [
     icon: "M10 2.8a3.4 3.4 0 1 1 0 6.8 3.4 3.4 0 0 1 0-6.8zM3.6 17c.6-3.4 3.2-5.2 6.4-5.2s5.8 1.8 6.4 5.2z",
   },
   {
+    // Straight after Guests: it is a queue about guests, worked every day, and
+    // it belongs above the reporting pages rather than buried under them.
+    // `badge` names the count PanelLayout should draw — see useAdminSupportBadge.
+    to: ROUTES.ADMIN_SUPPORT,
+    label: "Support",
+    badge: "support",
+    // A speech bubble with three dots, drawn filled like every icon here —
+    // PanelLayout renders these with no stroke.
+    icon: "M10 3c-4 0-7.2 2.5-7.2 5.6 0 1.8 1 3.4 2.7 4.5L4.4 17l3.6-2a9.9 9.9 0 0 0 2 .2c4 0 7.2-2.5 7.2-5.6S14 3 10 3zM6.6 9.8a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4zm3.4 0a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4zm3.4 0a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4z",
+  },
+  {
     to: ROUTES.ADMIN_FEED,
     label: "Feed",
+    // Hidden entirely while the main admin has the feed switched off, in
+    // Platform rules → Guest app. The PAGE stays routable, so a bookmark
+    // still works and nothing is lost by switching it off.
+    feature: "feed",
     icon: "M6.5 3.2h10.3a1 1 0 0 1 1 1v9.3M3.2 6.5v9.8a1 1 0 0 0 1 1h9.8a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1H4.2a1 1 0 0 0-1 1zm2.1 8.4 2.8-3.1 1.9 2 1.7-1.8 1.6 1.7",
   },
   {
@@ -45,8 +61,12 @@ const NAV = [
   },
 ];
 
-const AdminPanelLayout = () => (
-  <PanelLayout brand="Billionax" subtitle="Super admin" nav={NAV} />
-);
+const AdminPanelLayout = () => {
+  // Mounted here rather than in PanelLayout: the hotel panels share that shell
+  // and have no support queue to count.
+  useAdminSupportBadge();
+
+  return <PanelLayout brand="Billionax" subtitle="Super admin" nav={NAV} />;
+};
 
 export default AdminPanelLayout;

@@ -4,7 +4,15 @@ import { logger } from "../utils/logger.js";
 import { verifyAccessToken } from "../utils/token.util.js";
 import { User } from "../models/user.model.js";
 import { ROLES } from "../config/constants.js";
-import { attachIo, detachIo, guestRoom, hotelRoom, FEED_ROOM } from "./emitter.js";
+import {
+  attachIo,
+  detachIo,
+  guestRoom,
+  hotelRoom,
+  userRoom,
+  FEED_ROOM,
+  ADMIN_ROOM,
+} from "./emitter.js";
 
 let io = null;
 
@@ -55,18 +63,26 @@ export const createRealtime = (httpServer) => {
   io.on("connection", (socket) => {
     const { userId, role, hotelId, tokenExp } = socket.data;
 
+    // Everyone joins a room of their own, so anything private to one ACCOUNT
+    // can reach all of its tabs without passing through a shared room. The
+    // name comes from the verified token above, like every other room here.
+    socket.join(userRoom(userId));
+
     if (role === ROLES.GUEST) socket.join(guestRoom(userId));
     if ((role === ROLES.HOTEL_ADMIN || role === ROLES.HOTEL_STAFF) && hotelId) {
       socket.join(hotelRoom(hotelId));
     }
     // MAIN_ADMIN joins no HOTEL room: they have no hotelId, and a room named
-    // from client input is exactly the leak requireSameHotel prevents.
+    // from client input is exactly the leak requireSameHotel prevents. They do
+    // join the admin room, which carries the support queue — its name is a
+    // constant and the role comes from the database record above, so it is
+    // subject to the same rule rather than an exception to it.
+    if (role === ROLES.MAIN_ADMIN) socket.join(ADMIN_ROOM);
 
-    // Everyone joins the feed room, MAIN_ADMIN included — it is the only room
-    // they are ever in. That is consistent with the rule above rather than an
-    // exception to it: the danger there is a room named from CLIENT INPUT, and
-    // this name is a constant. The feed is global, so there is nothing to scope
-    // it by and nothing to forge.
+    // Everyone joins the feed room, MAIN_ADMIN included. Same reasoning as the
+    // admin room: the danger is a room named from CLIENT INPUT, and this name
+    // is a constant. The feed is global, so there is nothing to scope it by
+    // and nothing to forge.
     socket.join(FEED_ROOM);
 
     // A socket outlives its 15-minute access token, and socket.io only checks

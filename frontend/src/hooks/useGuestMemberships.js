@@ -20,6 +20,7 @@ export const useGuestMemberships = () => {
   const setCardDesign = useAppStore((s) => s.setCardDesign);
   const setAccent = useAppStore((s) => s.setAccent);
   const setFont = useAppStore((s) => s.setFont);
+  const setFeedEnabled = useAppStore((s) => s.setFeedEnabled);
 
   useEffect(() => {
     if (!isAuthenticated || role !== "GUEST") return;
@@ -33,6 +34,9 @@ export const useGuestMemberships = () => {
         if (data.cardDesign) setCardDesign(data.cardDesign);
         if (data.themePreset) setAccent(data.themePreset, data.themeCustomColor);
         if (data.fontPreset) setFont(data.fontPreset);
+        // `in` rather than a truthiness check: false is the value that turns
+        // the Feed tab off, and a truthy guard could never deliver it.
+        if ("feedEnabled" in data) setFeedEnabled(data.feedEnabled);
       })
       .catch(() => {
         // Each page still renders from whatever the store already holds.

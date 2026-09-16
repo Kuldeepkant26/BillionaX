@@ -176,10 +176,14 @@ const ProfilePage = () => {
       </Card>
 
       {/* A link row rather than a button: it navigates, and everything else on
-          this screen that navigates looks like this. */}
+          this screen that navigates looks like this.
+
+          Points at the help centre rather than straight at the FAQ: the chat
+          lives there too, and a guest who could not find their answer should
+          land one tap from a person rather than at a dead end. */}
       <button
         type="button"
-        onClick={() => navigate(ROUTES.APP_FAQ)}
+        onClick={() => navigate(ROUTES.APP_HELP)}
         className="flex items-center gap-3 w-full bg-card border border-hairline rounded-token px-3.75 py-3.5 mb-3.5 text-left cursor-pointer transition-[border-color] duration-150 hover:border-accent"
       >
         <span className="grid place-items-center w-9 h-9 rounded-full bg-chip text-accent flex-none">
@@ -191,9 +195,9 @@ const ProfilePage = () => {
           </svg>
         </span>
         <span className="min-w-0 flex-1">
-          <b className="block text-[13px] font-semibold text-ink">Questions</b>
+          <b className="block text-[13px] font-semibold text-ink">Help centre</b>
           <i className="not-italic block text-[11px] text-muted mt-0.5">
-            How coins, bills and tiers work
+            Answers, or a message to our team
           </i>
         </span>
         <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor"

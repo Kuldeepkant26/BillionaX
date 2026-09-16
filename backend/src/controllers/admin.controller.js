@@ -1,6 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { ROLES } from "../config/constants.js";
+import { ApiError } from "../utils/ApiError.js";
+import { ROLES, SUPPORT_PARTIES } from "../config/constants.js";
 import * as hotelService from "../services/hotel.service.js";
 import * as coinService from "../services/coin.service.js";
 import * as reportService from "../services/report.service.js";
@@ -9,6 +10,7 @@ import * as adminUserService from "../services/adminUser.service.js";
 import * as rebateService from "../services/rebate.service.js";
 import * as paymentSettingsService from "../services/paymentSettings.service.js";
 import * as onboardingService from "../services/onboarding.service.js";
+import * as supportService from "../services/support.service.js";
 
 export const dashboard = asyncHandler(async (req, res) => {
   const data = await reportService.adminDashboard();
@@ -249,6 +251,63 @@ export const getSettings = asyncHandler(async (req, res) => {
 export const updateSettings = asyncHandler(async (req, res) => {
   const settings = await settingsService.updateSettings(req.body, req.user._id);
   res.status(200).json(new ApiResponse(200, { settings }, "Settings saved"));
+});
+
+/* --------------------------------------------------------------- support -- */
+
+/*
+ * Two channels, one set of handlers.
+ *
+ * `party` arrives as a validated query/body param (see supportPartyRule) and
+ * defaults to the guest queue, so the existing guest-inbox calls keep working
+ * unchanged. It is passed explicitly into every service call rather than
+ * inferred, which is what keeps a hotel id from ever resolving a guest thread.
+ */
+const partyFrom = (req) => req.query.party || req.body?.party || SUPPORT_PARTIES.GUEST;
+
+export const listSupportThreads = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 25, q = "" } = req.query;
+  const data = await supportService.listThreads({
+    party: partyFrom(req),
+    page: Number(page),
+    limit: Number(limit),
+    q,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+/** Both channels' counts in one call — the nav badge needs the total, the tabs the split. */
+export const supportUnreadCount = asyncHandler(async (req, res) => {
+  const data = await supportService.unreadForPlatform();
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const getSupportThread = asyncHandler(async (req, res) => {
+  const data = await supportService.getThread({
+    userId: req.params.userId,
+    party: partyFrom(req),
+  });
+  if (!data) throw new ApiError(404, "Conversation not found");
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const markSupportThreadRead = asyncHandler(async (req, res) => {
+  const data = await supportService.markReadByPlatform({
+    userId: req.params.userId,
+    party: partyFrom(req),
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const replyToSupportThread = asyncHandler(async (req, res) => {
+  const message = await supportService.sendFromPlatform({
+    userId: req.params.userId,
+    party: partyFrom(req),
+    adminId: req.user._id,
+    body: req.body.body,
+  });
+  if (!message) throw new ApiError(404, "Conversation not found");
+  res.status(201).json(new ApiResponse(201, { message }, "Reply sent"));
 });
 
 /* -------------------------------------------------------------- payments -- */

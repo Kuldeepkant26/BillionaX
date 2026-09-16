@@ -140,9 +140,55 @@ export const NOTIFICATION_KINDS = Object.freeze({
   VOUCHER_EXPIRING: "VOUCHER_EXPIRING",
   VOUCHER_CANCELLED: "VOUCHER_CANCELLED",
   SYSTEM: "SYSTEM",
+  /**
+   * The platform team answered a support thread.
+   *
+   * Used on the GUEST channel only. Hotel admins are told through their
+   * panel's own badge instead — the Notification collection is the guest
+   * alerts feed, and a hotel admin has no screen that reads it.
+   */
+  SUPPORT_REPLY: "SUPPORT_REPLY",
 });
 
 export const NOTIFICATION_KIND_VALUES = Object.values(NOTIFICATION_KINDS);
+
+/**
+ * Which SIDE of a support conversation a message came from.
+ *
+ * Two values, not a role: a client renders a bubble left or right, and it must
+ * not have to know whether a MAIN_ADMIN or some future support role typed it.
+ * Who actually typed it is stored as authorId alongside.
+ *
+ * The names are historical. GUEST means "the person who owns this thread" —
+ * on a hotel thread that is the hotel admin, not a guest — and ADMIN means
+ * "the platform team". They were not renamed to OWNER/PLATFORM because the
+ * values are persisted on every existing row, and a rename would be a data
+ * migration that buys nothing a comment cannot.
+ */
+export const SUPPORT_SENDERS = Object.freeze({
+  GUEST: "GUEST",
+  ADMIN: "ADMIN",
+});
+
+export const SUPPORT_SENDER_VALUES = Object.values(SUPPORT_SENDERS);
+
+/**
+ * Which support CHANNEL a thread belongs to.
+ *
+ * Guests asking about their account and hotel admins asking the platform team
+ * are two queues with different audiences and different response expectations,
+ * so they are separated here rather than merged and filtered in the UI.
+ *
+ * Stored on the message rather than derived from the owner's role, because a
+ * role can change: promoting a hotel admin must not silently move their
+ * conversation history into the guest queue.
+ */
+export const SUPPORT_PARTIES = Object.freeze({
+  GUEST: "GUEST",
+  HOTEL: "HOTEL",
+});
+
+export const SUPPORT_PARTY_VALUES = Object.values(SUPPORT_PARTIES);
 
 /**
  * Membership-card art. The main admin picks one and it applies network-wide.

@@ -1,6 +1,6 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { CONTENT_KINDS } from "../config/constants.js";
+import { CONTENT_KINDS, SUPPORT_PARTIES } from "../config/constants.js";
 import * as membershipService from "../services/membership.service.js";
 import * as billService from "../services/bill.service.js";
 import * as contentService from "../services/content.service.js";
@@ -9,6 +9,7 @@ import * as notificationService from "../services/notification.service.js";
 import * as uploadService from "../services/upload.service.js";
 import * as videoService from "../services/video.service.js";
 import * as offerService from "../services/offer.service.js";
+import * as supportService from "../services/support.service.js";
 import { getSettings } from "../services/settings.service.js";
 
 export const listMemberships = asyncHandler(async (req, res) => {
@@ -35,6 +36,10 @@ export const listMemberships = asyncHandler(async (req, res) => {
       themePreset: settings.themePreset,
       themeCustomColor: settings.themeCustomColor,
       fontPreset: settings.fontPreset,
+      // Rides along for the same reason as the theme: the bottom nav is built
+      // from it, and a second round trip would mean the Feed tab popping in
+      // after the app has already painted.
+      feedEnabled: settings.feedEnabled,
     })
   );
 });
@@ -161,6 +166,44 @@ export const notificationCount = asyncHandler(async (req, res) => {
 export const markNotificationsRead = asyncHandler(async (req, res) => {
   const data = await notificationService.markAllRead(req.user._id);
   res.status(200).json(new ApiResponse(200, data, "Marked as read"));
+});
+
+/* ---- help centre chat ------------------------------------------------- */
+
+// Every handler pins party: GUEST explicitly. The service takes it as an
+// argument rather than inferring it from the caller's role, so a guest route
+// can never read or write the hotel channel.
+export const listSupportMessages = asyncHandler(async (req, res) => {
+  const data = await supportService.listForOwner({
+    userId: req.user._id,
+    party: SUPPORT_PARTIES.GUEST,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const supportUnreadCount = asyncHandler(async (req, res) => {
+  const data = await supportService.unreadForOwner({
+    userId: req.user._id,
+    party: SUPPORT_PARTIES.GUEST,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const markSupportRead = asyncHandler(async (req, res) => {
+  const data = await supportService.markReadByOwner({
+    userId: req.user._id,
+    party: SUPPORT_PARTIES.GUEST,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const sendSupportMessage = asyncHandler(async (req, res) => {
+  const message = await supportService.sendFromOwner({
+    userId: req.user._id,
+    party: SUPPORT_PARTIES.GUEST,
+    body: req.body.body,
+  });
+  res.status(201).json(new ApiResponse(201, { message }, "Message sent"));
 });
 
 export const getHotelContent = asyncHandler(async (req, res) => {

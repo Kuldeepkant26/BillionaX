@@ -574,3 +574,96 @@ a.kpi:hover { border-color: var(--acc); box-shadow: var(--shadow); }
   color: var(--dim);
 }
 .confirm-text b { color: var(--fg); }
+
+/*
+ * Toggle — a labelled on/off switch.
+ *
+ * The track is driven by `:checked + .toggle-track`, a sibling selector with
+ * no utility equivalent because the state lives on a different element. The
+ * native checkbox stays in the DOM, visually hidden, so keyboard and screen
+ * readers get a real control rather than a div pretending to be one.
+ *
+ * Lifted from PrivilegesPage's local copy, which is where this pattern was
+ * proven. That page still has its own; the two should converge on this one
+ * the next time it is touched.
+ */
+.toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-track {
+  position: relative;
+  flex: none;
+  /* Nudged down so the track aligns with the label's cap height rather than
+     its line box — with a hint underneath, centring would float it. */
+  margin-top: 1px;
+  width: 34px;
+  height: 19px;
+  border-radius: 999px;
+  background: var(--chip);
+  border: 1px solid var(--line);
+  transition: background 0.16s, border-color 0.16s;
+}
+
+.toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--dim);
+  transition: transform 0.16s, background 0.16s;
+}
+
+.toggle-input:checked + .toggle-track {
+  background: var(--acc);
+  border-color: var(--acc);
+}
+
+.toggle-input:checked + .toggle-track::after {
+  background: var(--acc-fg);
+  transform: translateX(15px);
+}
+
+.toggle-input:focus-visible + .toggle-track {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+
+.toggle-body { min-width: 0; }
+
+.toggle-body b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.toggle-body i {
+  display: block;
+  margin-top: 3px;
+  font-style: normal;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toggle-track,
+  .toggle-track::after {
+    transition: none;
+  }
+}

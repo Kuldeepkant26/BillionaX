@@ -114,3 +114,19 @@ export const getBill = (billId) => api.get(`/hotel/bills/${billId}`).then(unwrap
  */
 export const cancelBill = (billId) =>
   api.post(`/hotel/bills/${billId}/cancel`).then(unwrap);
+
+/* ---- support: this account's thread with the platform team ------------- */
+
+/*
+ * No id in any of these: a thread is keyed on the signed-in account, and the
+ * property comes from the token. See the backend's hotel.routes.js.
+ */
+
+export const listSupportMessages = () => api.get("/hotel/support/messages").then(unwrap);
+
+export const supportUnreadCount = () => api.get("/hotel/support/unread-count").then(unwrap);
+
+export const markSupportRead = () => api.post("/hotel/support/read").then(unwrap);
+
+export const sendSupportMessage = (body) =>
+  api.post("/hotel/support/messages", { body }).then(unwrap);

@@ -59,3 +59,26 @@ export const verifyBank = (hotelId, payload) =>
 /** Creates the Route payout account from the VERIFIED bank details. */
 export const createLinkedAccount = (hotelId, payload) =>
   api.post(`/admin/hotels/${hotelId}/linked-account`, payload).then(unwrap);
+
+/* ---- support inbox ---------------------------------------------------- */
+
+/*
+ * Every call takes a `party` — "GUEST" or "HOTEL" — naming which queue it is
+ * about. The server defaults to GUEST when it is absent, but these pass it
+ * explicitly: the inbox always knows which tab it is on, and an implicit
+ * default is how one tab ends up silently reading the other's threads.
+ */
+
+export const listSupportThreads = (params) => api.get("/admin/support", { params }).then(unwrap);
+
+/** Both queues' counts in one call: { guest, hotel, unread }. */
+export const supportUnreadCount = () => api.get("/admin/support/unread-count").then(unwrap);
+
+export const getSupportThread = (userId, party) =>
+  api.get(`/admin/support/${userId}`, { params: { party } }).then(unwrap);
+
+export const markSupportThreadRead = (userId, party) =>
+  api.post(`/admin/support/${userId}/read`, null, { params: { party } }).then(unwrap);
+
+export const replyToSupportThread = (userId, party, body) =>
+  api.post(`/admin/support/${userId}/messages`, { body }, { params: { party } }).then(unwrap);

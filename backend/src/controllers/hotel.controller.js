@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
-import { ROLES, CONTENT_KINDS } from "../config/constants.js";
+import { ROLES, CONTENT_KINDS, SUPPORT_PARTIES } from "../config/constants.js";
 import * as coinService from "../services/coin.service.js";
 import * as contentService from "../services/content.service.js";
 import * as reportService from "../services/report.service.js";
@@ -12,6 +12,7 @@ import * as membershipService from "../services/membership.service.js";
 import * as uploadService from "../services/upload.service.js";
 import * as videoService from "../services/video.service.js";
 import * as billService from "../services/bill.service.js";
+import * as supportService from "../services/support.service.js";
 
 /** Main admin must target a hotel explicitly; staff are pinned to their own. */
 const hotelIdFor = (req) => {
@@ -528,4 +529,60 @@ export const getBill = asyncHandler(async (req, res) => {
     hotelId: hotelIdFor(req),
   });
   res.status(200).json(new ApiResponse(200, { bill }));
+});
+
+/* ---- support: this account's thread with the platform team ------------- */
+
+/*
+ * Keyed on the SIGNED-IN USER, not on the hotel.
+ *
+ * Threads are per account, so `req.user._id` is the whole scope and there is
+ * no id in any of these paths — which also means there is nothing for a
+ * caller to tamper with. hotelId is read from the token via hotelIdFor so the
+ * platform's inbox can group by property, exactly as requireSameHotel
+ * guarantees everywhere else in this controller.
+ *
+ * MAIN_ADMIN reaches these routes too (they share HOTEL_ROLES), but has no
+ * hotelId of their own, so hotelIdFor throws a 400 rather than writing a
+ * hotel-channel thread with a null property. They answer from the admin panel.
+ */
+export const listSupportMessages = asyncHandler(async (req, res) => {
+  const data = await supportService.listForOwner({
+    userId: req.user._id,
+    party: SUPPORT_PARTIES.HOTEL,
+    // Several managers can share a property, so the panel labels each message
+    // with who wrote it.
+    withAuthors: true,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const supportUnreadCount = asyncHandler(async (req, res) => {
+  const data = await supportService.unreadForOwner({
+    userId: req.user._id,
+    party: SUPPORT_PARTIES.HOTEL,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const markSupportRead = asyncHandler(async (req, res) => {
+  const data = await supportService.markReadByOwner({
+    userId: req.user._id,
+    party: SUPPORT_PARTIES.HOTEL,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const sendSupportMessage = asyncHandler(async (req, res) => {
+  const message = await supportService.sendFromOwner({
+    userId: req.user._id,
+    party: SUPPORT_PARTIES.HOTEL,
+    hotelId: hotelIdFor(req),
+    body: req.body.body,
+    // Echoed straight back so the sender's own bubble is attributed without a
+    // refetch — the socket copy reaching colleagues carries it for the same
+    // reason.
+    authorName: req.user.name,
+  });
+  res.status(201).json(new ApiResponse(201, { message }, "Message sent"));
 });

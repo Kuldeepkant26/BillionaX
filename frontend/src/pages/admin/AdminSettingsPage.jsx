@@ -9,6 +9,7 @@ import {
   Input,
   Loading,
   Slider,
+  Toggle,
 } from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
 import { ApplyBar } from "../../features/panel/ApplyBar.jsx";
@@ -38,6 +39,10 @@ const toForm = (s) => ({
   themePreset: resolveAccent(s.themePreset || DEFAULT_ACCENT),
   themeCustomColor: isValidHex(s.themeCustomColor) ? s.themeCustomColor : DEFAULT_CUSTOM_COLOR,
   fontPreset: resolveFont(s.fontPreset || DEFAULT_FONT),
+  // Boolean, unlike every other field here, and the dirty check below compares
+  // with String() — which is why this must be a real boolean rather than
+  // undefined on an older payload, or the form reads dirty on arrival.
+  feedEnabled: Boolean(s.feedEnabled),
 });
 
 const AdminSettingsPage = () => {
@@ -115,6 +120,7 @@ const RulesForm = ({ settings, reload }) => {
           PLATINUM: Number(form.platinum),
         },
         cardDesign: form.cardDesign,
+        feedEnabled: form.feedEnabled,
         themePreset: form.themePreset,
         themeCustomColor: form.themeCustomColor,
         fontPreset: form.fontPreset,
@@ -263,6 +269,15 @@ const RulesForm = ({ settings, reload }) => {
             />
           </Field>
         </div>
+      </Card>
+
+      <Card title="Guest app" className="my-4">
+        <Toggle
+          label="Social feed"
+          hint="Adds a Feed tab to the guest app's bottom bar, and the Feed pages to this panel and the hotel panels. Existing posts are kept while it is off — switching it back on restores them untouched."
+          checked={form.feedEnabled}
+          onChange={(feedEnabled) => setForm((f) => ({ ...f, feedEnabled }))}
+        />
       </Card>
 
       <Card title="Dashboard & app theme" className="my-4">

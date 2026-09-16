@@ -9,6 +9,7 @@ import {
   CARD_DESIGN_VALUES,
   THEME_PRESET_VALUES,
   FONT_PRESET_VALUES,
+  SUPPORT_PARTY_VALUES,
 } from "../config/constants.js";
 
 export const objectIdParam = (name) =>
@@ -421,6 +422,37 @@ export const settingsRules = [
     .optional()
     .matches(/^#[0-9a-fA-F]{6}$/)
     .withMessage("Enter a 6-digit hex colour"),
+  // toBoolean() would turn a typo'd "yes" into false and silently hide the
+  // feed, so the value has to already BE a boolean to be accepted.
+  body("feedEnabled").optional().isBoolean({ strict: true }),
+];
+
+/**
+ * A support message, from either side.
+ *
+ * The 2000-character cap matches the model's maxlength — enforced in both
+ * places so an oversized body is a 400 with a field error rather than a
+ * mongoose ValidationError surfacing as a 500.
+ */
+/**
+ * Which support channel a request is about.
+ *
+ * Defaults to the guest queue when absent, so the guest-inbox calls that
+ * predate the hotel channel keep working. Checked against the enum rather than
+ * coerced — an unknown party would otherwise match no rows and look like an
+ * empty inbox rather than a bad request.
+ */
+export const supportPartyRule = [
+  query("party").optional({ values: "falsy" }).isIn(SUPPORT_PARTY_VALUES),
+  body("party").optional({ values: "falsy" }).isIn(SUPPORT_PARTY_VALUES),
+];
+
+export const supportMessageRules = [
+  body("body")
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 2000 })
+    .withMessage("A message is 1 to 2000 characters"),
 ];
 
 /**

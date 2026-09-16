@@ -1,0 +1,250 @@
+/*
+ * The support chat.
+ *
+ * The one guest screen that is NOT a document: it fills the viewport, pins its
+ * composer to the bottom and scrolls only the thread between them. That is why
+ * it is CSS rather than utilities — the height arithmetic has to account for
+ * the shell's own padding and its floating nav, and spreading that across
+ * three arbitrary-value Tailwind classes would hide the calculation.
+ *
+ * The shell gives <main> `px-[18px] pt-5 pb-24`. This page cancels the
+ * horizontal padding so bubbles can reach the edges, and subtracts the rest
+ * from 100svh — svh, not vh, so the mobile browser's collapsing address bar
+ * does not leave the composer floating under a strip of chrome.
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  /* pt-5 (20px) + pb-24 (96px) from the shell's <main>. */
+  height: calc(100svh - 116px);
+  margin: 0 -18px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  padding: 0 18px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.head h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: var(--fg);
+}
+
+.head p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.back {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--card);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--fg);
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.back:hover {
+  border-color: var(--acc);
+  color: var(--acc);
+}
+
+/* The only scrolling region on the page. */
+.thread {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 18px 4px;
+  overscroll-behavior-y: contain;
+}
+
+.state,
+.empty {
+  text-align: center;
+  color: var(--dim);
+}
+
+.state {
+  margin: 20px 0;
+  font-size: 12px;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 40px auto;
+  max-width: 260px;
+}
+
+.empty b {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.empty i {
+  font-style: normal;
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.day {
+  margin: 14px 0 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--dim);
+}
+
+.row {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.mine {
+  justify-content: flex-end;
+}
+
+.theirs {
+  justify-content: flex-start;
+}
+
+/* 78% rather than a fixed width: a one-word reply should be a small bubble,
+   and a long one should still leave enough margin to read as a side. */
+.bubble {
+  position: relative;
+  max-width: 78%;
+  padding: 9px 12px 7px;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.bubble p {
+  margin: 0;
+  /* The guest typed this, so it can contain anything — newlines included.
+     pre-wrap keeps their line breaks; anywhere breaks a pasted URL or a long
+     unbroken string rather than letting it widen the bubble off-screen. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.bubble time {
+  display: block;
+  margin-top: 3px;
+  font-size: 9.5px;
+  text-align: right;
+  opacity: 0.65;
+}
+
+/* The guest's own messages carry the accent; support's sit on the card
+   neutral. One tail corner squared off on each side is what makes the two
+   read as a conversation rather than as a list of pills. */
+.mine .bubble {
+  border-bottom-right-radius: 5px;
+  background: var(--acc);
+  color: var(--acc-fg);
+}
+
+.theirs .bubble {
+  border-bottom-left-radius: 5px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--fg);
+}
+
+.composer {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 18px 0;
+  border-top: 1px solid var(--line);
+  /* Opaque, and the same ground as the page: the thread scrolls UNDER this
+     bar, so a transparent composer would show bubbles sliding behind the
+     textarea. */
+  background: var(--bg);
+}
+
+.composer textarea {
+  flex: 1;
+  min-width: 0;
+  /* One row tall, grown by the page's onInput handler up to this ceiling —
+     about five lines, after which it scrolls rather than eating the thread. */
+  max-height: 110px;
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--card);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--fg);
+  resize: none;
+  transition: border-color 150ms ease;
+}
+
+.composer textarea:focus {
+  outline: none;
+  border-color: var(--acc);
+}
+
+.composer textarea::placeholder {
+  color: var(--dim);
+}
+
+.composer button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--acc);
+  color: var(--acc-fg);
+  cursor: pointer;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.composer button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.composer button:not(:disabled):active {
+  transform: scale(0.94);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .back,
+  .composer textarea,
+  .composer button {
+    transition: none;
+  }
+
+  .composer button:not(:disabled):active {
+    transform: none;
+  }
+}

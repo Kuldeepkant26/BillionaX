@@ -40,6 +40,8 @@ const PanelLayout = ({ brand, subtitle, nav, showHotel = false }) => {
   const navigate = useNavigate();
   const staffHotel = useAppStore((s) => s.staffHotel);
   const setStaffHotel = useAppStore((s) => s.setStaffHotel);
+  const supportUnread = useAppStore((s) => s.supportUnread);
+  const feedEnabled = useAppStore((s) => s.feedEnabled);
   const [open, setOpen] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
@@ -89,7 +91,25 @@ const PanelLayout = ({ brand, subtitle, nav, showHotel = false }) => {
   const kicker = showHotel && staffHotel?.name ? "Hotel panel" : subtitle;
   const logo = showHotel && !logoBroken ? staffHotel?.logoUrl : null;
 
-  const visible = nav.filter((item) => !item.roles || item.roles.includes(user?.role));
+  /*
+   * Two independent filters, deliberately not merged.
+   *
+   * `roles` is about WHO the signed-in user is and never changes during a
+   * session. `feature` is about what the platform currently offers and can be
+   * switched off under a staff member who is looking at the tab — so it reads
+   * from live store state rather than from the nav definition.
+   */
+  const features = { feed: feedEnabled };
+  const visible = nav.filter(
+    (item) =>
+      (!item.roles || item.roles.includes(user?.role)) &&
+      (!item.feature || features[item.feature])
+  );
+
+  // Counts a nav item can carry, keyed by the name an item's `badge` names.
+  // One entry today; the shape exists so the next one is a line here rather
+  // than another subscription threaded through this component.
+  const badges = { support: supportUnread };
 
   return (
     <div className="theme-root" data-theme="ink-minimal" data-accent={accent} data-font={font} style={accentStyle}>
@@ -191,6 +211,25 @@ const PanelLayout = ({ brand, subtitle, nav, showHotel = false }) => {
                 <span className={collapsed ? "[@media(min-width:901px)]:hidden" : ""}>
                   {item.label}
                 </span>
+                {/* An `item.badge` nav entry names a store key to count —
+                    today only Support. Kept on the item rather than hardcoded
+                    here so PanelLayout stays the shared shell it is, with no
+                    knowledge of which panel or which page it is drawing.
+
+                    Sits after the label and pushed right, so it lands at the
+                    end of an expanded rail. On a collapsed rail the label is
+                    hidden and ml-auto has nothing to push against, which is
+                    why it falls back to hugging the icon. */}
+                {item.badge && badges[item.badge] > 0 && (
+                  <b
+                    className={`ml-auto min-w-[18px] h-[18px] px-1.5 rounded-full bg-[var(--bad)] text-white text-[10px] font-bold leading-[18px] text-center tabular-nums ${
+                      collapsed ? "[@media(min-width:901px)]:hidden" : ""
+                    }`}
+                    aria-label={`${badges[item.badge]} unread`}
+                  >
+                    {badges[item.badge] > 9 ? "9+" : badges[item.badge]}
+                  </b>
+                )}
               </NavLink>
             ))}
           </nav>

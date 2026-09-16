@@ -26,6 +26,11 @@ router.get(
         // Same reasoning as the theme: the login page has to paint in the
         // chosen typeface before anyone has a token.
         fontPreset: settings.fontPreset,
+        // Whether the feed is switched on. Public for the same reason as the
+        // theme: the guest shell reads it to build the bottom nav, and it has
+        // to be right on the FIRST paint or the nav visibly reshuffles under
+        // the guest's thumb.
+        feedEnabled: settings.feedEnabled,
         // So the code input can size itself to the codes actually issued
         // rather than hardcoding a length the server is free to change.
         otpLength: env.otp.length,

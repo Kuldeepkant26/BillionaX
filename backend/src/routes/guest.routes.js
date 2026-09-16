@@ -11,6 +11,7 @@ import {
   memberDetailsRules,
   commentRules,
   payBillRules,
+  supportMessageRules,
 } from "../validators/common.validator.js";
 
 const router = Router();
@@ -36,6 +37,19 @@ router.get(
 router.get("/notifications", paginationRules, validate, guestController.listNotifications);
 router.get("/notifications/unread-count", guestController.notificationCount);
 router.post("/notifications/read", guestController.markNotificationsRead);
+
+// ---- help centre chat ----
+// No pagination: a support thread is read whole, oldest first. See
+// support.service.js for why.
+router.get("/support/messages", guestController.listSupportMessages);
+router.get("/support/unread-count", guestController.supportUnreadCount);
+router.post("/support/read", guestController.markSupportRead);
+router.post(
+  "/support/messages",
+  supportMessageRules,
+  validate,
+  guestController.sendSupportMessage
+);
 
 
 router.get(

@@ -27,6 +27,7 @@ import {
   contentFilterRules,
   monthlyReportRules,
   serviceRules,
+  supportMessageRules,
 } from "../validators/common.validator.js";
 
 const router = Router();
@@ -209,6 +210,31 @@ router.delete(
   objectIdParam("commentId"),
   validate,
   hotelController.deleteVideoComment
+);
+
+/* ---- support: this account's own thread with the platform team ---- */
+
+/*
+ * adminOnly, like Settings and Staff.
+ *
+ * A property speaks to the platform through its manager. Opening this to
+ * HOTEL_STAFF would give the main admin a queue of front-desk accounts asking
+ * questions their own manager should answer first — and staff accounts turn
+ * over far faster than the threads would.
+ *
+ * No id in any path: a thread is keyed on the signed-in account, so there is
+ * nothing here for a caller to tamper with. The property comes from the token
+ * via requireSameHotel, which the router applies to everything above.
+ */
+router.get("/support/messages", adminOnly, hotelController.listSupportMessages);
+router.get("/support/unread-count", adminOnly, hotelController.supportUnreadCount);
+router.post("/support/read", adminOnly, hotelController.markSupportRead);
+router.post(
+  "/support/messages",
+  adminOnly,
+  supportMessageRules,
+  validate,
+  hotelController.sendSupportMessage
 );
 
 router.get("/settings", adminOnly, hotelController.getSettings);

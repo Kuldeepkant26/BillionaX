@@ -1,6 +1,7 @@
 import PanelLayout from "./PanelLayout.jsx";
 import { ROUTES } from "../../constants/routePaths.js";
 import { ROLES } from "../../store/slices/authSlice.js";
+import { useHotelSupportBadge } from "../../hooks/useHotelSupportBadge.js";
 
 // Hotel-admin-only nav items. MAIN_ADMIN never reaches this panel — they work
 // from the admin panel, which targets a specific hotel.
@@ -50,6 +51,10 @@ const NAV = [
     // of the list inside, which the server decides from the token.
     to: ROUTES.HOTEL_FEED,
     label: "Feed",
+    // Gone from the rail while the main admin has the feed switched off —
+    // there is nowhere for these posts to appear, so offering the composer
+    // would be inviting staff to write into a void.
+    feature: "feed",
     icon: "M6.5 3.2h10.3a1 1 0 0 1 1 1v9.3M3.2 6.5v9.8a1 1 0 0 0 1 1h9.8a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1H4.2a1 1 0 0 0-1 1zm2.1 8.4 2.8-3.1 1.9 2 1.7-1.8 1.6 1.7",
   },
   {
@@ -75,6 +80,20 @@ const NAV = [
     icon: "M7 3.5a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm7 1a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM1.5 17c.5-3 2.7-5.2 5.5-5.2S12 14 12.5 17zm12.2 0c-.3-1.8-1-3.3-2.1-4.4.7-.3 1.5-.4 2.4-.4 2.2 0 3.8 1.6 4.2 4.8z",
   },
   {
+    // Last but one, next to Settings: this is where a manager goes with a
+    // question about the platform itself rather than about a guest in the
+    // building, so it belongs with the account-level items.
+    // `badge` names the count PanelLayout draws — see useHotelSupportBadge.
+    to: ROUTES.HOTEL_SUPPORT,
+    label: "Contact Billionax",
+    roles: ADMIN,
+    badge: "support",
+    // A speech bubble with three dots, filled like every icon here — the same
+    // mark the admin panel uses for its own Support tab, because it is the
+    // other end of the same conversation.
+    icon: "M10 3c-4 0-7.2 2.5-7.2 5.6 0 1.8 1 3.4 2.7 4.5L4.4 17l3.6-2a9.9 9.9 0 0 0 2 .2c4 0 7.2-2.5 7.2-5.6S14 3 10 3zM6.6 9.8a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4zm3.4 0a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4zm3.4 0a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4z",
+  },
+  {
     to: ROUTES.HOTEL_SETTINGS,
     label: "Settings",
     roles: ADMIN,
@@ -84,8 +103,12 @@ const NAV = [
 
 // showHotel swaps the static brand line for this hotel's own logo and name;
 // "Hotel panel" stays as the fallback until the hotel loads.
-const HotelPanelLayout = () => (
-  <PanelLayout brand="Hotel panel" subtitle="Billionax" nav={NAV} showHotel />
-);
+const HotelPanelLayout = () => {
+  // Mounted here rather than in PanelLayout: the admin panel shares that shell
+  // and counts a different queue entirely.
+  useHotelSupportBadge();
+
+  return <PanelLayout brand="Hotel panel" subtitle="Billionax" nav={NAV} showHotel />;
+};
 
 export default HotelPanelLayout;

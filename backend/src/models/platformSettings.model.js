@@ -44,6 +44,21 @@ const platformSettingsSchema = new mongoose.Schema(
 
     coinsExpire: { type: Boolean, default: false },
 
+    /**
+     * Whether the social feed is part of the product right now.
+     *
+     * Off by default: the feature is built and tested, but the network is
+     * launching without it, and a default of true would light it up on every
+     * deployment that has never opened the settings page.
+     *
+     * This gates the NAVIGATION, not the data or the API. Feed routes keep
+     * working while it is off, so existing posts, likes and saves survive
+     * being switched off and come back untouched — and a guest holding a
+     * direct link to a post still sees it rather than a 404. Hiding the door
+     * is the reversible half of this; deleting the room is not.
+     */
+    feedEnabled: { type: Boolean, default: false },
+
     // Which membership-card art every guest sees. Network-wide by design:
     // the card is the product's face, so it stays consistent across hotels
     // rather than becoming a per-property choice.

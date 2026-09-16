@@ -455,3 +455,29 @@ export const Slider = ({ value, onChange, min = 0, max = 100, step = 1, unit, er
     </span>
   );
 };
+
+/**
+ * A labelled on/off switch.
+ *
+ * `onChange` receives the BOOLEAN, not an event — unlike Input and Slider,
+ * which hand back an event shape so the panels' `change(key)` handlers work
+ * unmodified. A checkbox has no `target.value` worth reading, and callers of
+ * this always want the checked state, so passing it directly is what every
+ * call site would otherwise destructure on its own line.
+ */
+export const Toggle = ({ label, hint, checked = false, onChange, disabled }) => (
+  <label className={`toggle ${disabled ? "opacity-55 cursor-default" : ""}`}>
+    <input
+      type="checkbox"
+      className="toggle-input"
+      checked={checked}
+      disabled={disabled}
+      onChange={(e) => onChange?.(e.target.checked)}
+    />
+    <span className="toggle-track" />
+    <span className="toggle-body">
+      <b>{label}</b>
+      {hint && <i>{hint}</i>}
+    </span>
+  </label>
+);

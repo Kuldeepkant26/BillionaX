@@ -12,6 +12,8 @@ export const ROUTES = {
   APP_ALERTS: "/app/alerts",
   APP_PROFILE: "/app/profile",
   APP_FAQ: "/app/faq",
+  APP_HELP: "/app/help",
+  APP_HELP_CHAT: "/app/help/chat",
   APP_FEED: "/app/feed",
   APP_FEED_SAVED: "/app/feed/saved",
   APP_FEED_POST: "/app/feed/p/:postId",
@@ -30,6 +32,7 @@ export const ROUTES = {
   HOTEL_STAFF: "/hotel/staff",
   HOTEL_SETTINGS: "/hotel/settings",
   HOTEL_FEED: "/hotel/feed",
+  HOTEL_SUPPORT: "/hotel/support",
 
   // admin panel
   ADMIN_LOGIN: "/admin/login",
@@ -42,6 +45,8 @@ export const ROUTES = {
   ADMIN_PAYMENTS: "/admin/payments",
   ADMIN_SETTINGS: "/admin/settings",
   ADMIN_FEED: "/admin/feed",
+  ADMIN_SUPPORT: "/admin/support",
+  ADMIN_SUPPORT_THREAD: "/admin/support/:userId",
 };
 
 export const joinPath = (slug) => `/join/${slug}`;
@@ -50,6 +55,7 @@ export const videoPath = (contentId) => `/app/watch/${contentId}`;
 export const offerPath = (contentId) => `/app/offers/${contentId}`;
 export const feedPostPath = (postId) => `/app/feed/p/${postId}`;
 export const feedProfilePath = (userId) => `/app/feed/u/${userId}`;
+export const supportThreadPath = (userId) => `/admin/support/${userId}`;
 
 /** Where each role belongs after signing in. */
 export const homeForRole = (role) =>

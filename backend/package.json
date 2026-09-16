@@ -16,6 +16,7 @@
     "seed:privileges": "node scripts/seedPrivileges.js",
     "sweep:offers": "node scripts/sweepExpiredOffers.js",
     "migrate:otp": "node scripts/migrateOtpIdentifier.js",
+    "migrate:support": "node scripts/migrateSupportThreads.js",
     "rebate:month": "node scripts/runMonthlyRebate.js"
   },
   "dependencies": {

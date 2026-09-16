@@ -38,6 +38,8 @@ const VideoPage = lazy(() => import("../pages/guest/VideoPage.jsx"));
 const NotificationsPage = lazy(() => import("../pages/guest/NotificationsPage.jsx"));
 const ProfilePage = lazy(() => import("../pages/guest/ProfilePage.jsx"));
 const FaqPage = lazy(() => import("../pages/guest/FaqPage.jsx"));
+const HelpPage = lazy(() => import("../pages/guest/HelpPage.jsx"));
+const SupportChatPage = lazy(() => import("../pages/guest/SupportChatPage.jsx"));
 const FeedPage = lazy(() => import("../pages/guest/FeedPage.jsx"));
 const FeedPostPage = lazy(() => import("../pages/guest/FeedPostPage.jsx"));
 const FeedProfilePage = lazy(() => import("../pages/guest/FeedProfilePage.jsx"));
@@ -54,6 +56,7 @@ const PrivilegesPage = lazy(() => import("../pages/hotel/PrivilegesPage.jsx"));
 const ServicesPage = lazy(() => import("../pages/hotel/ServicesPage.jsx"));
 const StaffPage = lazy(() => import("../pages/hotel/StaffPage.jsx"));
 const HotelSettingsPage = lazy(() => import("../pages/hotel/HotelSettingsPage.jsx"));
+const HotelSupportPage = lazy(() => import("../pages/hotel/HotelSupportPage.jsx"));
 
 const AdminDashboardPage = lazy(() => import("../pages/admin/AdminDashboardPage.jsx"));
 const HotelsPage = lazy(() => import("../pages/admin/HotelsPage.jsx"));
@@ -64,6 +67,7 @@ const AdminTransactionsPage = lazy(() => import("../pages/admin/AdminTransaction
 const AdminSettingsPage = lazy(() => import("../pages/admin/AdminSettingsPage.jsx"));
 const AdminPaymentsPage = lazy(() => import("../pages/admin/AdminPaymentsPage.jsx"));
 const AdminFeedPage = lazy(() => import("../pages/admin/AdminFeedPage.jsx"));
+const AdminSupportPage = lazy(() => import("../pages/admin/AdminSupportPage.jsx"));
 
 const lazyEl = (node) => <Suspense fallback={<Loading />}>{node}</Suspense>;
 
@@ -122,6 +126,14 @@ const router = createBrowserRouter([
       },
       { path: "app/profile", ...guestRoute(<ProfilePage />, <ProfileSkeleton />) },
       { path: "app/faq", ...guestRoute(<FaqPage />, <ListSkeleton label="Loading answers" />) },
+      // The help centre: the FAQ above and the support chat below it. The nav
+      // points at /app/help, and both destinations stay reachable on their own
+      // URLs so a notification can link straight into the conversation.
+      { path: "app/help", ...guestRoute(<HelpPage />, <ListSkeleton label="Loading help" />) },
+      {
+        path: "app/help/chat",
+        ...guestRoute(<SupportChatPage />, <ListSkeleton label="Loading your messages" />),
+      },
       // The feed. "saved" is a literal and must not be read as a :postId, which
       // is why the post and profile drill-downs sit under /p/ and /u/ rather
       // than directly under /app/feed/.
@@ -225,6 +237,16 @@ const router = createBrowserRouter([
           </RoleRoute>
         ),
       },
+      // Hotel-admin only, matching the API: a property speaks to the platform
+      // through its manager, not through every front-desk account.
+      {
+        path: "support",
+        element: lazyEl(
+          <RoleRoute allow={HOTEL_ADMIN_ONLY} loginPath={ROUTES.HOTEL_LOGIN}>
+            <HotelSupportPage />
+          </RoleRoute>
+        ),
+      },
     ],
   },
 
@@ -261,6 +283,10 @@ const router = createBrowserRouter([
       { path: "hotels/:hotelId", element: lazyEl(<HotelDetailPage />) },
       { path: "guests", element: lazyEl(<GuestsPage />) },
       { path: "feed", element: lazyEl(<AdminFeedPage />) },
+      // One page for both the thread list and an open conversation: ?guestId
+      // would have worked, but a path makes a thread linkable from an email.
+      { path: "support", element: lazyEl(<AdminSupportPage />) },
+      { path: "support/:userId", element: lazyEl(<AdminSupportPage />) },
       { path: "admins", element: lazyEl(<AdminsPage />) },
       { path: "transactions", element: lazyEl(<AdminTransactionsPage />) },
       { path: "payments", element: lazyEl(<AdminPaymentsPage />) },
