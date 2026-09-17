@@ -1,5 +1,6 @@
 import { PALETTES } from "./palettes.js";
 import { useSvgIds } from "./tokens.js";
+import { ringAndBar } from "./primitives.jsx";
 
 /**
  * The background artwork for each family: everything behind the text.
@@ -10,23 +11,15 @@ import { useSvgIds } from "./tokens.js";
  */
 
 /**
- * The Billionax mark's two paths at a given centre and radius, for stroking.
+ * The Billionax mark at a given centre and radius, for stroking.
  *
- * Shared by every design that draws the mark, so the proportions are defined
- * once: a ring of radius r with a bar overshooting it by 0.28r at each end
- * (hence the 2.56r length). Those come from the source logo — see LogoMark in
- * primitives.jsx, which is the same geometry as a standalone component.
- *
- * A helper rather than <LogoMark> because these designs stroke the SAME
- * geometry more than once — a dark cut then a light highlight, or a fill then
- * a rim — which a single self-contained component cannot express.
+ * A thin re-export of primitives.jsx's ringAndBar, kept as its own name here
+ * because every design below calls it as "the mark", not "the ring and bar" —
+ * see ringAndBar for the actual geometry, including the two short breaks
+ * where the bar crosses the ring, cut with a mask rather than redrawn as a
+ * plain, gapless circle.
  */
-const markPaths = (cx, cy, r) => (
-  <>
-    <circle cx={cx} cy={cy} r={r} />
-    <path d={`M${cx} ${cy - r * 1.28}v${r * 2.56}`} />
-  </>
-);
+const markPaths = ringAndBar;
 
 /* ---------------- 01 Metálica: foil geometry on matte black --------------- */
 
@@ -97,8 +90,13 @@ export const BrushedSteelArt = ({ tier }) => {
    * colours and a 2px offset (a dark cut, then a light highlight), which a
    * single-element component cannot express. Sized to a 190-unit square:
    * r=70.3 at a 10.45 stroke.
+   *
+   * Called once per <g> below rather than computed once and reused: markPaths
+   * carries a <mask> with an id from useId(), and reusing one JSX value in two
+   * places in the tree would render that same id twice — the exact
+   * document-global collision the note at the top of primitives.jsx warns
+   * about, just at markup level instead of across sibling cards.
    */
-  const monogram = markPaths(95, 95, 70.3);
 
   return (
     <svg className="absolute inset-0 h-full w-full" viewBox="0 0 380 240" aria-hidden="true">
@@ -133,10 +131,10 @@ export const BrushedSteelArt = ({ tier }) => {
           it. Positioned so the ring sits off the right edge, as the ghost
           monogram did, leaving the left two-thirds clear for the type. */}
       <g transform="translate(228 25)" fill="none" stroke="rgba(0,0,0,.35)" strokeWidth="10.45">
-        {monogram}
+        {markPaths(95, 95, 70.3)}
       </g>
       <g transform="translate(230 27)" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="2.4">
-        {monogram}
+        {markPaths(95, 95, 70.3)}
       </g>
 
       <rect width="380" height="240" fill={`url(#${id.glow})`} />

@@ -4,15 +4,18 @@ import { useAppStore } from "../store/useAppStore.js";
 import { connectSocket, disconnectSocket, reauthSocket } from "../realtime/socket.js";
 
 /**
- * Connects the guest socket and keeps the unread badge live.
+ * Connects the socket for every signed-in role, and keeps the guest unread
+ * badge live on top of it.
  *
- * The socket is an optimisation, not the source of truth: every connect,
- * reconnect and tab-focus re-derives the count from the server. Because that
- * count comes from the ledger rather than from delivered pushes, a resync is
- * always exactly right — which is why no delivery queue is needed.
+ * The socket connection itself is shared — PanelLayout mounts this same hook
+ * so hotel and admin staff get the bill-arrival push too. But the unread
+ * NOTIFICATION badge is a guest concept: `/guest/notifications/unread-count`
+ * 403s for every other role, so syncUnread and the notification: events are
+ * gated to GUEST rather than firing (and failing) on every panel page load.
  */
 export const useRealtime = () => {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
+  const isGuest = useAppStore((s) => s.user?.role === "GUEST");
   const accessToken = useAppStore((s) => s.accessToken);
   const syncUnread = useAppStore((s) => s.syncUnread);
   const setUnread = useAppStore((s) => s.setUnread);
@@ -28,6 +31,18 @@ export const useRealtime = () => {
     const socket = connectSocket();
     if (!socket) return undefined;
 
+    // The server warns ~30s before the token expires, then drops the socket.
+    // Reconnecting with whatever token the store now holds is enough: if axios
+    // has rotated it, the new one is picked up here.
+    const onExpiring = () => reauthSocket(useAppStore.getState().accessToken);
+    socket.on("auth:expiring", onExpiring);
+
+    if (!isGuest) {
+      return () => {
+        socket.off("auth:expiring", onExpiring);
+      };
+    }
+
     syncUnread();
 
     const onConnect = () => syncUnread();
@@ -42,11 +57,6 @@ export const useRealtime = () => {
 
     const onRead = ({ unread }) => setUnread(unread ?? 0);
 
-    // The server warns ~30s before the token expires, then drops the socket.
-    // Reconnecting with whatever token the store now holds is enough: if axios
-    // has rotated it, the new one is picked up here.
-    const onExpiring = () => reauthSocket(useAppStore.getState().accessToken);
-
     const onVisible = () => {
       if (document.visibilityState === "visible") syncUnread();
     };
@@ -54,7 +64,6 @@ export const useRealtime = () => {
     socket.on("connect", onConnect);
     socket.on("notification:new", onNew);
     socket.on("notification:read", onRead);
-    socket.on("auth:expiring", onExpiring);
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
@@ -64,7 +73,7 @@ export const useRealtime = () => {
       socket.off("auth:expiring", onExpiring);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isGuest]);
 
   // A rotated token needs a fresh handshake, since rooms are derived from it.
   useEffect(() => {

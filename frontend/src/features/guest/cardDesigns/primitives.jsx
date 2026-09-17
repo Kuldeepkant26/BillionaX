@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 /**
  * Pieces shared by every card family.
  *
@@ -86,28 +88,116 @@ export const Sheen = () => (
  * roughly 0.28x its radius at each end. Normalised here to a 100x100
  * viewBox: r=37, stroke 5.5, bar from y=2.6 to y=97.4.
  *
- * The bar is drawn AFTER the ring and in the same colour, so the two read as
- * one mark. In the original the bar simply passes in front — there is no gap
- * cut in the ring, which an earlier reading of the artwork got wrong.
+ * The ring is NOT a closed circle. Measuring the source PNG shows two short
+ * breaks where the bar crosses it: one just past top-centre on the bar's
+ * right, one just past bottom-centre on the bar's left — nothing at the other
+ * two corners, where the ring runs flush into the bar. A prior pass here read
+ * a blurred crop as a complete ring and removed this.
+ *
+ * The breaks are cut with a MASK rather than by splitting the ring into two
+ * stroked arcs. Two arcs sounds simpler, but an arc's cut end is a flat face
+ * perpendicular to the curve's tangent — at a radius this tight, getting both
+ * ends of both arcs to (a) actually leave open space at the gapped corners and
+ * (b) disappear cleanly under the bar at the flush corners, with no seam and
+ * no misplaced endpoint, means solving four separate angles by hand. That is
+ * exactly what went wrong the first time this was tried: one sign slip near a
+ * pole and an arc's endpoint lands on the wrong side of the bar entirely. A
+ * mask sidesteps all of it — the ring stays ONE ordinary closed circle (always
+ * smooth, never a joinery problem), and the two notches are just rectangles
+ * punched out where the bar crosses, sized off the bar's own width rather
+ * than degrees read off a raster (ROD_RATIO below).
  */
+const ROD_RATIO = 5.5 / 37; // the bar's half-width as a fraction of the ring's radius
+
+/**
+ * The ring's two notches as a luminance mask, keyed to one <circle mask=...>.
+ * Sized off `r` alone, per ROD_RATIO, so the gap reads the same proportion at
+ * a 34-unit corner ornament or a 104-unit watermark.
+ *
+ * `id` must be unique per instance (SVG ids are document-global — see the note
+ * above) and stroke="none" on every mask shape is deliberate: without it these
+ * rects inherit the parent's stroke color, which paints a thin outline that
+ * itself carries partial luminance and turns each clean notch into a hazy,
+ * partly-see-through patch instead of an actual gap.
+ */
+const RingMask = ({ id, cx, cy, r }) => {
+  const rodHalf = (r * ROD_RATIO) / 2;
+  // How far past the bar's edge each notch opens into clear space, and how
+  // tall it cuts — both scaled off the bar's own half-width, not off degrees,
+  // so the gap keeps the same proportion to the bar at any radius.
+  const notchOpen = rodHalf * 2.2;
+  const notchTall = rodHalf * 2.6;
+  const pad = r * 0.2; // clears the mask's own bounding box outside the ring
+  return (
+    <mask id={id}>
+      <rect x={cx - r - pad} y={cy - r - pad} width={2 * (r + pad)} height={2 * (r + pad)} fill="white" stroke="none" />
+      {/* Top-right notch: opens to the right of the bar's right edge. */}
+      <rect
+        x={cx + rodHalf}
+        y={cy - r - notchTall / 2}
+        width={notchOpen}
+        height={notchTall}
+        fill="black"
+        stroke="none"
+      />
+      {/* Bottom-left notch: opens to the left of the bar's left edge. */}
+      <rect
+        x={cx - rodHalf - notchOpen}
+        y={cy + r - notchTall / 2}
+        width={notchOpen}
+        height={notchTall}
+        fill="black"
+        stroke="none"
+      />
+    </mask>
+  );
+};
+
+/**
+ * The mark's ring and bar at a given centre and radius, for stroking.
+ *
+ * Shared by every design that draws the mark, so the proportions are defined
+ * once. Exported so artwork.jsx's markPaths — which strokes the same geometry
+ * more than once per design (a dark cut then a light highlight, a fill then a
+ * rim) — can reuse it rather than duplicating the notch math.
+ *
+ * A hook (useId), like every other id in this file — see the note at the top.
+ * Every call site invokes this unconditionally as plain JSX, so it is always
+ * reached in the same order relative to a design's other hooks.
+ */
+export const ringAndBar = (cx, cy, r) => {
+  const id = `mk${useId().replace(/:/g, "")}`;
+  return (
+    <>
+      <RingMask id={id} cx={cx} cy={cy} r={r} />
+      <circle cx={cx} cy={cy} r={r} mask={`url(#${id})`} />
+      <path d={`M${cx} ${cy - r * 1.28}v${r * 2.56}`} />
+    </>
+  );
+};
+
 export const LogoMark = ({
   className = "",
   stroke = "currentColor",
   strokeWidth = 5.5,
   opacity = 1,
   style,
-}) => (
-  <svg
-    viewBox="0 0 100 100"
-    fill="none"
-    stroke={stroke}
-    strokeWidth={strokeWidth}
-    className={className}
-    style={style}
-    opacity={opacity}
-    aria-hidden="true"
-  >
-    <circle cx="50" cy="50" r="37" />
-    <path d="M50 2.6v94.8" strokeLinecap="butt" />
-  </svg>
-);
+}) => {
+  const id = useId().replace(/:/g, "");
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      fill="none"
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+      className={className}
+      style={style}
+      opacity={opacity}
+      aria-hidden="true"
+    >
+      <RingMask id={`logoRing-${id}`} cx={50} cy={50} r={37} />
+      <circle cx="50" cy="50" r="37" mask={`url(#logoRing-${id})`} />
+      <path d="M50 2.6v94.8" strokeLinecap="butt" />
+    </svg>
+  );
+};
