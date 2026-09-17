@@ -175,20 +175,41 @@ export const SUPPORT_SENDER_VALUES = Object.values(SUPPORT_SENDERS);
 /**
  * Which support CHANNEL a thread belongs to.
  *
- * Guests asking about their account and hotel admins asking the platform team
- * are two queues with different audiences and different response expectations,
- * so they are separated here rather than merged and filtered in the UI.
+ * Three queues, separated here rather than merged and filtered in the UI,
+ * because each has a different audience and a different response expectation:
+ *
+ *   GUEST       guest            -> the platform team   (account, coins, bills)
+ *   HOTEL       hotel manager    -> the platform team   (their property)
+ *   HOTEL_GUEST guest            -> their hotel's desk  (the stay itself)
  *
  * Stored on the message rather than derived from the owner's role, because a
  * role can change: promoting a hotel admin must not silently move their
  * conversation history into the guest queue.
+ *
+ * HOTEL_GUEST is the one channel the platform team is NOT a party to. It is
+ * also the only one whose thread key is a PAIR — a guest belongs to many
+ * hotels, so `userId` alone does not name a conversation; see
+ * SUPPORT_HOTEL_SCOPED_PARTIES below and the model's thread-key index.
  */
 export const SUPPORT_PARTIES = Object.freeze({
   GUEST: "GUEST",
   HOTEL: "HOTEL",
+  HOTEL_GUEST: "HOTEL_GUEST",
 });
 
 export const SUPPORT_PARTY_VALUES = Object.values(SUPPORT_PARTIES);
+
+/**
+ * The channels whose threads are keyed by {userId, hotelId} rather than userId.
+ *
+ * A named set rather than an inline `=== HOTEL_GUEST` at each call site: every
+ * query that forgets to add hotelId silently reads ACROSS a guest's hotels,
+ * which is a disclosure bug that returns plausible-looking data. Asking this
+ * predicate is what makes the omission hard.
+ */
+export const SUPPORT_HOTEL_SCOPED_PARTIES = Object.freeze([SUPPORT_PARTIES.HOTEL_GUEST]);
+
+export const isHotelScopedParty = (party) => SUPPORT_HOTEL_SCOPED_PARTIES.includes(party);
 
 /**
  * Membership-card art. The main admin picks one and it applies network-wide.

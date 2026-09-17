@@ -4,13 +4,39 @@ import {
   SUPPORT_PARTIES,
   NOTIFICATION_KINDS,
   ROLES,
+  isHotelScopedParty,
 } from "../config/constants.js";
 import { SupportMessage } from "../models/supportMessage.model.js";
 import { User } from "../models/user.model.js";
-import { emitToGuest, emitToAdmins, emitToUser } from "../realtime/emitter.js";
+import { GuestHotelMembership } from "../models/guestHotelMembership.model.js";
+import { emitToGuest, emitToAdmins, emitToUser, emitToHotel } from "../realtime/emitter.js";
 import * as notificationService from "./notification.service.js";
 
 const oid = (id) => new mongoose.Types.ObjectId(String(id));
+
+/**
+ * The mongo filter naming ONE conversation.
+ *
+ * Every owner-side read and write goes through this rather than composing
+ * `{ userId, party }` inline, because the HOTEL_GUEST channel is keyed by a
+ * pair: a guest belongs to many hotels, so a filter that forgets hotelId does
+ * not error — it quietly returns the guest's conversations with EVERY hotel,
+ * merged into one thread and shown to whichever property asked. That is a
+ * disclosure bug whose output looks entirely plausible, so it is refused here
+ * rather than guarded at each of the six call sites.
+ */
+const threadFilter = ({ userId, party, hotelId }) => {
+  const filter = { userId: oid(userId), party };
+
+  if (isHotelScopedParty(party)) {
+    if (!hotelId) {
+      throw new Error(`support: party ${party} requires a hotelId to name a thread`);
+    }
+    filter.hotelId = oid(hotelId);
+  }
+
+  return filter;
+};
 
 /**
  * The shape every client renders.
@@ -49,8 +75,10 @@ const toPublicWithAuthor = (m) =>
  * read across channels — a hotel admin asking for their thread must not be
  * able to receive guest rows even if their ids collided.
  */
-export const listForOwner = async ({ userId, party, withAuthors = false }) => {
-  const query = SupportMessage.find({ userId: oid(userId), party }).sort({ createdAt: 1 });
+export const listForOwner = async ({ userId, party, hotelId = null, withAuthors = false }) => {
+  const query = SupportMessage.find(threadFilter({ userId, party, hotelId })).sort({
+    createdAt: 1,
+  });
   if (withAuthors) query.populate("authorId", "name");
 
   const messages = await query.lean();
@@ -64,20 +92,19 @@ export const listForOwner = async ({ userId, party, withAuthors = false }) => {
  * messages read — that flag belongs to the platform side, and clearing it here
  * would empty the main admin's unread badge from the owner's screen.
  */
-export const markReadByOwner = async ({ userId, party }) => {
+export const markReadByOwner = async ({ userId, party, hotelId = null }) => {
   const { modifiedCount } = await SupportMessage.updateMany(
-    { userId: oid(userId), party, sender: SUPPORT_SENDERS.ADMIN, readAt: null },
+    { ...threadFilter({ userId, party, hotelId }), sender: SUPPORT_SENDERS.ADMIN, readAt: null },
     { $set: { readAt: new Date() } }
   );
 
   return { unread: 0, marked: modifiedCount };
 };
 
-/** How many platform replies the owner has not opened yet. */
-export const unreadForOwner = async ({ userId, party }) => {
+/** How many replies the owner has not opened yet, in ONE thread. */
+export const unreadForOwner = async ({ userId, party, hotelId = null }) => {
   const unread = await SupportMessage.countDocuments({
-    userId: oid(userId),
-    party,
+    ...threadFilter({ userId, party, hotelId }),
     sender: SUPPORT_SENDERS.ADMIN,
     readAt: null,
   });
@@ -86,18 +113,60 @@ export const unreadForOwner = async ({ userId, party }) => {
 };
 
 /**
+ * A guest's unread replies from their HOTELS, totalled and split per property.
+ *
+ * Deliberately not unreadForOwner on the HOTEL_GUEST channel: that counts one
+ * thread, and a guest who belongs to three hotels has three. The Help screen
+ * needs the total for its badge AND the per-hotel split to dot the right row
+ * in the switcher, and both come from one grouped pass.
+ */
+export const unreadFromHotels = async ({ userId }) => {
+  const rows = await SupportMessage.aggregate([
+    {
+      $match: {
+        userId: oid(userId),
+        party: SUPPORT_PARTIES.HOTEL_GUEST,
+        sender: SUPPORT_SENDERS.ADMIN,
+        readAt: null,
+      },
+    },
+    { $group: { _id: "$hotelId", n: { $sum: 1 } } },
+  ]);
+
+  const byHotel = {};
+  let unread = 0;
+  for (const row of rows) {
+    if (!row._id) continue;
+    byHotel[String(row._id)] = row.n;
+    unread += row.n;
+  }
+
+  return { unread, byHotel };
+};
+
+/**
  * Posts a message from the thread's owner.
  *
- * `hotelId` is stored only on the hotel channel, where the inbox groups by
- * property. Passing it on a guest thread would be meaningless — a guest can
- * belong to several hotels, so there is no single property a guest thread is
- * "about".
+ * `hotelId` is stored on both hotel-bearing channels, but means different
+ * things: on HOTEL it labels the property a manager is asking about, and on
+ * HOTEL_GUEST it is half the thread key — threadFilter refuses the write
+ * without it rather than silently opening a null-hotel thread.
+ *
+ * It is still meaningless on GUEST, where a guest belongs to several hotels
+ * and no single property is what the thread is "about".
  */
 export const sendFromOwner = async ({ userId, party, body, hotelId = null, authorName = null }) => {
+  // Validates the pair before writing, so a HOTEL_GUEST message can never be
+  // stored with a null hotelId and become unreachable from either side.
+  threadFilter({ userId, party, hotelId });
+
+  const storedHotelId =
+    (party === SUPPORT_PARTIES.HOTEL || isHotelScopedParty(party)) && hotelId ? oid(hotelId) : null;
+
   const doc = await SupportMessage.create({
     userId: oid(userId),
     party,
-    hotelId: party === SUPPORT_PARTIES.HOTEL && hotelId ? oid(hotelId) : null,
+    hotelId: storedHotelId,
     sender: SUPPORT_SENDERS.GUEST,
     // Set on both sides now: on a hotel thread this is how the panel shows
     // which of a property's managers asked.
@@ -107,20 +176,47 @@ export const sendFromOwner = async ({ userId, party, body, hotelId = null, autho
 
   const message = { ...toPublic(doc), ...(authorName ? { authorName } : null) };
 
-  // To every signed-in main admin, so an open inbox moves without a refresh.
-  // No notification row: admins have a panel with its own badge, and the
-  // Notification collection is the guest alerts feed.
-  emitToAdmins("support:message", {
-    userId: String(userId),
-    party,
-    hotelId: hotelId ? String(hotelId) : null,
-    message,
-  });
+  if (isHotelScopedParty(party)) {
+    // This channel's recipient is the PROPERTY, not the platform. The main
+    // admin is not a party to it and its rows never enter their queue, so
+    // emitToAdmins is deliberately skipped — sending it would put a
+    // conversation they cannot open into an inbox that counts it.
+    //
+    // The hotel room is the right unit here, unlike the HOTEL channel below:
+    // this thread belongs to the property rather than to one manager, and
+    // front-desk staff answer it too, so every account in the room is an
+    // intended reader.
+    emitToHotel(hotelId, "support:message", {
+      userId: String(userId),
+      party,
+      hotelId: String(hotelId),
+      message,
+    });
+  } else {
+    // To every signed-in main admin, so an open inbox moves without a refresh.
+    // No notification row: admins have a panel with its own badge, and the
+    // Notification collection is the guest alerts feed.
+    emitToAdmins("support:message", {
+      userId: String(userId),
+      party,
+      hotelId: hotelId ? String(hotelId) : null,
+      message,
+    });
+  }
 
   // Echoed back to the owner's own room, so the same thread open on a second
   // device (or a second tab) stays in step with the one they typed on.
   if (party === SUPPORT_PARTIES.GUEST) {
     emitToGuest(userId, "support:message", { message });
+  } else if (isHotelScopedParty(party)) {
+    // The guest's own echo, carrying the hotelId: their app may have a
+    // DIFFERENT property's thread open, and without it the client cannot tell
+    // whether this message belongs on the screen it is showing.
+    emitToGuest(userId, "support:message", {
+      party,
+      hotelId: String(hotelId),
+      message,
+    });
   } else {
     // The AUTHOR's own room, not the hotel room.
     //
@@ -132,6 +228,237 @@ export const sendFromOwner = async ({ userId, party, body, hotelId = null, autho
     // second tab stays in step.
     emitToUser(userId, "support:message", { userId: String(userId), party, message });
   }
+
+  return message;
+};
+
+/* ---- the hotel's own guest queue (HOTEL_GUEST) ------------------------ */
+
+/**
+ * Every guest conversation at ONE property, most recently active first.
+ *
+ * The hotel-side mirror of listThreads, kept separate rather than folded into
+ * it with another flag. That function's $match opens at `{ party }` — a
+ * platform queue is every thread on a channel — whereas this one must never
+ * leave a single property, and the difference is a security boundary rather
+ * than a filter. Merging them would make hotelId an optional argument on a
+ * function whose safety depends on it being present.
+ *
+ * Grouped by userId, so one guest is one row however many messages they sent.
+ */
+export const listHotelGuestThreads = async ({ hotelId, page = 1, limit = 25, q = "" } = {}) => {
+  const skip = (page - 1) * limit;
+
+  const pipeline = [
+    // hotelId first, and never absent: this is the whole boundary.
+    { $match: { hotelId: oid(hotelId), party: SUPPORT_PARTIES.HOTEL_GUEST } },
+    { $sort: { createdAt: -1 } },
+    {
+      $group: {
+        _id: "$userId",
+        lastMessage: { $first: "$body" },
+        lastSender: { $first: "$sender" },
+        lastAt: { $first: "$createdAt" },
+        messageCount: { $sum: 1 },
+        // This desk's badge: guest messages nobody here has opened.
+        unread: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ["$sender", SUPPORT_SENDERS.GUEST] },
+                  { $eq: ["$readAt", null] },
+                ],
+              },
+              1,
+              0,
+            ],
+          },
+        },
+      },
+    },
+    { $sort: { lastAt: -1 } },
+    {
+      $lookup: {
+        from: User.collection.name,
+        localField: "_id",
+        foreignField: "_id",
+        as: "owner",
+        pipeline: [{ $project: { name: 1, phone: 1, avatarUrl: 1 } }],
+      },
+    },
+    { $unwind: "$owner" },
+  ];
+
+  // Same escape as the panel tables — a raw term here is a regex injection.
+  // Email is not searchable on this channel: the desk knows its guests by name
+  // and phone, and those are the only fields the row shows.
+  if (q) {
+    const safe = String(q).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(safe, "i");
+    pipeline.push({ $match: { $or: [{ "owner.name": rx }, { "owner.phone": rx }] } });
+  }
+
+  const [rows, totalRows] = await Promise.all([
+    SupportMessage.aggregate([...pipeline, { $skip: skip }, { $limit: limit }]),
+    SupportMessage.aggregate([...pipeline, { $count: "n" }]),
+  ]);
+
+  return {
+    threads: rows.map((r) => ({
+      owner: {
+        id: String(r.owner._id),
+        name: r.owner.name,
+        phone: r.owner.phone,
+        avatarUrl: r.owner.avatarUrl,
+      },
+      party: SUPPORT_PARTIES.HOTEL_GUEST,
+      lastMessage: r.lastMessage,
+      lastSender: r.lastSender,
+      lastAt: r.lastAt,
+      messageCount: r.messageCount,
+      unread: r.unread,
+    })),
+    page,
+    limit,
+    total: totalRows[0]?.n || 0,
+  };
+};
+
+/** This property's unread guest messages, for the panel's nav badge. */
+export const unreadForHotel = async ({ hotelId }) => {
+  const unread = await SupportMessage.countDocuments({
+    hotelId: oid(hotelId),
+    party: SUPPORT_PARTIES.HOTEL_GUEST,
+    sender: SUPPORT_SENDERS.GUEST,
+    readAt: null,
+  });
+
+  return { unread };
+};
+
+/**
+ * One guest's thread at this property, with the guest attached to title it.
+ *
+ * Returns null when this guest has no membership here, which the controller
+ * turns into a 404. Membership rather than role is the check that matters: the
+ * id in the path is client input, and without it one hotel could read a
+ * conversation a guest had with a DIFFERENT property by guessing an id.
+ */
+export const getHotelGuestThread = async ({ hotelId, userId }) => {
+  const [membership, owner, messages] = await Promise.all([
+    GuestHotelMembership.findOne({ guestId: oid(userId), hotelId: oid(hotelId) })
+      .select("_id tier createdAt")
+      .lean(),
+    User.findOne({ _id: oid(userId), role: ROLES.GUEST })
+      .select("name phone avatarUrl createdAt")
+      .lean(),
+    SupportMessage.find({
+      userId: oid(userId),
+      hotelId: oid(hotelId),
+      party: SUPPORT_PARTIES.HOTEL_GUEST,
+    })
+      .sort({ createdAt: 1 })
+      .populate("authorId", "name")
+      .lean(),
+  ]);
+
+  if (!membership || !owner) return null;
+
+  return {
+    owner: {
+      id: String(owner._id),
+      name: owner.name,
+      phone: owner.phone,
+      avatarUrl: owner.avatarUrl,
+      joinedAt: owner.createdAt,
+      tier: membership.tier,
+    },
+    party: SUPPORT_PARTIES.HOTEL_GUEST,
+    // Authors ARE shown here: several people work one desk, so "Ravi replied"
+    // tells the next person on shift who already answered.
+    messages: messages.map(toPublicWithAuthor),
+  };
+};
+
+/**
+ * Marks a guest's messages read, from the hotel's side.
+ *
+ * Returns the recounted badge for this property, for the same reason
+ * markReadByPlatform does: a separate /unread-count call would race this write
+ * and could leave a badge on a thread the desk had just read.
+ */
+export const markReadByHotel = async ({ hotelId, userId }) => {
+  const { modifiedCount } = await SupportMessage.updateMany(
+    {
+      userId: oid(userId),
+      hotelId: oid(hotelId),
+      party: SUPPORT_PARTIES.HOTEL_GUEST,
+      sender: SUPPORT_SENDERS.GUEST,
+      readAt: null,
+    },
+    { $set: { readAt: new Date() } }
+  );
+
+  const counts = await unreadForHotel({ hotelId });
+  return { marked: modifiedCount, ...counts };
+};
+
+/**
+ * Posts the hotel's reply to one of its guests.
+ *
+ * Returns null when the guest has no membership here — the same guard as
+ * getHotelGuestThread, so a reply can never open a thread with somebody who
+ * is not this property's guest.
+ */
+export const sendFromHotel = async ({ hotelId, userId, authorId, authorName = null, body }) => {
+  const membership = await GuestHotelMembership.findOne({
+    guestId: oid(userId),
+    hotelId: oid(hotelId),
+  })
+    .select("_id")
+    .lean();
+  if (!membership) return null;
+
+  const doc = await SupportMessage.create({
+    userId: oid(userId),
+    hotelId: oid(hotelId),
+    party: SUPPORT_PARTIES.HOTEL_GUEST,
+    // ADMIN means "the side that answers", not "the main admin" — see the
+    // SUPPORT_SENDERS comment on why these names are historical.
+    sender: SUPPORT_SENDERS.ADMIN,
+    authorId: authorId ? oid(authorId) : null,
+    body,
+  });
+
+  // The guest is shown the PROPERTY as the sender, never the individual at the
+  // desk — the same reason a guest is not told which platform admin answered.
+  const message = toPublic(doc);
+
+  emitToGuest(userId, "support:message", {
+    party: SUPPORT_PARTIES.HOTEL_GUEST,
+    hotelId: String(hotelId),
+    message,
+  });
+
+  // To the desk, so a colleague sees the reply rather than answering twice.
+  // authorName is attached on THIS side only: the panel shows who replied.
+  emitToHotel(hotelId, "support:message", {
+    userId: String(userId),
+    party: SUPPORT_PARTIES.HOTEL_GUEST,
+    hotelId: String(hotelId),
+    message: { ...message, ...(authorName ? { authorName } : null) },
+  });
+
+  // The guest may have closed the app, so the reply also lands in their alerts.
+  // Pointed at this hotel's thread specifically, since they may have several.
+  await notificationService.notify({
+    guestId: userId,
+    kind: NOTIFICATION_KINDS.SUPPORT_REPLY,
+    title: "Your hotel replied",
+    body: body.length > 120 ? `${body.slice(0, 117)}…` : body,
+    href: `/app/help/hotel/${hotelId}`,
+  });
 
   return message;
 };

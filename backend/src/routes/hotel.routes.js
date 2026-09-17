@@ -8,6 +8,7 @@ import { ROLES } from "../config/constants.js";
 import {
   objectIdParam,
   paginationRules,
+  searchRule,
   billFilterRules,
   allocateRules,
   createBillRules,
@@ -235,6 +236,51 @@ router.post(
   supportMessageRules,
   validate,
   hotelController.sendSupportMessage
+);
+
+/* ---- support: this property's queue of guest conversations ---- */
+
+/*
+ * NOT adminOnly, unlike the platform thread above.
+ *
+ * The reasoning that keeps staff out of that one is what lets them into this
+ * one. There, a front-desk account asking the platform a question its own
+ * manager should answer is noise in someone else's queue. Here the guest is
+ * asking about their stay — which is the front desk's job, and waiting for a
+ * manager to relay it is the delay the channel exists to remove.
+ *
+ * The property still comes from the token via requireSameHotel, so a staff
+ * account reaches exactly its own hotel's queue and nothing else.
+ *
+ * Registered before /support/guests/:userId so "unread-count" is never read as
+ * a guest id.
+ */
+router.get("/support/guests/unread-count", hotelController.guestThreadUnreadCount);
+router.get(
+  "/support/guests",
+  paginationRules,
+  searchRule,
+  validate,
+  hotelController.listGuestThreads
+);
+router.get(
+  "/support/guests/:userId",
+  objectIdParam("userId"),
+  validate,
+  hotelController.getGuestThread
+);
+router.post(
+  "/support/guests/:userId/read",
+  objectIdParam("userId"),
+  validate,
+  hotelController.markGuestThreadRead
+);
+router.post(
+  "/support/guests/:userId/messages",
+  objectIdParam("userId"),
+  supportMessageRules,
+  validate,
+  hotelController.replyToGuestThread
 );
 
 router.get("/settings", adminOnly, hotelController.getSettings);

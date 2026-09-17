@@ -77,8 +77,15 @@ export const supportUnreadCount = () => api.get("/admin/support/unread-count").t
 export const getSupportThread = (userId, party) =>
   api.get(`/admin/support/${userId}`, { params: { party } }).then(unwrap);
 
+/*
+ * The empty object is load-bearing. Passing `null` as the body makes axios
+ * send the four characters `null` under a JSON content-type, which
+ * express.json() rejects as a parse error — a 400 raised before the router, so
+ * the party rule never runs and the failure looks like a rejected `party`
+ * rather than an unparseable body. `{}` is what every other POST here sends.
+ */
 export const markSupportThreadRead = (userId, party) =>
-  api.post(`/admin/support/${userId}/read`, null, { params: { party } }).then(unwrap);
+  api.post(`/admin/support/${userId}/read`, {}, { params: { party } }).then(unwrap);
 
 export const replyToSupportThread = (userId, party, body) =>
   api.post(`/admin/support/${userId}/messages`, { body }, { params: { party } }).then(unwrap);

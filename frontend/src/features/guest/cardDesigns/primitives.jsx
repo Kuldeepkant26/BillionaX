@@ -104,15 +104,26 @@ export const Sheen = () => (
  * pole and an arc's endpoint lands on the wrong side of the bar entirely. A
  * mask sidesteps all of it — the ring stays ONE ordinary closed circle (always
  * smooth, never a joinery problem), and the two notches are just rectangles
- * punched out where the bar crosses, sized off the bar's own width rather
- * than degrees read off a raster (ROD_RATIO below).
+ * punched out where the bar crosses.
+ *
+ * The notch position MUST be measured off the bar's own actual paint width,
+ * not guessed from a ratio to `r`. The second pass at this (ROD_RATIO, since
+ * removed) assumed every caller draws the bar at the same 5.5/37 proportion
+ * LogoMark does — but artwork.jsx's designs paint the ring and bar through a
+ * parent <g>'s strokeWidth, which is its own number per design (5, 4.4, 11,
+ * 2.6, 4.6, and — worse — 10.45 and 2.4 for the SAME mark stroked twice on
+ * Brushed Steel). A guessed width that runs thin makes the notch open too far
+ * past the bar's real edge (the ring reads as stopping outside the bar); one
+ * that runs thick makes the notch fall short of it (the ring reads as sitting
+ * on top of the bar instead of parting around it) — which is exactly the two
+ * failures this produced. `barWidth` below is that real number, threaded in
+ * by the caller rather than assumed.
  */
-const ROD_RATIO = 5.5 / 37; // the bar's half-width as a fraction of the ring's radius
 
 /**
  * The ring's two notches as a luminance mask, keyed to one <circle mask=...>.
- * Sized off `r` alone, per ROD_RATIO, so the gap reads the same proportion at
- * a 34-unit corner ornament or a 104-unit watermark.
+ * `barWidth` must be the actual stroke width the bar is about to be painted
+ * with, in the same units as `cx`/`cy`/`r` — see the note above.
  *
  * `id` must be unique per instance (SVG ids are document-global — see the note
  * above) and stroke="none" on every mask shape is deliberate: without it these
@@ -120,11 +131,11 @@ const ROD_RATIO = 5.5 / 37; // the bar's half-width as a fraction of the ring's 
  * itself carries partial luminance and turns each clean notch into a hazy,
  * partly-see-through patch instead of an actual gap.
  */
-const RingMask = ({ id, cx, cy, r }) => {
-  const rodHalf = (r * ROD_RATIO) / 2;
+const RingMask = ({ id, cx, cy, r, barWidth }) => {
+  const rodHalf = barWidth / 2;
   // How far past the bar's edge each notch opens into clear space, and how
-  // tall it cuts — both scaled off the bar's own half-width, not off degrees,
-  // so the gap keeps the same proportion to the bar at any radius.
+  // tall it cuts — both scaled off the bar's own half-width, so the gap keeps
+  // the same proportion to the bar regardless of the bar's own width.
   const notchOpen = rodHalf * 2.2;
   const notchTall = rodHalf * 2.6;
   const pad = r * 0.2; // clears the mask's own bounding box outside the ring
@@ -161,15 +172,20 @@ const RingMask = ({ id, cx, cy, r }) => {
  * more than once per design (a dark cut then a light highlight, a fill then a
  * rim) — can reuse it rather than duplicating the notch math.
  *
+ * `barWidth` is the actual strokeWidth the caller's surrounding <g> paints
+ * this with — required, not defaulted, because guessing it from `r` is the
+ * bug this replaced (see the note above). Every call site in artwork.jsx
+ * passes its <g>'s own strokeWidth literal here.
+ *
  * A hook (useId), like every other id in this file — see the note at the top.
  * Every call site invokes this unconditionally as plain JSX, so it is always
  * reached in the same order relative to a design's other hooks.
  */
-export const ringAndBar = (cx, cy, r) => {
+export const ringAndBar = (cx, cy, r, barWidth) => {
   const id = `mk${useId().replace(/:/g, "")}`;
   return (
     <>
-      <RingMask id={id} cx={cx} cy={cy} r={r} />
+      <RingMask id={id} cx={cx} cy={cy} r={r} barWidth={barWidth} />
       <circle cx={cx} cy={cy} r={r} mask={`url(#${id})`} />
       <path d={`M${cx} ${cy - r * 1.28}v${r * 2.56}`} />
     </>
@@ -195,7 +211,9 @@ export const LogoMark = ({
       opacity={opacity}
       aria-hidden="true"
     >
-      <RingMask id={`logoRing-${id}`} cx={50} cy={50} r={37} />
+      {/* The bar is painted at `strokeWidth`, so the notch is measured off that
+          same real number rather than a guess — see RingMask. */}
+      <RingMask id={`logoRing-${id}`} cx={50} cy={50} r={37} barWidth={strokeWidth} />
       <circle cx="50" cy="50" r="37" mask={`url(#logoRing-${id})`} />
       <path d="M50 2.6v94.8" strokeLinecap="butt" />
     </svg>

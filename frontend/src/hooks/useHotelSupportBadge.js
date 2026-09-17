@@ -47,6 +47,11 @@ export const useHotelSupportBadge = () => {
   }, [enabled]);
 
   useSupportRealtime({
+    // This badge counts the PLATFORM thread only. The account also sits in the
+    // hotel room, which now carries the property's guest queue — without this
+    // filter, a guest messaging the front desk would light up the "Contact
+    // Billionax" badge instead of the guest-messages one.
+    party: "HOTEL",
     onMessage: (payload) => {
       // Belt and braces — the server pushes only this account's own thread to
       // it. See HotelSupportPage for the same guard and the same reasoning.

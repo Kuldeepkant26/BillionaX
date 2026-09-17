@@ -131,10 +131,10 @@ export const BrushedSteelArt = ({ tier }) => {
           it. Positioned so the ring sits off the right edge, as the ghost
           monogram did, leaving the left two-thirds clear for the type. */}
       <g transform="translate(228 25)" fill="none" stroke="rgba(0,0,0,.35)" strokeWidth="10.45">
-        {markPaths(95, 95, 70.3)}
+        {markPaths(95, 95, 70.3, 10.45)}
       </g>
       <g transform="translate(230 27)" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="2.4">
-        {markPaths(95, 95, 70.3)}
+        {markPaths(95, 95, 70.3, 2.4)}
       </g>
 
       <rect width="380" height="240" fill={`url(#${id.glow})`} />
@@ -685,7 +685,7 @@ export const CrestArt = ({ tier }) => {
       </g>
 
       <g fill="none" stroke={c.acc} strokeWidth="5" opacity=".92">
-        {markPaths(286, 120, 62)}
+        {markPaths(286, 120, 62, 5)}
       </g>
       <rect width="380" height="240" fill={`url(#${id.crestSheen})`} />
     </svg>
@@ -731,7 +731,7 @@ export const EmblemArt = ({ tier }) => {
         opacity=".55"
         filter={`url(#${id.press})`}
       >
-        {markPaths(268, 120, 52)}
+        {markPaths(268, 120, 52, 4.4)}
       </g>
     </svg>
   );
@@ -781,10 +781,10 @@ export const ImprintArt = ({ tier }) => {
           fade in from the left. Cut then highlight, as on Brushed Steel. */}
       <g mask={`url(#${id.maskI})`}>
         <g fill="none" stroke="rgba(0,0,0,.30)" strokeWidth="11">
-          {markPaths(300, 96, 104)}
+          {markPaths(300, 96, 104, 11)}
         </g>
         <g fill="none" stroke="rgba(255,255,255,.13)" strokeWidth="2.6">
-          {markPaths(302, 98, 104)}
+          {markPaths(302, 98, 104, 2.6)}
         </g>
       </g>
 
@@ -840,7 +840,7 @@ export const SignetArt = ({ tier }) => {
 
       {/* The mark struck into it. */}
       <g fill="none" stroke={c.acc} strokeWidth="4.6" opacity=".95">
-        {markPaths(298, 126, 34)}
+        {markPaths(298, 126, 34, 4.6)}
       </g>
 
       <rect width="380" height="240" fill={`url(#${id.signetSheen})`} />

@@ -206,6 +206,69 @@ export const sendSupportMessage = asyncHandler(async (req, res) => {
   res.status(201).json(new ApiResponse(201, { message }, "Message sent"));
 });
 
+/* ---- the guest's threads with their HOTELS --------------------------- */
+
+/*
+ * A separate channel from the four handlers above, not a parameter on them.
+ *
+ * Every one of these resolves the membership FIRST, through the same
+ * getMembershipOrFail the rest of the guest API uses. The hotel id arrives in
+ * the path as client input, and the membership is the only thing establishing
+ * that this guest may speak to that property at all — without it a guest could
+ * open a thread with a hotel they have never stayed at, and the desk would see
+ * a stranger in their queue.
+ */
+
+export const listHotelChatMessages = asyncHandler(async (req, res) => {
+  const { hotelId } = req.params;
+  await membershipService.getMembershipOrFail({ guestId: req.user._id, hotelId });
+
+  const data = await supportService.listForOwner({
+    userId: req.user._id,
+    party: SUPPORT_PARTIES.HOTEL_GUEST,
+    hotelId,
+    // The desk's own name is shown to the guest as the property, not the
+    // individual who typed — so authors are deliberately not populated here.
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+/**
+ * Unread replies from every hotel at once: a total and a per-hotel split.
+ *
+ * One call rather than one per membership, because the Help screen needs both
+ * the badge and the switcher's dots on a single paint.
+ */
+export const hotelChatUnreadCount = asyncHandler(async (req, res) => {
+  const data = await supportService.unreadFromHotels({ userId: req.user._id });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const markHotelChatRead = asyncHandler(async (req, res) => {
+  const { hotelId } = req.params;
+  await membershipService.getMembershipOrFail({ guestId: req.user._id, hotelId });
+
+  const data = await supportService.markReadByOwner({
+    userId: req.user._id,
+    party: SUPPORT_PARTIES.HOTEL_GUEST,
+    hotelId,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const sendHotelChatMessage = asyncHandler(async (req, res) => {
+  const { hotelId } = req.params;
+  await membershipService.getMembershipOrFail({ guestId: req.user._id, hotelId });
+
+  const message = await supportService.sendFromOwner({
+    userId: req.user._id,
+    party: SUPPORT_PARTIES.HOTEL_GUEST,
+    hotelId,
+    body: req.body.body,
+  });
+  res.status(201).json(new ApiResponse(201, { message }, "Message sent"));
+});
+
 export const getHotelContent = asyncHandler(async (req, res) => {
   const { hotelId } = req.params;
 

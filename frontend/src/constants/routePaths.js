@@ -14,6 +14,9 @@ export const ROUTES = {
   APP_FAQ: "/app/faq",
   APP_HELP: "/app/help",
   APP_HELP_CHAT: "/app/help/chat",
+  // The guest's thread with ONE of their hotels. Parameterised because a guest
+  // belongs to several and each property is its own conversation.
+  APP_HELP_HOTEL: "/app/help/hotel/:hotelId",
   APP_FEED: "/app/feed",
   APP_FEED_SAVED: "/app/feed/saved",
   APP_FEED_POST: "/app/feed/p/:postId",
@@ -33,6 +36,10 @@ export const ROUTES = {
   HOTEL_SETTINGS: "/hotel/settings",
   HOTEL_FEED: "/hotel/feed",
   HOTEL_SUPPORT: "/hotel/support",
+  // The property's queue of GUEST conversations — the other direction from
+  // HOTEL_SUPPORT above, which is this hotel's own thread with the platform.
+  HOTEL_GUEST_CHATS: "/hotel/messages",
+  HOTEL_GUEST_CHAT: "/hotel/messages/:userId",
 
   // admin panel
   ADMIN_LOGIN: "/admin/login",
@@ -56,6 +63,9 @@ export const offerPath = (contentId) => `/app/offers/${contentId}`;
 export const feedPostPath = (postId) => `/app/feed/p/${postId}`;
 export const feedProfilePath = (userId) => `/app/feed/u/${userId}`;
 export const supportThreadPath = (userId) => `/admin/support/${userId}`;
+
+/** One guest's thread in the hotel panel's own queue. */
+export const hotelGuestChatPath = (userId) => `/hotel/messages/${userId}`;
 
 /** Where each role belongs after signing in. */
 export const homeForRole = (role) =>

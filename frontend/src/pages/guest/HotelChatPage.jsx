@@ -1,36 +1,42 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
-  listSupportMessages,
-  markSupportRead,
-  sendSupportMessage,
+  listHotelChatMessages,
+  markHotelChatRead,
+  sendHotelChatMessage,
 } from "../../api/guest.api.js";
 import { useSupportRealtime } from "../../hooks/useSupportRealtime.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import { ROUTES } from "../../constants/routePaths.js";
 import { ErrorState } from "../../components/common/index.jsx";
 import { autoGrow, timeLabel, withDayBreaks } from "../../utils/chat.js";
+// Deliberately the support chat's stylesheet rather than a copy of it.
+//
+// This screen is the same object as that one — a thread that fills the
+// viewport with a pinned composer — and the height arithmetic in there is
+// tuned to the shell's padding. A duplicate would drift the moment either is
+// adjusted, and the only thing that differs here is who is on the other end.
 import styles from "./SupportChatPage.module.css";
 
 /**
- * The guest's conversation with support.
+ * The guest's conversation with ONE of their hotels.
  *
- * State is local rather than in useAsync, because a chat is append-only and
- * arrives from three directions — the initial load, the socket, and the
- * guest's own send. A cached hook would have each of those fighting over the
- * same `data`, and a background revalidation could drop a message the socket
- * had just appended. A plain array with one merge function (`append`, below)
- * is both shorter and correct.
+ * The sibling of SupportChatPage, and structured identically — local state
+ * merged by id, because a chat is append-only and arrives from three
+ * directions (the load, the socket, the guest's own send).
  *
- * There is no pagination, matching the server: a support thread is read whole,
- * oldest first, and a "load earlier" control would hide the START of a
- * conversation that is rarely longer than a screen or two.
+ * What differs is the address. The platform thread is "the guest's thread";
+ * this one is keyed by {guest, hotel}, so the hotelId from the URL is threaded
+ * through every call and every socket filter. Getting that wrong would not
+ * error — it would quietly show one hotel's conversation under another's name,
+ * which is why the id is read once here and passed explicitly everywhere.
  */
 
-const SupportChatPage = () => {
+const HotelChatPage = () => {
   const navigate = useNavigate();
-  const clearSupportUnread = useAppStore((s) => s.clearSupportUnread);
+  const { hotelId } = useParams();
   const toastError = useAppStore((s) => s.toastError);
+  const memberships = useAppStore((s) => s.memberships);
 
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,16 +47,17 @@ const SupportChatPage = () => {
   const endRef = useRef(null);
   // Held so send() can shrink the box back after clearing the draft.
   const boxRef = useRef(null);
-  const listRef = useRef(null);
 
-  /**
-   * Merges a message in by id.
-   *
-   * Every path into the thread goes through here, because the guest's own
-   * message arrives TWICE: once as the POST response, and again on the socket
-   * echo that keeps a second device in step. Keying by id makes the second
-   * arrival a no-op instead of a duplicate bubble.
-   */
+  // The property's name for the header. Read from the memberships already in
+  // the store rather than fetched: the guest cannot reach this screen without
+  // a membership, so it is always there, and a second request would leave the
+  // title blank on first paint.
+  const membership = memberships.find(
+    (m) => String(m.hotelId?._id || m.hotelId) === String(hotelId)
+  );
+  const hotelName = membership?.hotelId?.name || "Your hotel";
+
+  /** Merges by id — a message arrives as the POST response AND on the socket. */
   const append = useCallback((incoming) => {
     if (!incoming?.id) return;
     setMessages((current) => {
@@ -64,13 +71,13 @@ const SupportChatPage = () => {
   /**
    * Fetches the thread and returns a thunk that applies it.
    *
-   * The indirection is what keeps the mount effect free of a synchronous
-   * setState: the caller awaits the network first, then applies. Callers that
-   * do not care (the socket resync) simply invoke the thunk immediately.
+   * The indirection keeps the mount effect free of a synchronous setState —
+   * the cascading-render pattern this repo's lint rejects. Same shape as the
+   * two sibling chat pages.
    */
   const load = useCallback(async () => {
     try {
-      const data = await listSupportMessages();
+      const data = await listHotelChatMessages(hotelId);
       return () => {
         setMessages(data?.messages || []);
         setError(null);
@@ -82,9 +89,9 @@ const SupportChatPage = () => {
         setLoading(false);
       };
     }
-  }, []);
+  }, [hotelId]);
 
-  /** load(), applied straight away. What the retry button and socket use. */
+  /** load(), applied straight away. What retry and the socket resync use. */
   const reload = useCallback(async () => {
     const apply = await load();
     apply();
@@ -93,8 +100,9 @@ const SupportChatPage = () => {
   useEffect(() => {
     let cancelled = false;
     // Wrapped so every setState lands after an await rather than synchronously
-    // in the effect body — the cascading-render pattern the rules of hooks
-    // reject. The cancelled flag drops a response that arrives after unmount.
+    // in the effect body. The cancelled flag drops a response that arrives
+    // after unmount — or after the guest switched to another hotel's thread,
+    // which is the same component with a different id.
     (async () => {
       const result = await load();
       if (!cancelled && result) result();
@@ -106,43 +114,49 @@ const SupportChatPage = () => {
   }, [load]);
 
   /*
-   * Opening the thread IS reading it.
+   * Switching hotels re-keys the whole screen.
    *
-   * Fired once on mount rather than per message: the whole conversation is on
-   * screen, so there is nothing partial to mark. The store is cleared
-   * optimistically so the dot in the bottom nav disappears on the tap that
-   * brought the guest here, not a round trip later.
+   * Without this, navigating from one property's thread to another would keep
+   * the previous conversation on screen until the new load resolved — and the
+   * merge-by-id append would then interleave the two. Clearing on hotelId is
+   * what makes the transition a fresh thread rather than a mixed one.
    */
   useEffect(() => {
-    clearSupportUnread();
-    markSupportRead().catch(() => {
-      // The badge is already clear locally and the next open re-marks it;
-      // failing loudly here would be noise about a cosmetic count.
+    setMessages([]);
+    setLoading(true);
+    setError(null);
+  }, [hotelId]);
+
+  // Opening the thread IS reading it. Fired per hotel, since each property's
+  // unread count is its own.
+  useEffect(() => {
+    markHotelChatRead(hotelId).catch(() => {
+      // The badge re-marks on the next open; failing loudly here would be
+      // noise about a cosmetic count.
     });
-  }, [clearSupportUnread]);
+  }, [hotelId]);
 
   useSupportRealtime({
-    // This screen is the PLATFORM thread. Declaring it matters now that the
-    // guest also has hotel threads on the same event: without it, a message
-    // from the front desk would append itself to this conversation.
-    party: "GUEST",
+    // Both are required: the party alone would still let the guest's OTHER
+    // hotels paint into this thread, since every one of them is the same
+    // channel.
+    party: "HOTEL_GUEST",
+    hotelId,
     onMessage: (payload) => {
       if (!payload?.message) return;
       append(payload.message);
-      // An admin reply that lands while the thread is OPEN has already been
-      // read, so clear the badge the push just raised rather than leaving a
-      // dot on a conversation the guest is looking at.
+
+      // A reply landing while the thread is open has already been read.
       if (payload.message.sender === "ADMIN") {
-        clearSupportUnread();
-        markSupportRead().catch(() => {});
+        markHotelChatRead(hotelId).catch(() => {});
       }
     },
     onResync: reload,
   });
 
-  // Pinned to the newest message, which is where a chat belongs. `auto` on the
-  // first paint so the thread opens already at the bottom instead of visibly
-  // scrolling there; smooth afterwards, when it is a new message arriving.
+  // Pinned to the newest message. `auto` on first paint so the thread opens at
+  // the bottom rather than visibly scrolling there; smooth afterwards, when it
+  // is a new message arriving.
   const painted = useRef(false);
   useEffect(() => {
     if (!messages.length) return;
@@ -157,7 +171,7 @@ const SupportChatPage = () => {
 
     setSending(true);
     try {
-      const data = await sendSupportMessage(body);
+      const data = await sendHotelChatMessage(hotelId, body);
       // Cleared only after the server has it: a failed send that had already
       // emptied the box would lose what the guest typed.
       setDraft("");
@@ -186,25 +200,27 @@ const SupportChatPage = () => {
           ←
         </button>
         <div>
-          <h1>Billionax support</h1>
-          <p>We usually reply within a day.</p>
+          <h1>{hotelName}</h1>
+          <p>The front desk answers here.</p>
         </div>
       </header>
 
-      <div className={styles.thread} ref={listRef}>
+      <div className={styles.thread}>
         {loading && <p className={styles.state}>Loading your messages…</p>}
 
         {!loading && !messages.length && (
           <div className={styles.empty}>
             <b>No messages yet</b>
             <i>
-              Ask us anything about your account, a bill or your coins. A real person reads
-              every message.
+              Ask {hotelName} about your room, a booking or anything about your stay. The
+              front desk replies here.
             </i>
           </div>
         )}
 
         {withDayBreaks(messages).map(({ message: m, day, startsDay }) => {
+          // GUEST is the thread's owner — this guest. ADMIN is the side that
+          // answers, which on this channel is the hotel, not the platform.
           const mine = m.sender === "GUEST";
 
           return (
@@ -228,7 +244,7 @@ const SupportChatPage = () => {
           ref={boxRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Type your message"
+          placeholder={`Message ${hotelName}`}
           rows={1}
           maxLength={2000}
           // Enter sends, Shift+Enter breaks the line — the convention every
@@ -239,7 +255,6 @@ const SupportChatPage = () => {
               send(e);
             }
           }}
-          // Grows with the text up to the CSS max-height, then scrolls.
           onInput={(e) => autoGrow(e.target)}
         />
         <button type="submit" disabled={!draft.trim() || sending} aria-label="Send">
@@ -252,4 +267,4 @@ const SupportChatPage = () => {
   );
 };
 
-export default SupportChatPage;
+export default HotelChatPage;

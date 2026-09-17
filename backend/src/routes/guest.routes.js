@@ -51,6 +51,41 @@ router.post(
   guestController.sendSupportMessage
 );
 
+/* ---- the guest's thread with one of their HOTELS ---- */
+
+/*
+ * Keyed by hotel, unlike the platform thread above: a guest belongs to several
+ * properties and each is a separate conversation.
+ *
+ * Registered before the :hotelId paths so "unread-count" is never read as a
+ * hotel id — the same ordering trap as /support/unread-count above.
+ *
+ * The id is validated as an ObjectId here and checked for MEMBERSHIP in the
+ * controller. Both matter: this rejects a malformed id with a 422 before it
+ * reaches mongo, and the controller rejects a well-formed id for a hotel this
+ * guest has never joined.
+ */
+router.get("/support/hotels/unread-count", guestController.hotelChatUnreadCount);
+router.get(
+  "/support/hotels/:hotelId/messages",
+  objectIdParam("hotelId"),
+  validate,
+  guestController.listHotelChatMessages
+);
+router.post(
+  "/support/hotels/:hotelId/read",
+  objectIdParam("hotelId"),
+  validate,
+  guestController.markHotelChatRead
+);
+router.post(
+  "/support/hotels/:hotelId/messages",
+  objectIdParam("hotelId"),
+  supportMessageRules,
+  validate,
+  guestController.sendHotelChatMessage
+);
+
 
 router.get(
   "/hotels/:hotelId/content",

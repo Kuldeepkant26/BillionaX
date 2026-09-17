@@ -78,3 +78,27 @@ export const markSupportRead = () => api.post("/guest/support/read").then(unwrap
 
 export const sendSupportMessage = (body) =>
   api.post("/guest/support/messages", { body }).then(unwrap);
+
+/* ---- chat with one of the guest's hotels ------------------------------ */
+
+/*
+ * A separate set from the four above, keyed by hotel.
+ *
+ * The platform thread is addressed by "who you are"; these are addressed by
+ * "which hotel", because a guest belongs to several and each property is its
+ * own conversation. Passing a hotelId is therefore not optional here — there
+ * is no sensible default, and the server refuses a thread it cannot name.
+ */
+
+export const listHotelChatMessages = (hotelId) =>
+  api.get(`/guest/support/hotels/${hotelId}/messages`).then(unwrap);
+
+/** Both the total and the per-hotel split: { unread, byHotel }. */
+export const hotelChatUnreadCount = () =>
+  api.get("/guest/support/hotels/unread-count").then(unwrap);
+
+export const markHotelChatRead = (hotelId) =>
+  api.post(`/guest/support/hotels/${hotelId}/read`, {}).then(unwrap);
+
+export const sendHotelChatMessage = (hotelId, body) =>
+  api.post(`/guest/support/hotels/${hotelId}/messages`, { body }).then(unwrap);

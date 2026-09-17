@@ -586,3 +586,66 @@ export const sendSupportMessage = asyncHandler(async (req, res) => {
   });
   res.status(201).json(new ApiResponse(201, { message }, "Message sent"));
 });
+
+/* ---- this property's queue of GUEST conversations -------------------- */
+
+/*
+ * The other direction from the four handlers above: there the hotel is the
+ * one asking, here it is the one answering.
+ *
+ * Every handler scopes to hotelIdFor(req), which comes from the verified
+ * token, never from the request. The guest id in the path is client input and
+ * is checked for membership in the service, so one property cannot read a
+ * conversation a guest had with another by passing their id.
+ */
+
+export const listGuestThreads = asyncHandler(async (req, res) => {
+  const { page, limit, q } = req.query;
+  const data = await supportService.listHotelGuestThreads({
+    hotelId: hotelIdFor(req),
+    page,
+    limit,
+    q,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const guestThreadUnreadCount = asyncHandler(async (req, res) => {
+  const data = await supportService.unreadForHotel({ hotelId: hotelIdFor(req) });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const getGuestThread = asyncHandler(async (req, res) => {
+  const data = await supportService.getHotelGuestThread({
+    hotelId: hotelIdFor(req),
+    userId: req.params.userId,
+  });
+  // null means no membership here — a 404 rather than an empty thread, so the
+  // panel cannot be used to probe which guests exist at other properties.
+  if (!data) throw new ApiError(404, "No conversation with this guest");
+
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const markGuestThreadRead = asyncHandler(async (req, res) => {
+  const data = await supportService.markReadByHotel({
+    hotelId: hotelIdFor(req),
+    userId: req.params.userId,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const replyToGuestThread = asyncHandler(async (req, res) => {
+  const message = await supportService.sendFromHotel({
+    hotelId: hotelIdFor(req),
+    userId: req.params.userId,
+    authorId: req.user._id,
+    // Shown to colleagues on the panel, never to the guest — they see the
+    // property. See sendFromHotel.
+    authorName: req.user.name,
+    body: req.body.body,
+  });
+  if (!message) throw new ApiError(404, "No conversation with this guest");
+
+  res.status(201).json(new ApiResponse(201, { message }, "Reply sent"));
+});

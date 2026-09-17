@@ -1,20 +1,28 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../../store/useAppStore.js";
-import { supportUnreadCount } from "../../api/guest.api.js";
+import { supportUnreadCount, hotelChatUnreadCount } from "../../api/guest.api.js";
 import { ROUTES } from "../../constants/routePaths.js";
 import styles from "./HelpPage.module.css";
 
 /**
- * The help centre: two doors, and nothing else.
+ * The help centre: three doors, and nothing else.
  *
  * Deliberately not a hub with articles, status and contact details stacked on
  * it. A guest opens this with a problem already formed, and every extra block
  * is something to read past. The question is only ever "is this answered
- * already, or do I need a person?" — so the page asks exactly that.
+ * already, or do I need a person — and which person?" — so the page asks
+ * exactly that.
  *
- * The FAQ is listed first because it is instant and free, and most questions
- * are already in it.
+ * The order is deliberate and is a routing decision, not a visual one:
+ *
+ *   FAQ            instant, free, and already answers most questions.
+ *   The hotel      anything about the STAY — a room, a booking, a request.
+ *   Billionax      the account itself — coins, tiers, a bill that looks wrong.
+ *
+ * The hotel sits above the platform because the footer of this page used to
+ * send those guests to the front desk by telephone: the stay is the hotel's to
+ * answer, and routing it to the platform first only adds a relay.
  */
 
 const BookIcon = () => (
@@ -41,6 +49,21 @@ const ChatIcon = () => (
   </svg>
 );
 
+// A bell on a desk — the front desk, as distinct from the speech bubble that
+// means the platform's agent.
+const DeskIcon = () => (
+  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+    <path
+      d="M4 18h16M6 18v-2a6 6 0 0 1 12 0v2M12 7V5m-1.5 0h3"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 const Arrow = () => (
   <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true" className={styles.arrow}>
     <path
@@ -61,10 +84,34 @@ const HelpPage = () => {
   const supportUnread = useAppStore((s) => s.supportUnread);
   const setSupportUnread = useAppStore((s) => s.setSupportUnread);
 
+  // The hotel the guest is currently looking at, which is the default target
+  // for the hotel door below. Its NAME is read from `target` rather than here,
+  // since the switcher can point that elsewhere.
   const active =
     memberships.find((m) => String(m.hotelId?._id || m.hotelId) === String(activeHotelId)) ||
     memberships[0];
-  const hotelName = active?.hotelId?.name;
+
+  /*
+   * Unread replies from the guest's hotels: a total for the badge, and a
+   * per-hotel split so the switcher can dot the right row.
+   *
+   * Local rather than in the store, unlike supportUnread. That one is shared
+   * with the bottom nav, which shows a single platform dot; these counts are
+   * per property and are read only here, so putting them in the store would
+   * be state with one consumer and an extra invalidation path to get wrong.
+   */
+  const [hotelUnread, setHotelUnread] = useState({ unread: 0, byHotel: {} });
+
+  // Which hotel the "message the hotel" door points at. Defaults to the one
+  // the guest is currently looking at, which is nearly always the one they are
+  // staying in — the switcher is for the exception, not the rule.
+  const [chosenId, setChosenId] = useState(null);
+  const [switching, setSwitching] = useState(false);
+
+  const target =
+    memberships.find((m) => String(m.hotelId?._id || m.hotelId) === String(chosenId)) || active;
+  const targetId = target?.hotelId?._id || target?.hotelId;
+  const targetName = target?.hotelId?.name;
 
   /*
    * Resyncs the badge on the way in.
@@ -89,6 +136,29 @@ const HelpPage = () => {
     };
   }, [setSupportUnread]);
 
+  /*
+   * The same resync for the hotel threads, in its own effect.
+   *
+   * Separate from the one above rather than a Promise.all, so a failure in
+   * either badge cannot blank the other — they are independent counts from
+   * independent endpoints, and this page is fully usable with neither.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    hotelChatUnreadCount()
+      .then((data) => {
+        if (cancelled || !data) return;
+        setHotelUnread({ unread: data.unread || 0, byHotel: data.byHotel || {} });
+      })
+      .catch(() => {
+        // The door still works without its badge.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div>
       <button type="button" className={styles.back} onClick={() => navigate(ROUTES.APP)}>
@@ -97,7 +167,10 @@ const HelpPage = () => {
 
       <header className={styles.head}>
         <h1>Help centre</h1>
-        <p>Find an answer, or talk to us{hotelName ? ` about ${hotelName}` : ""}.</p>
+        {/* No longer "talk to us about {hotel}": the hotel is now its own
+            door, and promising it here would send stay questions to the wrong
+            queue. */}
+        <p>Find an answer, or talk to a person.</p>
       </header>
 
       <div className={styles.options}>
@@ -116,6 +189,78 @@ const HelpPage = () => {
           <Arrow />
         </button>
 
+        {/* Only where there is a hotel to write to. A guest who has not joined
+            one yet sees the two original doors and nothing broken. */}
+        {targetId && (
+          <div className={styles.group}>
+            <button
+              type="button"
+              className={styles.option}
+              onClick={() => navigate(`/app/help/hotel/${targetId}`)}
+            >
+              <span className={styles.icon}>
+                <DeskIcon />
+                {hotelUnread.unread > 0 && <em className={styles.dot} aria-hidden="true" />}
+              </span>
+              <span className={styles.body}>
+                <b>
+                  Message {targetName || "your hotel"}
+                  {hotelUnread.unread > 0 && (
+                    <span className={styles.pill}>
+                      {hotelUnread.unread > 9 ? "9+" : hotelUnread.unread} new
+                    </span>
+                  )}
+                </b>
+                <i>
+                  Your room, a booking, or anything about your stay. The front desk reads
+                  this.
+                </i>
+              </span>
+              <Arrow />
+            </button>
+
+            {/* The switcher only exists for guests who belong to more than one
+                property. For everyone else it would be a control with a single
+                option — noise on a screen whose whole point is having none. */}
+            {memberships.length > 1 && (
+              <div className={styles.switcher}>
+                <button
+                  type="button"
+                  className={styles.switchToggle}
+                  onClick={() => setSwitching((open) => !open)}
+                  aria-expanded={switching}
+                >
+                  {switching ? "Hide hotels" : "Message a different hotel"}
+                </button>
+
+                {switching &&
+                  memberships.map((m) => {
+                    const id = String(m.hotelId?._id || m.hotelId);
+                    const unread = hotelUnread.byHotel[id] || 0;
+
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        className={styles.switchRow}
+                        onClick={() => {
+                          setChosenId(id);
+                          setSwitching(false);
+                          navigate(`/app/help/hotel/${id}`);
+                        }}
+                      >
+                        <span>{m.hotelId?.name || "Hotel"}</span>
+                        {unread > 0 && (
+                          <span className={styles.pill}>{unread > 9 ? "9+" : unread} new</span>
+                        )}
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+        )}
+
         <button
           type="button"
           className={styles.option}
@@ -127,10 +272,13 @@ const HelpPage = () => {
           </span>
           <span className={styles.body}>
             <b>
-              Chat with our agent
+              {/* Named rather than "our agent": with a hotel door beside it,
+                  the guest is choosing between two humans and needs to know
+                  which is which. */}
+              Message Billionax
               {/* The count is announced here but not in the bottom nav: on this
                   screen it is the one thing that should pull the eye, and the
-                  guest is deciding between two doors rather than glancing. */}
+                  guest is deciding between doors rather than glancing. */}
               {supportUnread > 0 && (
                 <span className={styles.pill}>
                   {supportUnread > 9 ? "9+" : supportUnread} new
@@ -145,9 +293,13 @@ const HelpPage = () => {
         </button>
       </div>
 
+      {/* This used to send guests to the front desk by telephone, because
+          there was no way to reach them from here. There is now, so the note
+          explains the split rather than routing around it. */}
       <p className={styles.foot}>
-        For anything about your room or your stay, the front desk
-        {hotelName ? ` at ${hotelName}` : ""} will be faster than we can be.
+        {targetId
+          ? `Anything about your stay is fastest with ${targetName || "your hotel"}. Coins, tiers and bills are ours.`
+          : "Join a hotel to message its front desk from here."}
       </p>
     </div>
   );

@@ -47,6 +47,11 @@ export const useSupportBadge = () => {
   }, [enabled]);
 
   useSupportRealtime({
+    // The PLATFORM thread only. A guest's hotel conversations arrive on the
+    // same event and are counted separately on the help screen, so without
+    // this a reply from the front desk would raise the Billionax dot — and
+    // then vanish on the next sync, which reads only this channel.
+    party: "GUEST",
     onMessage: (payload) => {
       // The guest's own message is echoed back to them so a second device
       // stays in step (see support.service.js). Counting it would put a dot on

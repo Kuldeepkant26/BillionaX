@@ -103,6 +103,10 @@ const HotelSupportPage = () => {
   }, [clearSupportUnread]);
 
   useSupportRealtime({
+    // The PLATFORM thread, not the property's guest queue — which is now
+    // delivered to this same account over the hotel room. Without this the
+    // desk's guest conversations would paint themselves into this screen.
+    party: "HOTEL",
     onMessage: (payload) => {
       if (!payload?.message) return;
       // Belt and braces: the server already delivers only this account's own

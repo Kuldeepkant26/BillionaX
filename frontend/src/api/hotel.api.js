@@ -130,3 +130,29 @@ export const markSupportRead = () => api.post("/hotel/support/read").then(unwrap
 
 export const sendSupportMessage = (body) =>
   api.post("/hotel/support/messages", { body }).then(unwrap);
+
+/* ---- support: this property's queue of guest conversations ------------ */
+
+/*
+ * The other direction from the block above — here the hotel answers rather
+ * than asks. The guest's id is in the path; the PROPERTY still is not, because
+ * it comes from the token and must never be something a caller can pass.
+ */
+
+export const listGuestThreads = (params) =>
+  api.get("/hotel/support/guests", { params }).then(unwrap);
+
+export const guestThreadUnreadCount = () =>
+  api.get("/hotel/support/guests/unread-count").then(unwrap);
+
+export const getGuestThread = (userId) =>
+  api.get(`/hotel/support/guests/${userId}`).then(unwrap);
+
+// `{}`, never null: axios serialises a null body to the four characters
+// "null" under a JSON content-type, which express.json() rejects with a 400
+// before the route is reached. See admin.api.js.
+export const markGuestThreadRead = (userId) =>
+  api.post(`/hotel/support/guests/${userId}/read`, {}).then(unwrap);
+
+export const replyToGuestThread = (userId, body) =>
+  api.post(`/hotel/support/guests/${userId}/messages`, { body }).then(unwrap);

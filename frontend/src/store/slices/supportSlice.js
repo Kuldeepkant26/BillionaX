@@ -79,6 +79,26 @@ export const createSupportSlice = (set, get) => ({
   clearSupportUnread: () =>
     set((s) => ({ supportUnread: 0, supportUnreadSeq: s.supportUnreadSeq + 1 })),
 
+  /**
+   * Unread GUEST messages waiting on this property's front desk.
+   *
+   * A separate key from supportUnread rather than a second writer of it. That
+   * one is "my unread replies" on whichever platform thread this session owns,
+   * and the two are genuinely different numbers that appear on two nav items
+   * at the same time — a manager can have an unanswered question with
+   * Billionax and six guests waiting, and one counter cannot say both.
+   *
+   * No seq ticket, unlike supportUnread: every write here is a server count
+   * returned by the read that caused it, and the panel has a single writer.
+   * The race that made the ticket necessary there does not exist here, and
+   * inventing one would be ceremony rather than safety.
+   */
+  guestChatsUnread: 0,
+
+  setGuestChatsUnread: (n) => set({ guestChatsUnread: Math.max(0, n || 0) }),
+
+  bumpGuestChatsUnread: () => set((s) => ({ guestChatsUnread: s.guestChatsUnread + 1 })),
+
   feedEnabled: false,
   // Coerced rather than trusted: an older API build omits the key entirely,
   // and `undefined` in the nav filter would read as "hide", which is right,

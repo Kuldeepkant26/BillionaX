@@ -40,6 +40,7 @@ const ProfilePage = lazy(() => import("../pages/guest/ProfilePage.jsx"));
 const FaqPage = lazy(() => import("../pages/guest/FaqPage.jsx"));
 const HelpPage = lazy(() => import("../pages/guest/HelpPage.jsx"));
 const SupportChatPage = lazy(() => import("../pages/guest/SupportChatPage.jsx"));
+const HotelChatPage = lazy(() => import("../pages/guest/HotelChatPage.jsx"));
 const FeedPage = lazy(() => import("../pages/guest/FeedPage.jsx"));
 const FeedPostPage = lazy(() => import("../pages/guest/FeedPostPage.jsx"));
 const FeedProfilePage = lazy(() => import("../pages/guest/FeedProfilePage.jsx"));
@@ -57,6 +58,7 @@ const ServicesPage = lazy(() => import("../pages/hotel/ServicesPage.jsx"));
 const StaffPage = lazy(() => import("../pages/hotel/StaffPage.jsx"));
 const HotelSettingsPage = lazy(() => import("../pages/hotel/HotelSettingsPage.jsx"));
 const HotelSupportPage = lazy(() => import("../pages/hotel/HotelSupportPage.jsx"));
+const HotelGuestChatsPage = lazy(() => import("../pages/hotel/HotelGuestChatsPage.jsx"));
 
 const AdminDashboardPage = lazy(() => import("../pages/admin/AdminDashboardPage.jsx"));
 const HotelsPage = lazy(() => import("../pages/admin/HotelsPage.jsx"));
@@ -133,6 +135,14 @@ const router = createBrowserRouter([
       {
         path: "app/help/chat",
         ...guestRoute(<SupportChatPage />, <ListSkeleton label="Loading your messages" />),
+      },
+      // The guest's thread with one of their HOTELS, which is a different
+      // conversation from the platform chat above. "chat" is a literal sibling
+      // of this and must not be read as a :hotelId — hence the /hotel/ segment
+      // rather than /app/help/:hotelId.
+      {
+        path: "app/help/hotel/:hotelId",
+        ...guestRoute(<HotelChatPage />, <ListSkeleton label="Loading your messages" />),
       },
       // The feed. "saved" is a literal and must not be read as a :postId, which
       // is why the post and profile drill-downs sit under /p/ and /u/ rather
@@ -247,6 +257,16 @@ const router = createBrowserRouter([
           </RoleRoute>
         ),
       },
+      // The property's queue of GUEST conversations — and NOT admin-only,
+      // unlike the route above. Same call as the API makes: answering a guest
+      // about their stay is the front desk's job, so staff reach it too. The
+      // property still comes from the token, never from the URL.
+      //
+      // The list and one open thread are the same page: on a wide screen it is
+      // two panes, and on a phone the URL is what decides which one shows, so
+      // the browser's back button leaves an open conversation.
+      { path: "messages", element: lazyEl(<HotelGuestChatsPage />) },
+      { path: "messages/:userId", element: lazyEl(<HotelGuestChatsPage />) },
     ],
   },
 

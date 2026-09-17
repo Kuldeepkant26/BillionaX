@@ -47,11 +47,17 @@ const supportMessageSchema = new mongoose.Schema(
     },
 
     /**
-     * The property a hotel-side thread belongs to. Null on guest threads.
+     * The property this thread belongs to. Null only on the GUEST channel.
      *
-     * Denormalised from the author's account so the hotel inbox can show and
-     * search by property without joining User on every row — and so a thread
-     * keeps the hotel it was actually about even if the account later moves.
+     * On HOTEL it is denormalised from the author's account so the platform
+     * inbox can show and search by property without joining User on every row
+     * — and so a thread keeps the hotel it was actually about even if the
+     * account later moves.
+     *
+     * On HOTEL_GUEST it is not a label but half of the THREAD KEY. A guest can
+     * hold memberships at several properties, so {userId} names a person while
+     * {userId, hotelId} names a conversation. Every read on that channel must
+     * carry it; see isHotelScopedParty.
      */
     hotelId: { type: mongoose.Schema.Types.ObjectId, ref: "Hotel", default: null, index: true },
 
@@ -86,10 +92,26 @@ supportMessageSchema.index({ userId: 1, createdAt: 1 });
 // Each inbox's thread list, newest activity first, scoped to one channel.
 supportMessageSchema.index({ party: 1, createdAt: -1 });
 
-// Both unread badges, on both channels. Partial because read messages are the
+// Unread badges on every channel. Partial because read messages are the
 // overwhelming majority and never match.
 supportMessageSchema.index(
   { party: 1, sender: 1, userId: 1 },
+  { partialFilterExpression: { readAt: null } }
+);
+
+/*
+ * The HOTEL_GUEST thread key, and the hotel's own inbox.
+ *
+ * hotelId leads because that channel's queue is read one property at a time —
+ * "every conversation at this hotel" — which the index above cannot serve: it
+ * starts at party and would scan every hotel's rows to find one's. The trailing
+ * createdAt gives both the thread's own ordering and the queue's sort.
+ */
+supportMessageSchema.index({ hotelId: 1, party: 1, userId: 1, createdAt: 1 });
+
+// That queue's unread badge: one hotel's unanswered guest messages.
+supportMessageSchema.index(
+  { hotelId: 1, party: 1, sender: 1 },
   { partialFilterExpression: { readAt: null } }
 );
 

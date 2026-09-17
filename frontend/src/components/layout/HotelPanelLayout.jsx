@@ -2,6 +2,7 @@ import PanelLayout from "./PanelLayout.jsx";
 import { ROUTES } from "../../constants/routePaths.js";
 import { ROLES } from "../../store/slices/authSlice.js";
 import { useHotelSupportBadge } from "../../hooks/useHotelSupportBadge.js";
+import { useHotelGuestChatsBadge } from "../../hooks/useHotelGuestChatsBadge.js";
 
 // Hotel-admin-only nav items. MAIN_ADMIN never reaches this panel — they work
 // from the admin panel, which targets a specific hotel.
@@ -24,6 +25,22 @@ const NAV = [
     to: ROUTES.HOTEL_MEMBERS,
     label: "Members",
     icon: "M10 2.8a3.4 3.4 0 1 1 0 6.8 3.4 3.4 0 0 1 0-6.8zM3.6 17c.6-3.4 3.2-5.2 6.4-5.2s5.8 1.8 6.4 5.2z",
+  },
+  {
+    // No `roles` key, deliberately: this is the front desk's queue, and the
+    // whole point of the channel is that whoever is on shift can answer
+    // without waiting for a manager to relay it.
+    //
+    // High in the rail, beside the other guest-facing work, rather than down
+    // with "Contact Billionax" — that one is an account-level question about
+    // the platform; this is a guest in the building waiting on a reply.
+    to: ROUTES.HOTEL_GUEST_CHATS,
+    label: "Guest messages",
+    badge: "guestChats",
+    // An envelope, distinct from the speech bubble that means the platform
+    // conversation. Filled, like every icon here — PanelLayout renders these
+    // with no stroke, so a line-drawn path would come out invisible.
+    icon: "M2.5 4.5h15v11h-15zm1.6 1.4L10 10.4l5.9-4.5v-.4H4.1z",
   },
   {
     to: ROUTES.HOTEL_TRANSACTIONS,
@@ -107,6 +124,9 @@ const HotelPanelLayout = () => {
   // Mounted here rather than in PanelLayout: the admin panel shares that shell
   // and counts a different queue entirely.
   useHotelSupportBadge();
+  // Mounted right beside it, and for the same reason: a badge hook that nothing
+  // calls is a hook that silently never runs.
+  useHotelGuestChatsBadge();
 
   return <PanelLayout brand="Hotel panel" subtitle="Billionax" nav={NAV} showHotel />;
 };

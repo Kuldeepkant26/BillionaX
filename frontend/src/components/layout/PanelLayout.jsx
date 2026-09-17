@@ -41,6 +41,7 @@ const PanelLayout = ({ brand, subtitle, nav, showHotel = false }) => {
   const staffHotel = useAppStore((s) => s.staffHotel);
   const setStaffHotel = useAppStore((s) => s.setStaffHotel);
   const supportUnread = useAppStore((s) => s.supportUnread);
+  const guestChatsUnread = useAppStore((s) => s.guestChatsUnread);
   const feedEnabled = useAppStore((s) => s.feedEnabled);
   const [open, setOpen] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
@@ -107,9 +108,10 @@ const PanelLayout = ({ brand, subtitle, nav, showHotel = false }) => {
   );
 
   // Counts a nav item can carry, keyed by the name an item's `badge` names.
-  // One entry today; the shape exists so the next one is a line here rather
-  // than another subscription threaded through this component.
-  const badges = { support: supportUnread };
+  // Two entries: the session's own platform thread, and — on the hotel panel —
+  // the property's queue of guest conversations. They are separate numbers on
+  // separate nav items and can both be non-zero at once.
+  const badges = { support: supportUnread, guestChats: guestChatsUnread };
 
   return (
     <div className="theme-root" data-theme="ink-minimal" data-accent={accent} data-font={font} style={accentStyle}>
