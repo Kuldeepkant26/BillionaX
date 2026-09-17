@@ -99,9 +99,60 @@ export const createSupportSlice = (set, get) => ({
 
   bumpGuestChatsUnread: () => set((s) => ({ guestChatsUnread: s.guestChatsUnread + 1 })),
 
+  /**
+   * A GUEST's unread replies from their hotels, split by property.
+   *
+   * The guest-side counterpart of guestChatsUnread, and a map rather than a
+   * number because a guest belongs to several hotels and the Help screen dots
+   * each row separately. The total is derived (hotelUnreadTotal) rather than
+   * stored, so the two can never disagree — the bug that a second counter
+   * always eventually produces.
+   *
+   * Kept OUT of supportUnread deliberately. That key is the platform thread,
+   * and merging them would mean marking one conversation read clears a dot
+   * that belongs to the other.
+   */
+  hotelUnread: {},
+
+  /** Replaces the whole map from a server count. */
+  setHotelUnread: (byHotel) => set({ hotelUnread: { ...(byHotel || {}) } }),
+
+  /** One property's count, from a socket push. */
+  bumpHotelUnread: (hotelId) =>
+    set((s) => {
+      if (!hotelId) return s;
+      const key = String(hotelId);
+      return { hotelUnread: { ...s.hotelUnread, [key]: (s.hotelUnread[key] || 0) + 1 } };
+    }),
+
+  /** Reading one hotel's thread clears only that hotel. */
+  clearHotelUnread: (hotelId) =>
+    set((s) => {
+      if (!hotelId) return s;
+      const key = String(hotelId);
+      if (!s.hotelUnread[key]) return s;
+      const next = { ...s.hotelUnread };
+      delete next[key];
+      return { hotelUnread: next };
+    }),
+
   feedEnabled: false,
   // Coerced rather than trusted: an older API build omits the key entirely,
   // and `undefined` in the nav filter would read as "hide", which is right,
   // but `set` should still store a boolean rather than undefined.
   setFeedEnabled: (feedEnabled) => set({ feedEnabled: Boolean(feedEnabled) }),
 });
+
+/**
+ * The guest's total unread across every hotel thread.
+ *
+ * A selector rather than a stored number, so it cannot drift from the map it
+ * summarises. Used by the bottom nav's Help dot; the Help screen itself reads
+ * the map directly to dot individual properties.
+ *
+ * Defined here beside the state it reads rather than in the component, because
+ * two components need the same sum and a second implementation is how they
+ * start disagreeing.
+ */
+export const selectHotelUnreadTotal = (s) =>
+  Object.values(s.hotelUnread || {}).reduce((total, n) => total + (n || 0), 0);

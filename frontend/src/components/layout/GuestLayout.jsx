@@ -6,7 +6,9 @@ import { BillPopup } from "../../features/guest/BillPopup.jsx";
 import { useAccentSync } from "../../hooks/useAccentSync.js";
 import { useGuestMemberships } from "../../hooks/useGuestMemberships.js";
 import { useSupportBadge } from "../../hooks/useSupportBadge.js";
+import { useGuestHotelChatBadge } from "../../hooks/useGuestHotelChatBadge.js";
 import { useAppStore } from "../../store/useAppStore.js";
+import { selectHotelUnreadTotal } from "../../store/slices/supportSlice.js";
 import { ROUTES } from "../../constants/routePaths.js";
 import { Toasts } from "../common/index.jsx";
 import styles from "./GuestLayout.module.css";
@@ -63,10 +65,19 @@ const GuestLayout = () => {
   // The Help tab's dot has to be right on any screen, so it lives in the shell
   // for the same reason useBillRealtime does.
   useSupportBadge();
+  // Mounted beside it, not inside it: the Help tab sits above THREE
+  // conversations for a guest with two hotels, and the platform badge counts
+  // only one of them. Without this a reply from the front desk moved nothing
+  // in the nav — see the hook.
+  useGuestHotelChatBadge();
 
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
   const unread = useAppStore((s) => s.unread);
   const supportUnread = useAppStore((s) => s.supportUnread);
+  const hotelUnread = useAppStore(selectHotelUnreadTotal);
+  // The Help dot stands for "someone has replied to you", whichever
+  // conversation it was. Which one is the Help screen's job to say.
+  const helpUnread = supportUnread + hotelUnread;
   const feedEnabled = useAppStore((s) => s.feedEnabled);
   const { pathname } = useLocation();
   const showNav = isAuthenticated && pathname.startsWith("/app");
@@ -123,12 +134,12 @@ const GuestLayout = () => {
                       {unread > 9 ? "9+" : unread}
                     </b>
                   )}
-                  {/* A plain dot, not a count, unlike Alerts. A guest has one
-                      support thread, so the number would only ever say how
-                      many messages are in the single conversation they are
-                      about to open — the fact that there IS a reply is the
-                      whole signal. */}
-                  {item.supportBadge && supportUnread > 0 && (
+                  {/* A plain dot, not a count, unlike Alerts. A guest may now
+                      have several threads behind this tab — the platform and
+                      one per hotel — so a number here would sum conversations
+                      rather than describe one. The fact that somebody has
+                      replied is the whole signal; the Help screen says who. */}
+                  {item.supportBadge && helpUnread > 0 && (
                     <b
                       className="absolute -top-0.5 -right-1.25 w-2 h-2 rounded-full bg-bad"
                       aria-label="New reply from support"

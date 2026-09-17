@@ -186,3 +186,102 @@
     transition: none;
   }
 }
+
+/*
+ * The closing statement of the "Why Billionax exists" answer.
+ *
+ * Set in the display face at full strength rather than the muted body grey the
+ * paragraphs above use: it is a tagline, and in --dim at 12.5px it read as a
+ * fifth sentence of prose instead of the line the answer builds to.
+ *
+ * pre-line so the two halves sit on their own lines from the single "\n" in
+ * the string, without needing two paragraphs and a margin between them.
+ */
+.answerInner p.lead {
+  margin-top: 14px;
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: -0.2px;
+  color: var(--fg);
+  white-space: pre-line;
+}
+
+/* ---------- example redemption table ---------- */
+
+.tableHead {
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.tableHead b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--fg);
+}
+.tableHead span {
+  display: block;
+  margin-top: 4px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/*
+ * Column headers are visible rather than screen-reader-only: "Maximum coins
+ * redeemable" is the whole meaning of the right-hand column, and a bare "Up to
+ * 30% of bill" beside a service name could as easily be read as a discount the
+ * hotel is offering on the service itself.
+ */
+.table th[scope="col"] {
+  padding: 11px 14px 9px;
+  text-align: left;
+  vertical-align: bottom;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+  border-bottom: 1px solid var(--line);
+}
+
+.table tbody tr + tr th,
+.table tbody tr + tr td {
+  border-top: 1px solid var(--line);
+}
+
+.table th[scope="row"] {
+  padding: 12px 10px 12px 14px;
+  text-align: left;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--fg);
+}
+
+.table td {
+  padding: 12px 14px 12px 10px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--dim);
+  /* The values are the column a guest compares down, so they get the tabular
+     figures and a fixed-ish width; the label column takes the slack. */
+  font-variant-numeric: tabular-nums;
+  width: 47%;
+}
+
+.tableNote {
+  margin: 10px 2px 0;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--dim);
+  opacity: 0.9;
+}

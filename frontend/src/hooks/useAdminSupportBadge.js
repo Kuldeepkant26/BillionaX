@@ -48,6 +48,14 @@ export const useAdminSupportBadge = () => {
     // Re-counted from the server rather than incremented: an admin's own reply
     // and a second admin marking a thread read both move this number, and only
     // the server knows the result. The push is just the signal to go and ask.
+    //
+    // Deliberately UNFILTERED by party, unlike the other three badges. This
+    // one counts both platform queues at once, so it has to refetch for either
+    // — and the admin room carries only those two: the guest-to-hotel channel
+    // is emitted to the property, never here (see sendFromOwner). If that ever
+    // changes, `unreadForPlatform` still ignores HOTEL_GUEST rows when it sums
+    // the total, so a stray push would cost a wasted request rather than a
+    // wrong number.
     onMessage: sync,
     onResync: sync,
   });

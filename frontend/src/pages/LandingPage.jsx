@@ -15,12 +15,28 @@ const LandingPage = () => {
       <span className={styles.logo} />
 
       <h1 className={`display ${styles.title}`}>
-        Your stay, <em>rewarded</em>.
+        <em>Luxury for everyone.</em>
+        <b>Privileges for members.</b>
       </h1>
 
       <p className={styles.sub}>
-        Billionax turns every bill at your hotel into coins you can spend right there — on dinner,
-        the spa, room service or the bar.
+        Earn Billionax Coins on every stay. Redeem exclusive privileges across dining, wellness,
+        upgrades and luxury experiences.
+      </p>
+
+      <p className={styles.value}>
+        <span className="kicker">Benefits worth up to</span>
+        <b>
+          ₹25,000+<span>per year*</span>
+        </b>
+      </p>
+
+      {/* Directly beneath the plate rather than down by the CTA: the asterisk
+          and its terms have to read as one statement, and three sections
+          apart it looked like unrelated fine print. */}
+      <p className={styles.note}>
+        *Indicative annual value based on typical member earning and redemption across participating
+        hotels. Actual benefits vary by property, tier and usage.
       </p>
 
       <div className={styles.steps}>

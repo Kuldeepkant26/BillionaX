@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../../store/useAppStore.js";
-import { supportUnreadCount, hotelChatUnreadCount } from "../../api/guest.api.js";
+import { selectHotelUnreadTotal } from "../../store/slices/supportSlice.js";
+import { supportUnreadCount } from "../../api/guest.api.js";
 import { ROUTES } from "../../constants/routePaths.js";
 import styles from "./HelpPage.module.css";
 
@@ -92,15 +93,20 @@ const HelpPage = () => {
     memberships[0];
 
   /*
-   * Unread replies from the guest's hotels: a total for the badge, and a
-   * per-hotel split so the switcher can dot the right row.
+   * Unread replies from the guest's hotels, per property.
    *
-   * Local rather than in the store, unlike supportUnread. That one is shared
-   * with the bottom nav, which shows a single platform dot; these counts are
-   * per property and are read only here, so putting them in the store would
-   * be state with one consumer and an extra invalidation path to get wrong.
+   * Read from the STORE rather than fetched into local state here, which is
+   * what an earlier version did. That version was wrong in a way that only
+   * showed up while sitting on this screen: it fetched once on mount and had
+   * no socket subscription, so a reply arriving while the guest looked at the
+   * page left every dot exactly as it was.
+   *
+   * useGuestHotelChatBadge owns this key and keeps it live from the shell, so
+   * this screen simply renders it — and cannot disagree with the nav dot,
+   * which now reads the same numbers.
    */
-  const [hotelUnread, setHotelUnread] = useState({ unread: 0, byHotel: {} });
+  const hotelUnread = useAppStore((s) => s.hotelUnread);
+  const hotelUnreadTotal = useAppStore(selectHotelUnreadTotal);
 
   // Which hotel the "message the hotel" door points at. Defaults to the one
   // the guest is currently looking at, which is nearly always the one they are
@@ -112,6 +118,13 @@ const HelpPage = () => {
     memberships.find((m) => String(m.hotelId?._id || m.hotelId) === String(chosenId)) || active;
   const targetId = target?.hotelId?._id || target?.hotelId;
   const targetName = target?.hotelId?.name;
+
+  // What the door itself badges: the property it actually opens.
+  const targetUnread = hotelUnread[String(targetId)] || 0;
+  // What the switcher badges: everything the door does NOT reach, so a reply
+  // from another hotel is still announced rather than hidden behind a
+  // collapsed control.
+  const otherUnread = hotelUnreadTotal - targetUnread;
 
   /*
    * Resyncs the badge on the way in.
@@ -137,27 +150,14 @@ const HelpPage = () => {
   }, [setSupportUnread]);
 
   /*
-   * The same resync for the hotel threads, in its own effect.
+   * The hotel counts need no effect here.
    *
-   * Separate from the one above rather than a Promise.all, so a failure in
-   * either badge cannot blank the other — they are independent counts from
-   * independent endpoints, and this page is fully usable with neither.
+   * useGuestHotelChatBadge, mounted in the shell, already syncs them on mount,
+   * on reconnect and on tab focus, and nudges them on every socket push. A
+   * second fetch from this screen would race that one for the same key and
+   * could write a count taken before a read landed — exactly the class of bug
+   * supportUnreadSeq exists to prevent on the platform side.
    */
-  useEffect(() => {
-    let cancelled = false;
-    hotelChatUnreadCount()
-      .then((data) => {
-        if (cancelled || !data) return;
-        setHotelUnread({ unread: data.unread || 0, byHotel: data.byHotel || {} });
-      })
-      .catch(() => {
-        // The door still works without its badge.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   return (
     <div>
@@ -200,14 +200,19 @@ const HelpPage = () => {
             >
               <span className={styles.icon}>
                 <DeskIcon />
-                {hotelUnread.unread > 0 && <em className={styles.dot} aria-hidden="true" />}
+                {targetUnread > 0 && <em className={styles.dot} aria-hidden="true" />}
               </span>
               <span className={styles.body}>
                 <b>
                   Message {targetName || "your hotel"}
-                  {hotelUnread.unread > 0 && (
+                  {/* THIS property's count, not the total across every hotel.
+                      The door names one hotel and opens its thread, so badging
+                      it with another property's reply points the guest at the
+                      wrong conversation — the total belongs on the switcher
+                      below, which is what reaches the others. */}
+                  {targetUnread > 0 && (
                     <span className={styles.pill}>
-                      {hotelUnread.unread > 9 ? "9+" : hotelUnread.unread} new
+                      {targetUnread > 9 ? "9+" : targetUnread} new
                     </span>
                   )}
                 </b>
@@ -231,12 +236,21 @@ const HelpPage = () => {
                   aria-expanded={switching}
                 >
                   {switching ? "Hide hotels" : "Message a different hotel"}
+                  {/* Without this, a reply from a hotel the door does not
+                      point at is announced by the nav dot and then leads to a
+                      screen showing nothing new — the conversation is real but
+                      hidden behind a collapsed control. */}
+                  {!switching && otherUnread > 0 && (
+                    <span className={styles.pill}>
+                      {otherUnread > 9 ? "9+" : otherUnread} new
+                    </span>
+                  )}
                 </button>
 
                 {switching &&
                   memberships.map((m) => {
                     const id = String(m.hotelId?._id || m.hotelId);
-                    const unread = hotelUnread.byHotel[id] || 0;
+                    const unread = hotelUnread[id] || 0;
 
                     return (
                       <button

@@ -37,6 +37,9 @@ const HotelChatPage = () => {
   const { hotelId } = useParams();
   const toastError = useAppStore((s) => s.toastError);
   const memberships = useAppStore((s) => s.memberships);
+  // Clears this property's dot the moment the thread opens — see the read
+  // effect below for why it is not left to the server round trip.
+  const clearHotelUnread = useAppStore((s) => s.clearHotelUnread);
 
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -127,14 +130,26 @@ const HotelChatPage = () => {
     setError(null);
   }, [hotelId]);
 
-  // Opening the thread IS reading it. Fired per hotel, since each property's
-  // unread count is its own.
+  /*
+   * Opening the thread IS reading it. Fired per hotel, since each property's
+   * unread count is its own.
+   *
+   * The store is cleared OPTIMISTICALLY, before the request resolves, so the
+   * dot disappears on the tap that brought the guest here rather than a round
+   * trip later — the same thing SupportChatPage does with clearSupportUnread.
+   * Without this the badge survived reading the conversation and only cleared
+   * on the next full sync, which looks exactly like a broken counter.
+   *
+   * Scoped to this hotel: reading one property's thread must not clear a dot
+   * belonging to another.
+   */
   useEffect(() => {
+    clearHotelUnread(hotelId);
     markHotelChatRead(hotelId).catch(() => {
       // The badge re-marks on the next open; failing loudly here would be
       // noise about a cosmetic count.
     });
-  }, [hotelId]);
+  }, [hotelId, clearHotelUnread]);
 
   useSupportRealtime({
     // Both are required: the party alone would still let the guest's OTHER
@@ -146,8 +161,10 @@ const HotelChatPage = () => {
       if (!payload?.message) return;
       append(payload.message);
 
-      // A reply landing while the thread is open has already been read.
+      // A reply landing while the thread is open has already been read, so the
+      // badge the shell's hook just raised is cleared straight back down.
       if (payload.message.sender === "ADMIN") {
+        clearHotelUnread(hotelId);
         markHotelChatRead(hotelId).catch(() => {});
       }
     },

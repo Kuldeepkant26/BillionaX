@@ -50,9 +50,21 @@ const Item = ({ q, a, open, onToggle, id }) => (
     */}
     <div className={styles.answerWrap} id={`faq-a-${id}`} role="region" hidden={!open}>
       <div className={styles.answerInner}>
-        {a.map((line, i) => (
-          <p key={i}>{line}</p>
-        ))}
+        {a.map((line, i) =>
+          /*
+           * A line can be `{ lead: "..." }` instead of a plain string, which
+           * renders it as a statement rather than body copy. Only the brand
+           * answer uses it — a tagline set in the same muted grey as the prose
+           * above it stops reading as a tagline at all.
+           */
+          typeof line === "string" ? (
+            <p key={i}>{line}</p>
+          ) : (
+            <p key={i} className={styles.lead}>
+              {line.lead}
+            </p>
+          )
+        )}
       </div>
     </div>
   </div>
@@ -77,6 +89,30 @@ const FaqPage = () => {
   const [openId, setOpenId] = useState(null);
 
   const sections = [
+    {
+      // First, and deliberately so: it answers WHY before the rest of the page
+      // answers how. It is also the one answer on this page with no numbers in
+      // it — everything below is mechanics, this is the reason for them.
+      title: "About Billionax",
+      items: [
+        {
+          q: "Why Billionax exists",
+          a: [
+            "Most people dream of luxury experiences but receive little recognition for their loyalty.",
+            "Billionax was built to bridge the gap between aspiration and access.",
+            "We believe luxury shouldn't be reserved for a select few people with elite status. It should be earned through meaningful experiences.",
+            { lead: "Luxury for everyone.\nPrivileges for members." },
+          ],
+        },
+        {
+          q: "What makes Billionax different?",
+          a: [
+            "Most hotel loyalty programs lock rewards inside one hotel brand.",
+            "Billionax is designed as a multi-hotel luxury ecosystem where one membership can unlock rewards and privileges across participating hospitality partners.",
+          ],
+        },
+      ],
+    },
     {
       title: "Coins",
       items: [
@@ -193,6 +229,30 @@ const FaqPage = () => {
 
   let counter = 0;
 
+  /*
+   * An ILLUSTRATIVE redemption table, not this guest's own figures.
+   *
+   * Every other number on this page is resolved from the guest's membership;
+   * these are not, because the per-service breakdown is not in the guest
+   * payload — memberships carry only `maxSavePercent`, the single best rate.
+   * The real per-outlet caps live in HotelService.coinCaps, which no guest
+   * endpoint exposes today.
+   *
+   * So the heading says "example", the rows are generic, and the note beneath
+   * points at the two places that ARE authoritative: the bill itself, which is
+   * priced from the hotel's own caps at bill time (bill.service.js), and the
+   * guest's Max discount tile on home. If this table is ever to show real
+   * numbers, the fix is a guest-facing services endpoint — not hardcoding a
+   * different set of constants here.
+   */
+  const exampleRows = [
+    ["Restaurant bill", "Up to 30% of bill"],
+    ["Spa & wellness", "Up to 30% of bill"],
+    ["Bar & beverages", "Up to 25% of bill"],
+    ["Room upgrade", "Subject to availability"],
+    ["Final check-out bill", "Up to 20% of bill"],
+  ];
+
   return (
     <div>
       <button type="button" onClick={() => navigate(-1)} className={styles.back}>
@@ -205,7 +265,9 @@ const FaqPage = () => {
 
       <header className={styles.head}>
         <h1>Questions</h1>
-        <p>How coins, bills and tiers work{active ? ` at ${hotelName}` : ""}.</p>
+        {/* "What Billionax is" as well as how it works, since the first
+            section now answers the why before the mechanics start. */}
+        <p>What Billionax is, and how coins, bills and tiers work{active ? ` at ${hotelName}` : ""}.</p>
       </header>
 
       {sections.map((section) => (
@@ -230,6 +292,46 @@ const FaqPage = () => {
           </div>
         </section>
       ))}
+
+      <section className={styles.section}>
+        <span className="kicker">Redemption privileges</span>
+
+        <div className={styles.card}>
+          <div className={styles.tableHead}>
+            {/* "Example" in the heading, not only in the note below it: the
+                heading is the part a guest scanning the page actually reads,
+                and these are not their own hotel's numbers. */}
+            <b>Example redemption limits</b>
+            <span>
+              How much of a bill coins may cover, by outlet. Your hotel sets its own limits.
+            </span>
+          </div>
+
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th scope="col">Experience</th>
+                <th scope="col">Maximum coins redeemable</th>
+              </tr>
+            </thead>
+            <tbody>
+              {exampleRows.map(([experience, limit]) => (
+                <tr key={experience}>
+                  <th scope="row">{experience}</th>
+                  <td>{limit}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p className={styles.tableNote}>
+          Illustrative only. {hotelName === "your hotel" ? "Your hotel" : hotelName} sets its own
+          limit for each outlet and tier
+          {maxSave ? `, and yours currently reach ${maxSave}%` : ""}. Every bill shows exactly how
+          many coins you can put against it before you pay.
+        </p>
+      </section>
 
       <p className={styles.foot}>
         Still stuck? The desk at {hotelName} can see every bill and every coin on your account.

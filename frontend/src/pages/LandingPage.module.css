@@ -22,20 +22,92 @@
   background: var(--acc2);
 }
 
+/*
+ * The brand plate: the two-line promise, the explainer, and the value figure.
+ *
+ * This replaced the old "Your stay, rewarded" headline rather than sitting
+ * below it — both said the same thing in different words, and stacking them
+ * opened the page with two competing headlines and two value props.
+ */
+
 .title {
   font-size: 30px;
   line-height: 1.12;
+  margin: 0;
 }
+/* "Luxury for everyone" sits in the muted ink and "Privileges for members"
+   in the full-strength foreground, so the second line lands as the promise
+   that actually applies to the reader once they join. */
 .title em {
-  font-style: italic;
-  color: var(--acc);
+  display: block;
+  font-style: normal;
+  color: var(--dim);
+}
+.title b {
+  display: block;
+  font-weight: inherit;
+  color: var(--fg);
 }
 
 .sub {
   color: var(--dim);
   font-size: 13.5px;
   line-height: 1.6;
-  margin: 12px 0 26px;
+  margin: 14px 0 0;
+}
+
+/*
+ * The value figure, framed rather than rotated.
+ *
+ * A bordered plate holds attention better than anything that moves, and it
+ * stays put while the number is read — a ₹25,000 claim that times out after
+ * four seconds is the worst possible way to state a ₹25,000 claim.
+ *
+ * --soft rather than --card for the ground: on the landing page there is no
+ * card layer to sit against, so the plate needs its own tint to read as a
+ * distinct surface rather than an outlined hole in the page.
+ */
+.value {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 22px 0 10px;
+  padding: 15px 16px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: var(--rad-sm);
+  /* The one accent stripe on the screen. Inline-start so it holds its edge
+     if the app is ever rendered right-to-left. */
+  border-inline-start: 3px solid var(--acc);
+}
+
+.value b {
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.5px;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* "per year*" trails the figure on the same baseline rather than taking its
+   own line — the amount and its period are one statement. */
+.value b span {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--dim);
+  margin-inline-start: 7px;
+}
+
+.note {
+  margin: 0 0 26px;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--dim);
+  opacity: 0.85;
 }
 
 .steps {

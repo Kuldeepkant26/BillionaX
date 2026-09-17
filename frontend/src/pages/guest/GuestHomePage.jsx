@@ -352,6 +352,26 @@ const GuestHomePage = () => {
           </div>
         </section>
       )}
+
+      {/*
+        The closing brand statement.
+
+        Deliberately OUTSIDE the two conditionals above: videos and offers both
+        disappear for a hotel that has uploaded nothing, and a sign-off that
+        vanishes with them would leave those guests on a truncated screen.
+        This is the one block on the page that always renders.
+      */}
+      <section className={styles.promise} aria-labelledby="promise-heading">
+        <span className="kicker" id="promise-heading">
+          The Billionax Promise
+        </span>
+        <p className={styles.promiseLead}>
+          Every stay should do more than create memories. It should create value.
+        </p>
+        <p className={styles.promiseTail}>
+          Earn rewards. Unlock privileges. Experience luxury differently.
+        </p>
+      </section>
     </div>
   );
 };
