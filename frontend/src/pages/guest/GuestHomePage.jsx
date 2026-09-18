@@ -5,7 +5,7 @@ import { useAppStore } from "../../store/useAppStore.js";
 import { useAsync } from "../../hooks/useAsync.js";
 import { ROUTES, offerPath, videoPath } from "../../constants/routePaths.js";
 import { videoPoster } from "../../utils/upload.js";
-import { MembershipCard } from "../../features/guest/MembershipCard.jsx";
+import { CardCarousel } from "../../features/guest/CardCarousel.jsx";
 import { HotelSwitcher } from "../../features/guest/HotelSwitcher.jsx";
 import { HotelShowcase } from "../../features/guest/HotelShowcase.jsx";
 import { HowItWorks } from "../../features/guest/HowItWorks.jsx";
@@ -127,8 +127,10 @@ const GuestHomePage = () => {
         onSelect={setActiveHotel}
       />
 
+      {/* The card and the brand panel rotate in this slot — see CardCarousel
+          for why the card leads and holds longer. */}
       <div className="mt-3.5">
-        <MembershipCard
+        <CardCarousel
           membership={active}
           guestName={user?.name}
           hotelName={active?.hotelId?.name}

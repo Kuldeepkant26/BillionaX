@@ -1,0 +1,299 @@
+/*
+ * Residual CSS for CardCarousel.
+ *
+ * Same scroll-snap approach as HotelShowcase: the guest can swipe the track
+ * natively and the dots follow via the scroll handler, with no drag library.
+ * The snap axis, the hidden scrollbar and the panel's own surface have no
+ * utility equivalent, so they live here.
+ */
+
+.track {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  /*
+   * The track is EXACTLY the slide box — no padding, no clip margin.
+   *
+   * Two earlier attempts both showed at the bottom corners:
+   *
+   *   - vertical padding made the scroll container ~22px taller than the
+   *     slide, leaving a band of dead space under the card;
+   *   - overflow-clip-margin expanded the clip box on ALL sides, so the
+   *     track's square bottom edge sat outside the slide's rounded corners
+   *     and the corner gaps showed as unrounded container corners.
+   *
+   * Both existed only to stop overflow-x shearing a drop shadow the panel no
+   * longer casts (see .brand). With nothing painting outside the slide box,
+   * the honest geometry is to clip exactly at it — the track, the slide and
+   * the artwork then share one rounded rectangle.
+   */
+  border-radius: var(--rad);
+}
+.track::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Every slide is exactly the card's box.
+ *
+ * The card is aspect-[380/240]; matching it here means the carousel is the
+ * same height whichever slide shows, so the quick actions and stats below it
+ * never jump as the track advances.
+ */
+.slide {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  aspect-ratio: 380 / 240;
+}
+
+/*
+ * The brand panel — painted from the ACTIVE theme, not a fixed colour.
+ *
+ * var(--hero) is the app's own hero gradient: near-black under the default
+ * presets, and the tenant's colour under CORAL, INDIGO, EMERALD and the rest
+ * (see the [data-accent] layer in themes.css). Using it means this panel is
+ * the one surface on the home screen that always speaks the network's chosen
+ * palette, and it follows a theme switch with no JS.
+ *
+ * Text is --acc-fg, the foreground each preset guarantees against its own
+ * accent, so the copy stays legible on a dark ink hero and a bright coral one
+ * alike. Nothing here may use --fg: that is the PAGE ink, which on a light
+ * theme is near-black and would vanish into a dark hero.
+ */
+.brand {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  /* A grid of three rows — header, statement, value — rather than a flex
+     stack. The middle row takes every spare pixel, so the copy sits optically
+     centred and the leftover space never pools under the last line. */
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 15px 19px 14px;
+  border-radius: var(--rad);
+  /* The sheen sits over the theme's hero — one background, two layers, so a
+     preset change repaints the whole panel. */
+  background:
+    radial-gradient(
+      118% 92% at 84% 6%,
+      color-mix(in srgb, var(--acc-fg) 9%, transparent),
+      transparent 58%
+    ),
+    var(--hero);
+  color: var(--acc-fg);
+  overflow: hidden;
+  /*
+   * INSET only — no drop shadow.
+   *
+   * A cast shadow has to paint outside the panel, and the track clips at the
+   * slide box, so every way of making room for it (padding, clip margin) moved
+   * the container's edge off the artwork's rounded corners. The card beside
+   * this one solves it the same way in effect: its own shadow is drawn inside
+   * its rounded box. These two inset lines give the edge its thickness with
+   * nothing painting past it.
+   */
+  box-shadow:
+    0 2px 0 color-mix(in srgb, var(--acc-fg) 7%, transparent) inset,
+    0 -1px 0 rgb(0 0 0 / 0.42) inset;
+  /* Same reason as MembershipCard: promotes the panel to its own layer so the
+     rounded clip is antialiased rather than applied as a hard pixel mask. */
+  transform: translateZ(0);
+  isolation: isolate;
+}
+
+/*
+ * A single wide highlight raked across the upper corner.
+ *
+ * The card beside this one is milled metal that catches light; a matte black
+ * rectangle next to it reads as a placeholder. One soft band is enough to put
+ * the two on the same material footing without competing with the artwork.
+ */
+.sheen {
+  position: absolute;
+  top: -58%;
+  right: -22%;
+  width: 78%;
+  height: 165%;
+  transform: rotate(19deg);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--acc-fg) 7%, transparent) 46%,
+    color-mix(in srgb, var(--acc-fg) 3%, transparent) 68%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* ---------- header ---------- */
+
+.brandHead {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--acc-fg) 76%, transparent);
+  white-space: nowrap;
+}
+
+/* Runs from the wordmark to the panel edge, the way a letterhead rule does.
+   Fades out so it never collides with the rounded corner. */
+.rule {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--acc-fg) 24%, transparent),
+    transparent
+  );
+}
+
+/* ---------- statement ---------- */
+
+.brandBody {
+  position: relative;
+  z-index: 1;
+  /* Centred in whatever the middle row is given, so the block stays optically
+     placed on a short phone and a tall one alike. */
+  align-self: center;
+  padding: 2px 0;
+}
+
+.lines {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 16.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.3px;
+}
+/* The two halves sit on their own lines at any width — "Luxury for everyone.
+   Privileges for members." wrapping mid-phrase loses the parallel entirely. */
+.lines span {
+  display: block;
+}
+
+.body {
+  margin: 7px 0 0;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--acc-fg) 74%, transparent);
+  /* Wide enough for the sentence to finish in four lines at 390px. A 33ch
+     measure forced a fifth and the clamp ate "experiences". */
+  max-width: 38ch;
+  /* The clamp is a guard against a narrow phone or a large text setting, not
+     the normal case: at 390px the copy fits in four lines with room to spare,
+     so nothing is cut. */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------- value footer ---------- */
+
+/*
+ * Divided off with a hairline and given the figure its own weight.
+ *
+ * As one bold sentence it was just a fourth line of copy; as a labelled figure
+ * above a rule it reads as the panel's payoff, which is the job that line is
+ * actually doing.
+ */
+.valueRow {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 9px;
+  border-top: 1px solid color-mix(in srgb, var(--acc-fg) 16%, transparent);
+}
+
+.valueLabel {
+  text-decoration: none;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--acc-fg) 62%, transparent);
+  /* Holds its line against the figure rather than wrapping under it. */
+  flex: none;
+}
+
+.valueFigure {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.4px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* "per year*" trails the amount on the same baseline — the figure and its
+   period are one statement, and a second line would break it. */
+.valueFigure span {
+  margin-inline-start: 6px;
+  font-family: var(--font-ui);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: color-mix(in srgb, var(--acc-fg) 62%, transparent);
+}
+
+/* ---------- dots ---------- */
+
+/*
+ * Dots sit BELOW the track, not on top of it.
+ *
+ * HotelShowcase floats them over a photograph, where there is nothing to
+ * obscure. Here the equivalent corner of slide one holds the card's own
+ * artwork and figures, so an overlay would sit on the guest's balance.
+ */
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--line);
+  cursor: pointer;
+  transition: width 200ms ease, background 200ms ease;
+}
+
+/* The active dot stretches rather than only changing colour, so the state
+   survives on a low-contrast ground and for anyone who cannot separate the
+   two tints. */
+.dotOn {
+  width: 18px;
+  background: var(--acc);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track {
+    scroll-behavior: auto;
+  }
+  .dot {
+    transition: none;
+  }
+}

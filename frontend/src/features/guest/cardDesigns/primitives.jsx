@@ -138,24 +138,41 @@ const RingMask = ({ id, cx, cy, r, barWidth }) => {
   // the same proportion to the bar regardless of the bar's own width.
   const notchOpen = rodHalf * 2.2;
   const notchTall = rodHalf * 2.6;
+  // How far the cut stops SHORT of the bar's far edge, so the arc runs a hair
+  // UNDER the bar and the two blend with no seam. It must be negative-inward
+  // (i.e. the mask ends inside the bar), never outward: an outward overshoot
+  // ends the arc before the bar starts and leaves a 1-2px gap you can see.
+  const tuck = rodHalf * 0.35;
   const pad = r * 0.2; // clears the mask's own bounding box outside the ring
   return (
     <mask id={id}>
       <rect x={cx - r - pad} y={cy - r - pad} width={2 * (r + pad)} height={2 * (r + pad)} fill="white" stroke="none" />
-      {/* Top-right notch: opens to the right of the bar's right edge. */}
+      {/*
+        Each notch spans the bar's FULL width as well as the gap beside it.
+        Starting at the bar's near edge left the arc that runs UNDER the bar
+        uncut, so it emerged on the far side as a short gold stub — the ring
+        and bar read as a cross at each crossing instead of the ring breaking
+        cleanly. Beginning the cut at the bar's opposite edge removes that
+        buried segment along with the open gap, in one rectangle.
+
+        The cut stops just INSIDE the bar's far edge (`tuck`), so the arc runs
+        slightly under the bar and the join is seamless. Ending it on or past
+        that edge is what left a visible 1-2px gap on the attached side.
+      */}
+      {/* Top: gap opens to the RIGHT, and the cut reaches back under the bar. */}
       <rect
-        x={cx + rodHalf}
+        x={cx - rodHalf + tuck}
         y={cy - r - notchTall / 2}
-        width={notchOpen}
+        width={rodHalf * 2 + notchOpen - tuck}
         height={notchTall}
         fill="black"
         stroke="none"
       />
-      {/* Bottom-left notch: opens to the left of the bar's left edge. */}
+      {/* Bottom: gap opens to the LEFT, mirrored. */}
       <rect
         x={cx - rodHalf - notchOpen}
         y={cy + r - notchTall / 2}
-        width={notchOpen}
+        width={rodHalf * 2 + notchOpen - tuck}
         height={notchTall}
         fill="black"
         stroke="none"

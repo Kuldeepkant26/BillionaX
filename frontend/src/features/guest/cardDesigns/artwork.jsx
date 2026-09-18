@@ -21,6 +21,42 @@ import { ringAndBar } from "./primitives.jsx";
  */
 const markPaths = ringAndBar;
 
+/*
+ * One stroke width for every pass of a struck crest.
+ *
+ * Shared rather than written at each call site: RingMask cuts its notches from
+ * the width it is handed, so the body and rim passes must both report the same
+ * number or their notches land at different distances from the bar — which is
+ * exactly the ragged join this constant was introduced to fix.
+ */
+const CREST_W = 10.45;
+
+/*
+ * The crest's gold, lit from the top-left like the metal it sits on. Fixed
+ * across tiers: it is the brand mark applied to the card, not part of the
+ * tier's own material.
+ *
+ * userSpaceOnUse, NOT the default objectBoundingBox. The mark's bar is a
+ * perfectly vertical line, so its bounding box is ZERO WIDTH — an
+ * objectBoundingBox gradient degenerates there and the browser paints the bar
+ * a flat fallback colour. That is why the ring rendered gold while the rod
+ * beside it stayed grey. Real user-space coordinates give every part of the
+ * mark the same ramp, so the bar and the ring match.
+ *
+ * x1/y1..x2/y2 are in the CARD's own 380x240 space, so they must span where
+ * the mark actually sits — centred on (323,120) at r=70.3, i.e. roughly
+ * x 253..393, y 50..190. Values written for some other space silently paint
+ * the whole mark a single flat stop.
+ */
+const CrestGold = ({ id }) => (
+  <linearGradient id={id} gradientUnits="userSpaceOnUse" x1="258" y1="55" x2="388" y2="185">
+    <stop offset="0" stopColor="#f2dca6" />
+    <stop offset=".36" stopColor="#cda654" />
+    <stop offset=".64" stopColor="#8f6c2c" />
+    <stop offset="1" stopColor="#d4b066" />
+  </linearGradient>
+);
+
 /* ---------------- 01 Metálica: foil geometry on matte black --------------- */
 
 // Hand-placed marks from the mockup. A data blob, not logic: kept as one array
@@ -79,17 +115,16 @@ export const MetalicaArt = ({ tier }) => {
 
 export const BrushedSteelArt = ({ tier }) => {
   const c = PALETTES.BRUSHED_STEEL[tier];
-  const id = useSvgIds("steel", "brush", "glow");
+  const id = useSvgIds("steel", "brush", "glow", "crest");
 
   /*
-   * The Billionax mark, milled into the steel.
+   * The Billionax mark, struck into the steel as a gold crest.
    *
    * This replaced a generic "B" monogram — the card now carries the actual
    * brand mark. Drawn inline rather than with the shared <LogoMark> because
-   * the milled effect needs the SAME geometry stroked TWICE at different
-   * colours and a 2px offset (a dark cut, then a light highlight), which a
-   * single-element component cannot express. Sized to a 190-unit square:
-   * r=70.3 at a 10.45 stroke.
+   * the struck effect needs the SAME geometry stroked twice — a gold body and
+   * a lit rim — which a single-element component cannot express. Sized to a
+   * 190-unit square: r=70.3 at a CREST_W stroke.
    *
    * Called once per <g> below rather than computed once and reused: markPaths
    * carries a <mask> with an id from useId(), and reusing one JSX value in two
@@ -121,20 +156,24 @@ export const BrushedSteelArt = ({ tier }) => {
           <stop offset="0" stopColor="#fff" stopOpacity=".10" />
           <stop offset="1" stopColor="#fff" stopOpacity="0" />
         </radialGradient>
+        <CrestGold id={id.crest} />
       </defs>
 
       <rect width="380" height="240" fill={`url(#${id.steel})`} />
       <rect width="380" height="240" fill={`url(#${id.brush})`} />
 
-      {/* The cut, then the highlight offset by 2px — that pairing is what
-          makes the mark look milled into the surface rather than printed on
-          it. Positioned so the ring sits off the right edge, as the ghost
-          monogram did, leaving the left two-thirds clear for the type. */}
-      <g transform="translate(228 25)" fill="none" stroke="rgba(0,0,0,.35)" strokeWidth="10.45">
-        {markPaths(95, 95, 70.3, 10.45)}
-      </g>
-      <g transform="translate(230 27)" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="2.4">
-        {markPaths(95, 95, 70.3, 2.4)}
+      {/*
+        The mark, in gold.
+
+        ONE <g>, ONE stroke, ONE markPaths call — the same shape every other
+        design here uses (see Crest and Signet below). Layered passes were the
+        whole problem: the bar is an unmasked path, so any second pass at a
+        different width, offset, or colour reappears inside the ring's notches
+        where no gold covers it — first as grey stubs, then as a dark needle,
+        then as a pale one. A single stroke cannot misregister with itself.
+      */}
+      <g fill="none" stroke={`url(#${id.crest})`} strokeWidth={CREST_W} opacity=".95">
+        {markPaths(323, 120, 70.3, CREST_W)}
       </g>
 
       <rect width="380" height="240" fill={`url(#${id.glow})`} />
