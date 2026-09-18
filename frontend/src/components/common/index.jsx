@@ -213,8 +213,21 @@ export const Avatar = ({ children, className = "" }) => (
  *
  * For a bill: a stray tap on the backdrop must not make a charge disappear, and
  * the guest should have to say which they meant, pay or decline.
+ *
+ * `size="wide"` widens the shell for a dialog whose content has its own natural
+ * width — the invoice preview renders a page-proportioned document, which the
+ * default 440px forces into a scrolling column. Opt-in, so every confirm and
+ * form dialog keeps the narrow measure that suits it.
  */
-export const Modal = ({ open, title, onClose, children, footer, dismissible = true }) => {
+export const Modal = ({
+  open,
+  title,
+  onClose,
+  children,
+  footer,
+  dismissible = true,
+  size,
+}) => {
   useEffect(() => {
     if (!open || !dismissible) return;
     const onKey = (e) => e.key === "Escape" && onClose?.();
@@ -233,7 +246,12 @@ export const Modal = ({ open, title, onClose, children, footer, dismissible = tr
       className="modal-back"
       onMouseDown={(e) => dismissible && e.target === e.currentTarget && onClose?.()}
     >
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
+      <div
+        className={`modal${size === "wide" ? " modal-wide" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
         <header className="modal-hd">
           <h3 className="display">{title}</h3>
           {dismissible && (
@@ -242,8 +260,27 @@ export const Modal = ({ open, title, onClose, children, footer, dismissible = tr
             </button>
           )}
         </header>
-        {children}
-        {footer && <div style={{ marginTop: 16 }}>{footer}</div>}
+        {/*
+          Wide dialogs wrap their body and footer so the shell can make the
+          middle the only scrolling part. Every other modal keeps the original
+          bare children and inline-spaced footer, so none of their DOM or
+          spacing changes.
+        */}
+        {size === "wide" ? (
+          <>
+            <div className="modal-body">{children}</div>
+            {footer && (
+              <div className="modal-ft" style={{ marginTop: 16 }}>
+                {footer}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {children}
+            {footer && <div style={{ marginTop: 16 }}>{footer}</div>}
+          </>
+        )}
       </div>
     </div>,
     host

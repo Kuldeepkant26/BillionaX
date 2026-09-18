@@ -55,6 +55,15 @@ const NAV = [
     icon: "M3 6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1H5a2 2 0 0 0 0 4h12v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
   },
   {
+    // Beside Payments, not under Platform rules: the list is worked whenever a
+    // guest queries a charge, and burying it in settings would hide a daily
+    // screen behind a quarterly one.
+    to: ROUTES.ADMIN_INVOICES,
+    label: "Invoices",
+    // A document with a folded corner and two text lines.
+    icon: "M5 2.5h7L16 6v11.5H5zm6.5 1.2V6.5H15zM7 9.5h6v1.3H7zm0 3h6v1.3H7z",
+  },
+  {
     to: ROUTES.ADMIN_SETTINGS,
     label: "Platform rules",
     icon: "M10 7.4a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 0 0 0-5.2zM9.2 2h1.6l.3 2a6 6 0 0 1 1.5.9l1.9-.8 1 1.7-1.5 1.3a6 6 0 0 1 0 1.8l1.5 1.3-1 1.7-1.9-.8a6 6 0 0 1-1.5.9l-.3 2H9.2l-.3-2a6 6 0 0 1-1.5-.9l-1.9.8-1-1.7 1.5-1.3a6 6 0 0 1 0-1.8L4.5 5.8l1-1.7 1.9.8a6 6 0 0 1 1.5-.9z",

@@ -10,7 +10,9 @@ import { getSettings } from "./settings.service.js";
 import { joinHotel, refreshTier } from "./membership.service.js";
 import { normalizePhone } from "./otp.service.js";
 import { pushLedgerEvent } from "./notification.service.js";
+import { issueInvoiceForPurchase } from "./invoice.service.js";
 import { emitToGuest, emitToHotel } from "../realtime/emitter.js";
+import { logger } from "../utils/logger.js";
 
 /**
  * Idempotency for the credit paths.
@@ -119,6 +121,15 @@ export const recordPurchase = async ({ hotelId, coins, amountPaid, paymentRef, n
   });
 
   emitToHotel(hotelId, "hotel:inventory", { coinInventory: hotel.coinInventory });
+
+  // Caught and logged for the same reason the bill path catches: the inventory
+  // has already moved and the purchase row is already written, so a failure to
+  // produce the paperwork must not undo a completed sale.
+  try {
+    await issueInvoiceForPurchase(purchase._id);
+  } catch (err) {
+    logger.error(`Invoice issue failed for purchase ${purchase._id}: ${err.message}`);
+  }
 
   return { purchase, coinInventory: hotel.coinInventory };
 };

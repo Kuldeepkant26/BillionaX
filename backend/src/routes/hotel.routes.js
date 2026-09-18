@@ -23,6 +23,7 @@ import {
   hotelSettingsRules,
   txFilterRules,
   memberFilterRules,
+  invoiceFilterRules,
   staffFilterRules,
   purchaseFilterRules,
   contentFilterRules,
@@ -67,6 +68,16 @@ router.post(
 );
 
 router.get("/transactions", paginationRules, txFilterRules, validate, hotelController.listTransactions);
+
+/**
+ * This hotel's invoices. Staff as well as admins, matching /transactions
+ * above: the desk is who a guest asks for a copy of their bill.
+ *
+ * Scoping is done in the controller via hotelIdFor(req), never from a query
+ * param — see the tenancy note on getInvoice.
+ */
+router.get("/invoices", paginationRules, invoiceFilterRules, validate, hotelController.listInvoices);
+router.get("/invoices/:invoiceId", objectIdParam("invoiceId"), validate, hotelController.getInvoice);
 router.get("/members", paginationRules, memberFilterRules, validate, hotelController.listMembers);
 
 // --- hotel admin only ---

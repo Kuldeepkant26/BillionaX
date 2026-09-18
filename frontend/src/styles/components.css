@@ -336,6 +336,83 @@ a.kpi:hover { border-color: var(--acc); box-shadow: var(--shadow); }
   box-shadow: var(--shadow);
   animation: modal-up 0.22s ease;
 }
+/*
+ * A wider shell for dialogs whose content has its own natural width — today
+ * the invoice preview, which renders a page-proportioned document that the
+ * default 440px squeezed into a scrolling column.
+ *
+ * It also becomes a flex COLUMN and takes a fixed height rather than growing
+ * to fit. That is what lets the body scroll on its own: with the default
+ * `overflow-y: auto` on .modal the whole dialog scrolled, so the title and the
+ * buttons slid away and the preview got a second scrollbar inside the first.
+ * Header and footer are flex-none; only the middle moves.
+ */
+.modal-wide {
+  max-width: 880px;
+  height: min(88vh, 1000px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal-wide > .modal-hd { flex: none; }
+/* The scrolling middle. `min-height: 0` is required — a flex item defaults to
+   min-height:auto, which refuses to shrink below its content and pushes the
+   footer off the bottom instead of scrolling. */
+.modal-wide > .modal-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  /* No visible scrollbar: the invoice is a document, and a track down its edge
+     reads as chrome on the page itself. Scrolling still works by wheel, trackpad,
+     touch and keyboard. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.modal-wide > .modal-body::-webkit-scrollbar { display: none; }
+.modal-wide > .modal-ft { flex: none; }
+
+/*
+ * The invoice preview: a fixed 780px document scaled to fit.
+ *
+ * The frame inside is always 780px — the width the template lays out at — so
+ * the document never reflows and never clips its header or totals. Below that
+ * width the frame is scaled down by --inv-scale, which InvoiceModal measures
+ * and sets; at 780px and above the scale is 1 and nothing is transformed.
+ *
+ * The scale is measured in JS rather than with a container query: `cqw` inside
+ * a custom property on the container's own child resolves against the PARENT
+ * container, not the element's own box — an element cannot query itself — so
+ * the value never resolved and the frame stayed clipped.
+ *
+ * transform-origin is top left so the scaled frame stays pinned to the corner,
+ * and the frame's height is divided back up by the scale so it still fills the
+ * body afterwards — otherwise a scaled-down frame leaves a gap at the bottom
+ * equal to what it shrank by.
+ */
+.invoice-fit {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.invoice-fit > iframe {
+  width: 780px;
+  border: 0;
+  display: block;
+  background: #fff;
+  transform: scale(var(--inv-scale, 1));
+  transform-origin: top left;
+  height: calc(100% / var(--inv-scale, 1));
+}
+
+@media (max-width: 560px) {
+  .modal-wide { height: 92svh; max-width: none; }
+}
+
 @keyframes modal-up {
   from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: none; }

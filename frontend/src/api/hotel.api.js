@@ -156,3 +156,10 @@ export const markGuestThreadRead = (userId) =>
 
 export const replyToGuestThread = (userId, body) =>
   api.post(`/hotel/support/guests/${userId}/messages`, { body }).then(unwrap);
+
+/* ---------------------------------------------------------- invoices ---- */
+
+export const listInvoices = (params) => api.get("/hotel/invoices", { params }).then(unwrap);
+
+/** One invoice plus its rendered HTML: { invoice, html }. Scoped server-side. */
+export const getInvoice = (invoiceId) => api.get(`/hotel/invoices/${invoiceId}`).then(unwrap);

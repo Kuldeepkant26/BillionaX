@@ -21,6 +21,7 @@ import { CoinTransaction } from "../models/coinTransaction.model.js";
 import { getSettings } from "./settings.service.js";
 import { resolveServiceCaps } from "./hotelService.service.js";
 import { pushLedgerEvent } from "./notification.service.js";
+import { issueInvoiceForBill } from "./invoice.service.js";
 import { emitToGuest, emitToHotel } from "../realtime/emitter.js";
 import { getPaymentProvider, isDemoPayments } from "../payments/index.js";
 import { canAcceptPayments } from "./onboarding.service.js";
@@ -895,6 +896,25 @@ export const markBillPaid = async ({ billId, guestId, providerPaymentId, signatu
     logger.info(
       `Bill ${result.billId} PAID: ${result.payablePaise} paise, ${result.coinsApplied} coins`
     );
+
+    /**
+     * The invoice, and the guest's copy of it by email.
+     *
+     * AFTER the commit and INSIDE a catch, both deliberately. The money has
+     * already moved and the bill is already PAID by the time this runs, so
+     * there is nothing left to roll back and nothing the guest could usefully
+     * do about a failure — a template an admin has broken, or a Brevo outage,
+     * must not turn a successful payment into an error on their phone.
+     *
+     * Not awaited into the transaction either: withTransaction retries on
+     * transient errors, and issuing in there would burn an invoice number per
+     * attempt and could email the guest twice.
+     */
+    try {
+      await issueInvoiceForBill(result.billId);
+    } catch (err) {
+      logger.error(`Invoice issue failed for bill ${result.billId}: ${err.message}`);
+    }
   }
 
   return result;

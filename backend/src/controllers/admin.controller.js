@@ -11,6 +11,8 @@ import * as rebateService from "../services/rebate.service.js";
 import * as paymentSettingsService from "../services/paymentSettings.service.js";
 import * as onboardingService from "../services/onboarding.service.js";
 import * as supportService from "../services/support.service.js";
+import * as invoiceService from "../services/invoice.service.js";
+import * as invoiceTemplateService from "../services/invoiceTemplate.service.js";
 
 export const dashboard = asyncHandler(async (req, res) => {
   const data = await reportService.adminDashboard();
@@ -178,7 +180,18 @@ export const listTransactions = asyncHandler(async (req, res) => {
     page: Number(page),
     limit: Number(limit),
   });
-  res.status(200).json(new ApiResponse(200, data));
+
+  /**
+   * The invoices behind this page's rows, keyed by bill id, in one extra
+   * query — see the hotel controller's copy for why the id is recovered from
+   * `idempotencyKey` rather than a billId column.
+   */
+  const billIds = data.items
+    .map((t) => (t.idempotencyKey || "").startsWith("bill:") && t.idempotencyKey.slice(5))
+    .filter(Boolean);
+  const invoices = await invoiceService.invoiceIdsForBills(billIds);
+
+  res.status(200).json(new ApiResponse(200, { ...data, invoices }));
 });
 
 export const listGuests = asyncHandler(async (req, res) => {
@@ -251,6 +264,75 @@ export const getSettings = asyncHandler(async (req, res) => {
 export const updateSettings = asyncHandler(async (req, res) => {
   const settings = await settingsService.updateSettings(req.body, req.user._id);
   res.status(200).json(new ApiResponse(200, { settings }, "Settings saved"));
+});
+
+/* -------------------------------------------------------------- invoices -- */
+
+export const listInvoices = asyncHandler(async (req, res) => {
+  const { hotelId, kind, from, to, q, page = 1, limit = 25 } = req.query;
+  const data = await invoiceService.listInvoices({
+    hotelId,
+    kind,
+    from,
+    to,
+    q,
+    page: Number(page),
+    limit: Number(limit),
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+/** One invoice plus its rendered HTML — what the preview popup shows. */
+export const getInvoice = asyncHandler(async (req, res) => {
+  const data = await invoiceService.getInvoiceHtml(req.params.invoiceId);
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const resendInvoice = asyncHandler(async (req, res) => {
+  const invoice = await invoiceService.resendInvoice(req.params.invoiceId);
+  res.status(200).json(new ApiResponse(200, { invoice }, "Invoice sent"));
+});
+
+export const getInvoiceTemplate = asyncHandler(async (req, res) => {
+  const template = await invoiceTemplateService.getInvoiceTemplate({ fresh: true });
+  res.status(200).json(
+    new ApiResponse(200, {
+      template,
+      // The shipped markup, so the editor's Reset works without a round trip
+      // and without the client holding its own stale copy of the defaults.
+      defaults: invoiceTemplateService.DEFAULT_HTML,
+    })
+  );
+});
+
+export const updateInvoiceTemplate = asyncHandler(async (req, res) => {
+  const template = await invoiceTemplateService.updateInvoiceTemplate(req.body, req.user._id);
+  res.status(200).json(new ApiResponse(200, { template }, "Invoice template saved"));
+});
+
+/**
+ * Renders the editor's live preview against sample data.
+ *
+ * Takes the DRAFT template from the body rather than reading the stored one,
+ * so an admin sees their unsaved edit before committing it — which is the only
+ * way a raw-HTML editor is safe to hand someone. Nothing is persisted and no
+ * invoice number is consumed.
+ */
+export const previewInvoiceTemplate = asyncHandler(async (req, res) => {
+  const stored = await invoiceTemplateService.getInvoiceTemplate();
+
+  // Mongoose doc -> plain object before spreading: a document's own keys are
+  // not enumerable the way the draft's are, and the merge would silently drop
+  // every stored field the body did not resend.
+  const draft = { ...stored.toObject(), ...(req.body || {}) };
+  const sample = invoiceService.buildSampleInvoice(draft);
+
+  const [invoiceHtml, email] = await Promise.all([
+    invoiceTemplateService.renderInvoiceHtml(sample, draft),
+    invoiceTemplateService.renderInvoiceEmail(sample, draft),
+  ]);
+
+  res.status(200).json(new ApiResponse(200, { invoiceHtml, email }));
 });
 
 /* --------------------------------------------------------------- support -- */

@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { listTransactions } from "../../api/hotel.api.js";
+import { useCallback, useMemo, useState } from "react";
+import { listTransactions, getInvoice } from "../../api/hotel.api.js";
 import { usePaginatedList } from "../../hooks/usePaginatedList.js";
 import {
   Badge,
@@ -12,6 +12,7 @@ import {
   Table,
 } from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
+import { InvoiceButton, InvoiceModal } from "../../features/panel/InvoiceModal.jsx";
 import { formatCoins, formatCurrency, formatDateTime, formatPaise } from "../../utils/format.js";
 
 const TYPES = ["", "EARN", "REDEEM", "WELCOME", "ADJUSTMENT"];
@@ -63,6 +64,35 @@ const TransactionsPage = () => {
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
     );
   }, [list.items, list.data]);
+
+  const [invoiceId, setInvoiceId] = useState(null);
+
+  /**
+   * Bill id -> { id, number }, sent alongside the page by the server.
+   *
+   * Only rows that actually HAVE an invoice get an eye icon, so the column is
+   * never a promise the popup cannot keep: a cancelled bill or a coin-only
+   * EARN row has no invoice, and an icon there would open an error.
+   */
+  const invoices = list.data?.invoices || {};
+
+  /**
+   * Which invoice a row points at.
+   *
+   * A REDEEM row carries no bill id of its own — the ledger links the other
+   * way — so its `idempotencyKey` ("bill:<id>", set when the bill was settled)
+   * is the only bill reference on the row itself. The server keys the map by
+   * bill id for exactly this reason.
+   */
+  const invoiceFor = (row) => {
+    if (row.__bill) return invoices[row.__bill.id];
+    const key = row.idempotencyKey || "";
+    return key.startsWith("bill:") ? invoices[key.slice(5)] : undefined;
+  };
+
+  // Stable identity: InvoiceModal takes the fetcher as an effect dependency,
+  // and a new function each render would refetch on every parent render.
+  const fetchInvoice = useCallback((id) => getInvoice(id), []);
 
   return (
     <div>
@@ -116,6 +146,7 @@ const TransactionsPage = () => {
                 { label: "Bill", num: true },
                 { label: "Coins", num: true },
                 { label: "Collected", num: true },
+                { label: "Invoice" },
               ]}
               rows={rows}
               empty={{
@@ -146,6 +177,16 @@ const TransactionsPage = () => {
                       <td className="num">
                         <b>{bill.status === "PAID" ? formatPaise(bill.payablePaise) : "—"}</b>
                       </td>
+                      <td>
+                        {invoiceFor(row) ? (
+                          <InvoiceButton
+                            onClick={() => setInvoiceId(invoiceFor(row).id)}
+                            title={`View invoice ${invoiceFor(row).number}`}
+                          />
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                     </tr>
                   );
                 }
@@ -169,6 +210,16 @@ const TransactionsPage = () => {
                     <td className="num">
                       <b>{t.cashPayable != null ? formatCurrency(t.cashPayable) : "—"}</b>
                     </td>
+                    <td>
+                      {invoiceFor(t) ? (
+                        <InvoiceButton
+                          onClick={() => setInvoiceId(invoiceFor(t).id)}
+                          title={`View invoice ${invoiceFor(t).number}`}
+                        />
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                   </tr>
                 );
               }}
@@ -183,6 +234,12 @@ const TransactionsPage = () => {
           </>
         )}
       </Card>
+
+      <InvoiceModal
+        invoiceId={invoiceId}
+        onClose={() => setInvoiceId(null)}
+        fetchInvoice={fetchInvoice}
+      />
     </div>
   );
 };

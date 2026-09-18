@@ -25,6 +25,8 @@ import {
   supportMessageRules,
   supportPartyRule,
   searchRule,
+  invoiceTemplateRules,
+  invoiceFilterRules,
 } from "../validators/common.validator.js";
 
 const router = Router();
@@ -121,6 +123,40 @@ router.delete("/payments", adminController.clearPaymentSettings);
 
 router.get("/settings", adminController.getSettings);
 router.patch("/settings", settingsRules, validate, adminController.updateSettings);
+
+/* ---- invoices and the invoice template -------------------------------- */
+
+// Registered before /invoices/:invoiceId — "template" and "preview" must not
+// be read as invoice ids, the same ordering trap as /hotels/cities above.
+router.get("/invoices/template", adminController.getInvoiceTemplate);
+router.patch(
+  "/invoices/template",
+  invoiceTemplateRules,
+  validate,
+  adminController.updateInvoiceTemplate
+);
+// POST rather than GET: it carries the unsaved draft template in its body, and
+// it is a pure render that persists nothing.
+router.post(
+  "/invoices/template/preview",
+  invoiceTemplateRules,
+  validate,
+  adminController.previewInvoiceTemplate
+);
+
+router.get("/invoices", paginationRules, invoiceFilterRules, validate, adminController.listInvoices);
+router.get(
+  "/invoices/:invoiceId",
+  objectIdParam("invoiceId"),
+  validate,
+  adminController.getInvoice
+);
+router.post(
+  "/invoices/:invoiceId/resend",
+  objectIdParam("invoiceId"),
+  validate,
+  adminController.resendInvoice
+);
 
 /* ---- support inbox ---------------------------------------------------- */
 

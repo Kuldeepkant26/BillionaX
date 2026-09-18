@@ -68,6 +68,7 @@ const AdminsPage = lazy(() => import("../pages/admin/AdminsPage.jsx"));
 const AdminTransactionsPage = lazy(() => import("../pages/admin/AdminTransactionsPage.jsx"));
 const AdminSettingsPage = lazy(() => import("../pages/admin/AdminSettingsPage.jsx"));
 const AdminPaymentsPage = lazy(() => import("../pages/admin/AdminPaymentsPage.jsx"));
+const AdminInvoicesPage = lazy(() => import("../pages/admin/AdminInvoicesPage.jsx"));
 const AdminFeedPage = lazy(() => import("../pages/admin/AdminFeedPage.jsx"));
 const AdminSupportPage = lazy(() => import("../pages/admin/AdminSupportPage.jsx"));
 
@@ -310,6 +311,7 @@ const router = createBrowserRouter([
       { path: "admins", element: lazyEl(<AdminsPage />) },
       { path: "transactions", element: lazyEl(<AdminTransactionsPage />) },
       { path: "payments", element: lazyEl(<AdminPaymentsPage />) },
+      { path: "invoices", element: lazyEl(<AdminInvoicesPage />) },
       { path: "settings", element: lazyEl(<AdminSettingsPage />) },
     ],
   },

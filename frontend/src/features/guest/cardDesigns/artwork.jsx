@@ -24,12 +24,12 @@ const markPaths = ringAndBar;
 /*
  * One stroke width for every pass of a struck crest.
  *
- * Shared rather than written at each call site: RingMask cuts its notches from
- * the width it is handed, so the body and rim passes must both report the same
- * number or their notches land at different distances from the bar — which is
- * exactly the ragged join this constant was introduced to fix.
+ * The single source for the mark's weight here: it sets the painted stroke AND
+ * the width RingMask cuts its notches from, so thinning the crest keeps the
+ * rod/arc joins correct automatically. Passing a different number to either
+ * side is what produced the ragged join this constant was introduced to fix.
  */
-const CREST_W = 10.45;
+const CREST_W = 8.6;
 
 /*
  * The crest's gold, lit from the top-left like the metal it sits on. Fixed
@@ -50,10 +50,10 @@ const CREST_W = 10.45;
  */
 const CrestGold = ({ id }) => (
   <linearGradient id={id} gradientUnits="userSpaceOnUse" x1="258" y1="55" x2="388" y2="185">
-    <stop offset="0" stopColor="#f2dca6" />
-    <stop offset=".36" stopColor="#cda654" />
-    <stop offset=".64" stopColor="#8f6c2c" />
-    <stop offset="1" stopColor="#d4b066" />
+    <stop offset="0" stopColor="#d8c294" />
+    <stop offset=".36" stopColor="#b08f4e" />
+    <stop offset=".64" stopColor="#7d6130" />
+    <stop offset="1" stopColor="#b59a63" />
   </linearGradient>
 );
 
@@ -121,10 +121,9 @@ export const BrushedSteelArt = ({ tier }) => {
    * The Billionax mark, struck into the steel as a gold crest.
    *
    * This replaced a generic "B" monogram — the card now carries the actual
-   * brand mark. Drawn inline rather than with the shared <LogoMark> because
-   * the struck effect needs the SAME geometry stroked twice — a gold body and
-   * a lit rim — which a single-element component cannot express. Sized to a
-   * 190-unit square: r=70.3 at a CREST_W stroke.
+   * brand mark. Drawn inline rather than with the shared <LogoMark> so it can
+   * take the card's own gold gradient. Sized to a 190-unit square: r=70.3 at a
+   * CREST_W stroke.
    *
    * Called once per <g> below rather than computed once and reused: markPaths
    * carries a <mask> with an id from useId(), and reusing one JSX value in two
@@ -172,7 +171,7 @@ export const BrushedSteelArt = ({ tier }) => {
         where no gold covers it — first as grey stubs, then as a dark needle,
         then as a pale one. A single stroke cannot misregister with itself.
       */}
-      <g fill="none" stroke={`url(#${id.crest})`} strokeWidth={CREST_W} opacity=".95">
+      <g fill="none" stroke={`url(#${id.crest})`} strokeWidth={CREST_W} opacity=".72">
         {markPaths(323, 120, 70.3, CREST_W)}
       </g>
 

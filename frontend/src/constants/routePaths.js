@@ -50,6 +50,7 @@ export const ROUTES = {
   ADMIN_ADMINS: "/admin/admins",
   ADMIN_TRANSACTIONS: "/admin/transactions",
   ADMIN_PAYMENTS: "/admin/payments",
+  ADMIN_INVOICES: "/admin/invoices",
   ADMIN_SETTINGS: "/admin/settings",
   ADMIN_FEED: "/admin/feed",
   ADMIN_SUPPORT: "/admin/support",

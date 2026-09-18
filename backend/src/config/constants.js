@@ -104,6 +104,34 @@ export const PURCHASE_STATUS = Object.freeze({
 export const PURCHASE_STATUS_VALUES = Object.values(PURCHASE_STATUS);
 
 /**
+ * What a given invoice is a receipt FOR.
+ *
+ * The two are different documents with different parties, not one document
+ * with a flag: a GUEST_BILL is the hotel billing a guest and carries line
+ * items, tax and coins; a COIN_PURCHASE is the platform billing a hotel for
+ * inventory and carries a coin count and a unit price. They share a numbering
+ * series and nothing else, which is why invoice.model.js keeps each one's
+ * figures in its own subdocument rather than flattening both into one set of
+ * nullable columns.
+ */
+export const INVOICE_KINDS = Object.freeze({
+  GUEST_BILL: "GUEST_BILL",
+  COIN_PURCHASE: "COIN_PURCHASE",
+});
+
+export const INVOICE_KIND_VALUES = Object.values(INVOICE_KINDS);
+
+/** Whether the invoice email reached the guest. Audit only — nothing retries. */
+export const INVOICE_EMAIL_STATUS = Object.freeze({
+  // No address to send to. The common case for a guest, who signs up by phone.
+  SKIPPED: "SKIPPED",
+  SENT: "SENT",
+  FAILED: "FAILED",
+});
+
+export const INVOICE_EMAIL_STATUS_VALUES = Object.values(INVOICE_EMAIL_STATUS);
+
+/**
  * The seven outlets the platform shipped with.
  *
  * NO LONGER THE AUTHORITATIVE SET. Each hotel now owns its own services — see

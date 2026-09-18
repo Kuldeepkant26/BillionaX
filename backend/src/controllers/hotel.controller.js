@@ -13,6 +13,7 @@ import * as uploadService from "../services/upload.service.js";
 import * as videoService from "../services/video.service.js";
 import * as billService from "../services/bill.service.js";
 import * as supportService from "../services/support.service.js";
+import * as invoiceService from "../services/invoice.service.js";
 
 /** Main admin must target a hotel explicitly; staff are pinned to their own. */
 const hotelIdFor = (req) => {
@@ -107,7 +108,58 @@ export const listTransactions = asyncHandler(async (req, res) => {
       : Promise.resolve({ items: [] }),
   ]);
 
-  res.status(200).json(new ApiResponse(200, { ...data, bills: bills.items }));
+  /**
+   * The invoices behind these rows, keyed by bill id.
+   *
+   * One extra query for the whole page rather than one per row, and it is what
+   * lets the table show an eye icon only where an invoice actually exists.
+   *
+   * A REDEEM row has no billId column — the link runs the other way, via
+   * Bill.transactionId. Its `idempotencyKey` is `bill:<id>` (set in
+   * markBillPaid) and that is the only bill reference the ledger row itself
+   * carries, so it is what the id is recovered from here rather than adding a
+   * second lookup back through Bill.
+   */
+  const billIds = [
+    ...bills.items.map((b) => b.id),
+    ...data.items
+      .map((t) => (t.idempotencyKey || "").startsWith("bill:") && t.idempotencyKey.slice(5))
+      .filter(Boolean),
+  ];
+  const invoices = await invoiceService.invoiceIdsForBills(billIds);
+
+  res.status(200).json(new ApiResponse(200, { ...data, bills: bills.items, invoices }));
+});
+
+/* -------------------------------------------------------------- invoices -- */
+
+/**
+ * One invoice, rendered, scoped to THIS hotel.
+ *
+ * hotelIdFor(req) is passed into the query rather than compared afterwards, so
+ * another property's invoice reads as "not found" rather than "forbidden" —
+ * the same tenancy rule the bill-cancel path follows, and for the same reason:
+ * a differing 403 would confirm the document exists.
+ */
+export const getInvoice = asyncHandler(async (req, res) => {
+  const data = await invoiceService.getInvoiceHtml(req.params.invoiceId, {
+    hotelId: hotelIdFor(req),
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const listInvoices = asyncHandler(async (req, res) => {
+  const { kind, from, to, q, page = 1, limit = 25 } = req.query;
+  const data = await invoiceService.listInvoices({
+    hotelId: hotelIdFor(req),
+    kind,
+    from,
+    to,
+    q,
+    page: Number(page),
+    limit: Number(limit),
+  });
+  res.status(200).json(new ApiResponse(200, data));
 });
 
 export const coinBalance = asyncHandler(async (req, res) => {

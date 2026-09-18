@@ -1,4 +1,5 @@
-import { listTransactions, listHotels } from "../../api/admin.api.js";
+import { useCallback, useState } from "react";
+import { listTransactions, listHotels, getInvoice } from "../../api/admin.api.js";
 import { useAsync } from "../../hooks/useAsync.js";
 import { usePaginatedList } from "../../hooks/usePaginatedList.js";
 import {
@@ -12,6 +13,7 @@ import {
   Table,
 } from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
+import { InvoiceButton, InvoiceModal } from "../../features/panel/InvoiceModal.jsx";
 import { formatCoins, formatCurrency, formatDateTime } from "../../utils/format.js";
 
 const TYPES = ["", "EARN", "REDEEM", "WELCOME", "ADJUSTMENT"];
@@ -27,6 +29,25 @@ const AdminTransactionsPage = () => {
   // actual investigation tool.
   const { data: hotelData } = useAsync(() => listHotels({ limit: 100 }), []);
   const hotels = hotelData?.items || [];
+
+  const [invoiceId, setInvoiceId] = useState(null);
+
+  /**
+   * Bill id -> { id, number }, sent with the page. Only rows that HAVE an
+   * invoice get an eye icon, so the column never opens an error — a WELCOME or
+   * EARN row has no bill behind it and no invoice to show.
+   *
+   * A REDEEM row carries no billId column, so the id comes off its
+   * `idempotencyKey` ("bill:<id>"); the server keys the map to match.
+   */
+  const invoices = list.data?.invoices || {};
+  const invoiceFor = (t) => {
+    const key = t.idempotencyKey || "";
+    return key.startsWith("bill:") ? invoices[key.slice(5)] : undefined;
+  };
+
+  // Stable identity: InvoiceModal takes this as an effect dependency.
+  const fetchInvoice = useCallback((id) => getInvoice(id), []);
 
   return (
     <div>
@@ -80,6 +101,7 @@ const AdminTransactionsPage = () => {
                 { label: "Bill", num: true },
                 { label: "Coins", num: true },
                 { label: "Fee", num: true },
+                { label: "Invoice" },
               ]}
               rows={list.items}
               empty={{
@@ -104,6 +126,16 @@ const AdminTransactionsPage = () => {
                   <td className="num">
                     <b>{t.platformFee != null ? formatCurrency(t.platformFee) : "—"}</b>
                   </td>
+                  <td>
+                    {invoiceFor(t) ? (
+                      <InvoiceButton
+                        onClick={() => setInvoiceId(invoiceFor(t).id)}
+                        title={`View invoice ${invoiceFor(t).number}`}
+                      />
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                 </tr>
               )}
             />
@@ -117,6 +149,12 @@ const AdminTransactionsPage = () => {
           </>
         )}
       </Card>
+
+      <InvoiceModal
+        invoiceId={invoiceId}
+        onClose={() => setInvoiceId(null)}
+        fetchInvoice={fetchInvoice}
+      />
     </div>
   );
 };

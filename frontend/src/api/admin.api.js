@@ -89,3 +89,28 @@ export const markSupportThreadRead = (userId, party) =>
 
 export const replyToSupportThread = (userId, party, body) =>
   api.post(`/admin/support/${userId}/messages`, { body }, { params: { party } }).then(unwrap);
+
+/* ---------------------------------------------------------- invoices ---- */
+
+export const listInvoices = (params) => api.get("/admin/invoices", { params }).then(unwrap);
+
+/** One invoice plus its rendered HTML: { invoice, html }. */
+export const getInvoice = (invoiceId) => api.get(`/admin/invoices/${invoiceId}`).then(unwrap);
+
+// `{}`, never null — see the note on markSupportThreadRead above.
+export const resendInvoice = (invoiceId) =>
+  api.post(`/admin/invoices/${invoiceId}/resend`, {}).then(unwrap);
+
+/** The stored template plus the shipped defaults the Reset button restores. */
+export const getInvoiceTemplate = () => api.get("/admin/invoices/template").then(unwrap);
+
+export const updateInvoiceTemplate = (payload) =>
+  api.patch("/admin/invoices/template", payload).then(unwrap);
+
+/**
+ * Renders the UNSAVED draft against sample data, for the editor's live
+ * preview. A POST because the draft travels in the body, and it persists
+ * nothing — no invoice number is consumed.
+ */
+export const previewInvoiceTemplate = (payload) =>
+  api.post("/admin/invoices/template/preview", payload).then(unwrap);

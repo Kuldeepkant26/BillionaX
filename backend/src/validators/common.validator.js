@@ -10,6 +10,7 @@ import {
   THEME_PRESET_VALUES,
   FONT_PRESET_VALUES,
   SUPPORT_PARTY_VALUES,
+  INVOICE_KIND_VALUES,
 } from "../config/constants.js";
 
 export const objectIdParam = (name) =>
@@ -690,4 +691,62 @@ export const bankVerificationRules = [
     .trim()
     .isLength({ min: 2, max: 160 })
     .withMessage("Enter the account holder's name"),
+];
+
+/**
+ * The invoice template the main admin edits.
+ *
+ * The HTML blobs are LENGTH-CAPPED HERE AND NOT SANITISED HERE. Cleaning them
+ * on the way in would destroy the admin's source — they would reopen the
+ * editor and find their own markup rewritten — and it would leave anything
+ * stored before a rule existed permanently trusted. Sanitising happens on
+ * every render instead; see sanitizeHtml in invoiceTemplate.service.js.
+ *
+ * The cap is not cosmetic: these documents are read on the payment path and
+ * embedded in outgoing mail, so an unbounded blob is a memory and deliverability
+ * problem rather than just an untidy one.
+ */
+export const invoiceTemplateRules = [
+  body("branding.numberPrefix")
+    .optional()
+    .matches(/^[A-Za-z0-9-]{1,8}$/)
+    .withMessage("Use 1-8 letters, digits or hyphens"),
+  body("branding.legalName").optional().isString().trim().isLength({ max: 200 }),
+  body("branding.address").optional().isString().trim().isLength({ max: 500 }),
+  body("branding.taxId").optional().isString().trim().isLength({ max: 60 }),
+  body("branding.supportEmail")
+    .optional({ values: "falsy" })
+    .isEmail()
+    .withMessage("Enter a valid support email"),
+  body("branding.supportPhone").optional().isString().trim().isLength({ max: 40 }),
+  body("branding.logoUrl").optional().isString().trim().isLength({ max: 500 }),
+  // Strict hex, for the reason themeCustomColor is: this lands inside the
+  // document's inline styles.
+  body("branding.accentColor")
+    .optional()
+    .matches(/^#[0-9a-fA-F]{6}$/)
+    .withMessage("Enter a 6-digit hex colour"),
+  body("branding.footerNote").optional().isString().trim().isLength({ max: 1000 }),
+  body("branding.guestBillTitle").optional().isString().trim().isLength({ max: 60 }),
+  body("branding.coinPurchaseTitle").optional().isString().trim().isLength({ max: 60 }),
+
+  body("emailCopy.subject").optional().isString().trim().isLength({ max: 200 }),
+  body("emailCopy.heading").optional().isString().trim().isLength({ max: 200 }),
+  body("emailCopy.intro").optional().isString().isLength({ max: 2000 }),
+  body("emailCopy.signoff").optional().isString().isLength({ max: 2000 }),
+
+  body("invoiceHtml").optional().isString().isLength({ max: 60000 }),
+  body("emailHtml").optional().isString().isLength({ max: 60000 }),
+  body("emailText").optional().isString().isLength({ max: 20000 }),
+
+  body("emailEnabled").optional().isBoolean().toBoolean(),
+];
+
+/** Filters over the invoice list. Mirrors txFilterRules' shape. */
+export const invoiceFilterRules = [
+  query("kind").optional().isIn(INVOICE_KIND_VALUES).withMessage("Unknown invoice kind"),
+  query("hotelId").optional().isMongoId(),
+  query("from").optional().isISO8601(),
+  query("to").optional().isISO8601(),
+  query("q").optional().isString().trim().isLength({ max: 60 }),
 ];
