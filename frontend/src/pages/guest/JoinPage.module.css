@@ -1,109 +1,476 @@
 /*
- * Residual CSS for JoinPage.
+ * JoinPage — the guest sign-in / QR landing screen.
  *
- * Only the animated hero survives here: blurred orbs, the fanned card stack
- * and the travelling shine. Everything else is Tailwind utilities in the JSX.
+ * Styling only: this file and the utilities in the JSX carry the client's
+ * dark-and-gold design. The OTP flow underneath is untouched.
+ *
+ * Two things here are NOT negotiable with the rest of the app:
+ *
+ * 1. The screen pins itself to emerald-noir via data-theme on its own wrapper
+ *    (see .page), because the design is dark regardless of the guest's saved
+ *    theme. Tokens live under [data-theme] selectors, so setting the attribute
+ *    locally re-points --bg/--fg/--acc for this subtree ONLY. The store's
+ *    guestTheme is never written, so the app returns to the configured theme
+ *    the moment the guest is signed in.
+ *
+ * 2. Gold is defined here rather than taken from --acc. The accent is a
+ *    network-wide admin setting (any of ~25 presets), and on emerald-noir
+ *    MONO it resolves to cream, not gold — so binding this design to --acc
+ *    would leave most networks with a login screen that is not the one the
+ *    client signed off on. --gold below is local to this file.
  */
 
-/*
- * The radial wash is theme-aware via --join-glow, so it reads correctly on both
- * the white and near-black grounds.
- *
- * Applied to the PAGE, not just the header, so the tint runs the full height of
- * the screen instead of stopping under the card stack.
- *
- * The negative margins cancel <main>'s px-[18px] pt-5 pb-7 so the wash reaches
- * the true edges of the viewport. Only the SIDES are padded back: re-adding the
- * top padding would push the hero down and leave a strip of bare canvas above
- * it, which is exactly the seam this replaced. The form's own top spacing comes
- * from the hero's margin-bottom instead.
- */
 .page {
-  margin: -20px -18px -28px;
-  padding: 0 18px 28px;
-  min-height: 100svh;
+  /* Local palette. Only these two are new; everything else reads the theme. */
+  --gold: #e8c89a;
+  --gold-2: #c9a267;
 
   /*
-   * The base wash: --join-glow over --bg2. Every theme gets this much, and on
-   * the dark ground it is the whole effect — there, --acc is CREAM rather than
-   * a hue (a primary button is a cream pill), so tinting with it would lay grey
-   * haze over near-black instead of colour.
+   * Cancels <main>'s px-[18px] pt-5 pb-7 so the artwork reaches the real
+   * viewport edges, and ALSO the 460px cap that GuestLayout puts on every
+   * guest screen — see .page::before for how the cap is escaped. Sides are
+   * padded back so the content itself stays inset.
    */
-  background: radial-gradient(120% 42% at 50% 0%, var(--join-glow) 0%, transparent 60%),
-    var(--bg2);
-  background-attachment: fixed, scroll;
+  margin: -20px -18px -28px;
+  min-height: 100svh;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  /* safe-center: with plain `center`, content taller than the viewport
+     overflows EQUALLY in both directions and the top is clipped past the
+     scroll origin — unreachable. This keeps it centred when it fits and
+     top-aligned when it does not. */
+  align-items: safe center;
+  justify-content: center;
+  /* Tight on a phone so the form clears the fold; the desktop rule below
+     restores generous padding once there is room for it. */
+  padding: 16px 16px 20px;
+  color: var(--fg);
+  background: var(--bg);
 }
 
 /*
- * Light ground only: two soft accent pools carry the hero's colour down the
- * page. They stand in for the blurred orbs, which are clipped to the hero by
- * its own overflow and so cannot do this themselves.
+ * Escaping GuestLayout's 460px cap.
  *
- * Alphas stay low deliberately — this is a tint behind form fields, and
- * anything stronger costs input legibility.
+ * GuestLayout wraps every guest screen in `max-w-[460px] mx-auto`, which is
+ * right for the phone the app is designed around but leaves this screen as a
+ * dark column on a desktop, with the two-column design collapsed on top of
+ * itself.
+ *
+ * The cap is on an ANCESTOR, so no width here can undo it — .page is widened
+ * out of it instead: 100vw wide, then pulled back by half the difference
+ * between the viewport and the 460px box it sits in. Applied only from 1024px
+ * up, so the phone layout (where guests actually scan the QR) is byte for byte
+ * what it was, and applied only on this page's own wrapper, so no other guest
+ * screen is affected.
  */
-[data-theme="lumen"] .page,
-[data-theme="ink-minimal"] .page {
-  background:
-    radial-gradient(120% 42% at 50% 0%, var(--join-glow) 0%, transparent 60%),
-    radial-gradient(
-      90% 34% at 12% 4%,
-      color-mix(in srgb, var(--acc) 16%, transparent) 0%,
-      transparent 70%
-    ),
-    radial-gradient(
-      80% 46% at 92% 30%,
-      color-mix(in srgb, var(--acc2) 12%, transparent) 0%,
-      transparent 72%
-    ),
-    var(--bg2);
-  background-attachment: fixed, fixed, fixed, scroll;
+@media (min-width: 1024px) {
+  .page {
+    width: 100vw;
+    max-width: 100vw;
+    /* 460px is GuestLayout's cap; the 18px is <main>'s own side padding, which
+       .page's negative margin has already cancelled. */
+    margin-left: calc(-1 * ((100vw - 460px) / 2) - 18px);
+    margin-right: calc(-1 * ((100vw - 460px) / 2) - 18px);
+    padding: 56px 40px;
+  }
 }
 
 /*
- * Full-bleed: the hero spans edge to edge while the form below stays inset.
- * .page pads the sides, so the hero cancels just that 18px — it must NOT also
- * repeat .page's own negative margin, or it shifts twice and overflows right.
+ * The full-bleed ground.
+ *
+ * Fixed rather than absolute so it covers the viewport whatever the scroll
+ * position and whatever any ancestor's width is — on a phone .page is still
+ * inside the 460px box, and the wash has to reach the real edges there too.
+ *
+ * z-index keeps it behind the content of .page but in front of the body.
  */
-.hero {
-  margin-left: -18px;
-  margin-right: -18px;
-  background: transparent;
+.page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(90% 60% at 78% 8%, rgba(232, 200, 154, 0.11) 0%, transparent 62%),
+    radial-gradient(70% 50% at 10% 92%, rgba(201, 162, 103, 0.08) 0%, transparent 65%),
+    #0b0a08;
 }
 
-.orbA,
-.orbB {
+/* ------------------------------------------------------------------ *
+ * Shell — one column on a phone, the design's two on a wide screen.
+ * ------------------------------------------------------------------ */
+
+/*
+ * Phone first: the FORM leads and the brand material follows it.
+ *
+ * The markup keeps the design's reading order (brand, then form) because that
+ * is the order on a desktop, where both columns are visible at once. On a
+ * phone nothing below the fold is visible at all, so a guest standing at a
+ * reception desk would have had to scroll past a decorative card and a pull
+ * quote to reach the email field — roughly 600px of it. `order` flips the two
+ * without touching the DOM, so the desktop layout and the tab order through
+ * the form are unaffected.
+ */
+.shell {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Phone order: wordmark, form, then the supporting brand copy. */
+.wordmark {
+  order: 1;
+}
+.formCol {
+  order: 2;
+}
+.brandCol {
+  order: 3;
+}
+
+/*
+ * Phone-only trims.
+ *
+ * .decor is the card stack and the pull quote — the two purely decorative
+ * blocks. Together they are ~340px of height that a guest has to scroll past
+ * on a 640px screen, and neither carries information the copy does not.
+ */
+.decor {
+  display: none;
+}
+
+/* The pitch headline shrinks to a supporting role once the form is the lead. */
+.pitch {
+  font-size: 21px;
+  line-height: 1.15;
+  margin-top: 4px;
+}
+
+.pitchSub {
+  font-size: 12.5px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+/*
+ * Short phones (an SE at 667px, a 640px Android) cannot take the pitch as well
+ * as the form. It is the one block that repeats what the panel already says —
+ * the panel's own "Your stay, rewarded" and its intro carry the same promise —
+ * so below 700px tall it goes and the four pillars stay, leaving the page a
+ * single screen. The kicker and rule go with it: they are its furniture.
+ *
+ * Height-based, not width-based: it is vertical room this is trading for, and
+ * a short LANDSCAPE phone needs the trim as much as a small portrait one.
+ */
+@media (max-height: 700px) {
+  .pitch,
+  .pitchSub,
+  .brandCol .kicker,
+  .brandCol .rule {
+    display: none;
+  }
+
+  .pillars {
+    margin-top: 0;
+  }
+}
+
+/*
+ * Landscape phone: short but wide. Stacked, the panel alone is taller than the
+ * viewport, so the two go side by side — the wordmark and pillars take the
+ * narrow left column and the form the right, which is the desktop idea at a
+ * smaller size. Below the 1024px desktop breakpoint, so the grid above does
+ * not apply and this defines its own.
+ */
+@media (max-height: 560px) and (min-width: 640px) {
+  /* The same escape from GuestLayout's 460px cap that the desktop rule makes,
+     for the same reason: without it the two columns share 424px and neither
+     has room. See the .page comment above for how the calc works. */
+  .page {
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(-1 * ((100vw - 460px) / 2) - 18px);
+    margin-right: calc(-1 * ((100vw - 460px) / 2) - 18px);
+    padding: 14px 24px;
+  }
+
+  .shell {
+    max-width: 680px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    align-items: center;
+    column-gap: 26px;
+    row-gap: 10px;
+  }
+
+  .wordmark {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .brandCol {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+  }
+
+  .formCol {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  /* Scoped through .brandCol so it outranks the base .pillars rule, which
+     comes later in the file and would otherwise win on source order. */
+  .brandCol .pillars {
+    /* Two by two: four across is unreadable in a half-width column. */
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px 4px;
+    border-top: 0;
+    padding-top: 0;
+    margin-top: 12px;
+  }
+
+  .panel {
+    padding: 14px 16px;
+  }
+
+  /* In landscape the panel's serif heading and intro are ~110px that the form
+     needs more. The kicker ("Welcome back" / "Almost there") stays: it is one
+     line and it is what tells the guest which step they are on. */
+  .panelTitle,
+  .panelSub:not(.keep) {
+    display: none;
+  }
+
+  /* Kept, but tightened to a single compact line's worth of space. */
+  .panelSub.keep {
+    font-size: 12px;
+    margin-top: 6px;
+    margin-bottom: 10px;
+  }
+
+  .pitch,
+  .pitchSub {
+    display: none;
+  }
+
+  .submit {
+    margin-top: 14px;
+  }
+
+  .secure {
+    margin-top: 12px;
+  }
+}
+
+/*
+ * The split. 1024px is where the two-column design has room to be itself;
+ * below it the same markup stacks, which is the layout guests actually use —
+ * they scan a QR at a reception desk, on a phone.
+ */
+@media (min-width: 1024px) {
+  /*
+   * Two columns, via a grid rather than a row of flex items: the wordmark is a
+   * sibling of the two columns (it has to stay above the form on a phone), and
+   * a grid lets it sit in the brand column's track on the first row without
+   * being moved in the DOM. Brand copy occupies row 2 of the same column; the
+   * form spans both rows down the right.
+   */
+  .shell {
+    max-width: 1080px;
+    display: grid;
+    grid-template-columns: 1fr 440px;
+    grid-template-rows: auto 1fr;
+    align-items: center;
+    column-gap: 64px;
+    row-gap: 34px;
+  }
+
+  .wordmark {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: end;
+  }
+
+  .brandCol {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+    min-width: 0;
+  }
+
+  .formCol {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  /* The card and the quote are part of the design at this size. */
+  .decor {
+    display: block;
+  }
+
+  .pitch {
+    font-size: 44px;
+    line-height: 1.08;
+    margin-top: 10px;
+  }
+
+  .pitchSub {
+    font-size: 13.5px;
+    line-height: 1.6;
+    margin-top: 16px;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Brand column — wordmark, headline, the card, the pillars.
+ * ------------------------------------------------------------------ */
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.mark {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  color: var(--gold);
+}
+
+.wordmarkText {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.34em;
+  color: #f0e9dc;
+}
+
+.kicker {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(240, 233, 220, 0.5);
+}
+
+/* Fraunces is already the theme's display face and is the closest thing the
+   app ships to the mockup's high-contrast serif. */
+.headline {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: #f7f2e8;
+}
+
+.headline em {
+  display: block;
+  font-style: italic;
+  color: var(--gold);
+}
+
+.blurb {
+  color: rgba(240, 233, 220, 0.62);
+  max-width: 34ch;
+}
+
+/* The short gold hairlines the design sets under the blurb and the closing
+   quote. Block-level with its own top margin — as a bare <hr> it renders tight
+   against the text above and reads as an underline rather than a divider. */
+.rule {
+  display: block;
+  width: 42px;
+  height: 1px;
+  border: 0;
+  margin: 22px 0 0;
+  background: linear-gradient(90deg, var(--gold-2), transparent);
+}
+
+/* ------------------------------------------------------------------ *
+ * The membership card.
+ * ------------------------------------------------------------------ */
+
+/*
+ * The fanned card. The back card is rotated and offset, so the stack needs
+ * room on both sides for it — without the max-width it runs past the column
+ * edge on a narrow phone.
+ */
+.cardStack {
+  position: relative;
+  max-width: min(250px, 100% - 28px);
+  /* The left inset leaves room for the fanned back card, which is offset
+     -14px; the top margin clears the rule above it. */
+  margin: 40px 0 0 14px;
+}
+
+/* The second card, fanned behind. Decorative only, so it is a pseudo-element
+   rather than another node for a screen reader to meet. */
+.cardStack::before {
+  content: "";
   position: absolute;
-  border-radius: 50%;
-  filter: blur(40px);
-}
-.orbA {
-  width: 180px;
-  height: 180px;
-  background: var(--acc);
-  opacity: 0.5;
-  top: -50px;
-  left: -40px;
-}
-.orbB {
-  width: 150px;
-  height: 150px;
-  background: var(--acc2);
-  opacity: 0.32;
-  bottom: -40px;
-  right: -30px;
+  inset: 0;
+  border-radius: 16px;
+  background: linear-gradient(150deg, #23201b, #100f0d);
+  border: 1px solid rgba(232, 200, 154, 0.12);
+  transform: rotate(-6deg) translate(-14px, 8px);
+  opacity: 0.55;
 }
 
-/* The stack is centred then rotated, so each card needs the SAME translate to
-   stay centred — a Tailwind transform utility would drop the -50% when the
-   rotation is applied. */
-.mini {
-  background: var(--hero);
-  box-shadow: var(--shadow);
-  left: 50%;
-  transform: translateX(-50%) rotate(-7deg);
+.card {
+  position: relative;
+  border-radius: 16px;
+  padding: 18px;
+  overflow: hidden;
+  background: linear-gradient(150deg, #262219 0%, #14120f 55%, #0c0b09 100%);
+  border: 1px solid rgba(232, 200, 154, 0.22);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 132px;
 }
 
+/* The engraved guilloche the mockup runs across the card face. Concentric
+   ellipses in a repeating-conic gradient cost nothing and survive any size. */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: -40% -10%;
+  background: repeating-radial-gradient(
+    ellipse at 70% 120%,
+    transparent 0 13px,
+    rgba(232, 200, 154, 0.085) 13px 14px
+  );
+  pointer-events: none;
+}
+
+.cardName {
+  position: relative;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  color: rgba(240, 233, 220, 0.9);
+}
+
+.cardFoot {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.cardMark {
+  width: 26px;
+  height: 26px;
+  color: var(--gold);
+  opacity: 0.85;
+}
+
+/* The travelling highlight. Carried over from the previous hero, which is the
+   one piece of motion this screen had. */
 .shine {
   position: absolute;
   top: -40%;
@@ -111,10 +478,375 @@
   width: 55%;
   height: 190%;
   transform: rotate(18deg);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  animation: shine 3.6s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent);
+  animation: shine 4.2s ease-in-out infinite;
+  pointer-events: none;
 }
+
 @keyframes shine {
-  0% { left: -40%; }
-  55%, 100% { left: 130%; }
+  0% {
+    left: -40%;
+  }
+  55%,
+  100% {
+    left: 130%;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Pillars — the four icon captions along the bottom of the design.
+ * ------------------------------------------------------------------ */
+
+/*
+ * On a phone this is a single compact row of icons under the form — the four
+ * value props still register at a glance, in ~44px instead of ~110px. The
+ * two-line captions and the dividers come back on a desktop.
+ */
+.pillars {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid rgba(232, 200, 154, 0.14);
+  padding-top: 14px;
+  margin-top: 16px;
+}
+
+.pillar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  padding: 0 2px;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  color: rgba(240, 233, 220, 0.55);
+}
+
+/* The label carries a newline for the desktop's two-line setting. On a phone
+   it collapses to one line so four captions fit a 360px row. */
+.pillar i {
+  white-space: normal;
+}
+
+.pillar svg {
+  width: 17px;
+  height: 17px;
+  color: var(--gold);
+}
+
+@media (min-width: 1024px) {
+  .pillars {
+    padding-top: 16px;
+    margin-top: 48px;
+  }
+
+  .pillar {
+    gap: 8px;
+    padding: 0 4px;
+    font-size: 8.5px;
+    letter-spacing: 0.16em;
+    line-height: 1.5;
+  }
+
+  /* Hairline dividers between pillars, as in the mockup. */
+  .pillar + .pillar {
+    border-left: 1px solid rgba(232, 200, 154, 0.12);
+  }
+
+  .pillar i {
+    white-space: pre-line;
+  }
+
+  .pillar svg {
+    width: 19px;
+    height: 19px;
+  }
+}
+
+/* Desktop only (.decor hides it on a phone), so the margin can be unconditional
+   — it sets the gap below the pillars row above it. */
+.quote {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 14px;
+  line-height: 1.45;
+  margin-top: 30px;
+  color: rgba(240, 233, 220, 0.72);
+}
+
+/* ------------------------------------------------------------------ *
+ * Form panel — the glass card on the right of the design.
+ * ------------------------------------------------------------------ */
+
+.panel {
+  border-radius: 20px;
+  padding: 20px 18px;
+  background: linear-gradient(165deg, rgba(36, 33, 28, 0.86), rgba(13, 12, 10, 0.92));
+  border: 1px solid rgba(232, 200, 154, 0.16);
+  box-shadow: 0 30px 64px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(18px);
+}
+
+@media (min-width: 1024px) {
+  .panel {
+    border-radius: 22px;
+    padding: 38px 34px;
+  }
+}
+
+/* The panel's own heading and intro, sized for the phone and restored below. */
+.panelTitle {
+  font-size: 24px;
+  line-height: 1.1;
+  margin-top: 7px;
+}
+
+.panelSub {
+  font-size: 12.5px;
+  line-height: 1.5;
+  margin-top: 8px;
+  margin-bottom: 18px;
+}
+
+@media (min-width: 1024px) {
+  .panelTitle {
+    font-size: 30px;
+    margin-top: 12px;
+  }
+
+  .panelSub {
+    font-size: 13.5px;
+    line-height: 1.6;
+    margin-top: 14px;
+    margin-bottom: 28px;
+  }
+}
+
+/*
+ * Field styling.
+ *
+ * Scoped to .panel and written against the GLOBAL class names that the shared
+ * Field/Input components emit (.label, .input, .field, .err, .hint). Those
+ * components are shared with the panels and every other form in the app, so
+ * they are not edited — the login screen restyles them locally instead, and
+ * every other screen keeps the styling it has.
+ */
+.panel :global(.field) {
+  margin-bottom: 12px;
+}
+
+.panel :global(.label) {
+  font-size: 9.5px;
+  letter-spacing: 0.26em;
+  color: rgba(240, 233, 220, 0.62);
+  margin-bottom: 6px;
+}
+
+/*
+ * 16px keeps iOS Safari from zooming the viewport on focus — below that it
+ * scales the page up and the "no scrolling" work above is undone the moment
+ * the guest taps the field. The 44px min-height is the tap target.
+ */
+.panel :global(.input) {
+  background: rgba(245, 241, 232, 0.035);
+  border: 1px solid rgba(232, 200, 154, 0.2);
+  border-radius: 12px;
+  padding: 12px 15px;
+  min-height: 46px;
+  font-size: 16px;
+  color: #f5f1e8;
+}
+
+@media (min-width: 1024px) {
+  .panel :global(.field) {
+    margin-bottom: 16px;
+  }
+
+  .panel :global(.label) {
+    margin-bottom: 8px;
+  }
+
+  .panel :global(.input) {
+    padding: 14px 15px;
+    font-size: 14px;
+  }
+}
+
+.panel :global(.input::placeholder) {
+  color: rgba(240, 233, 220, 0.34);
+  opacity: 1;
+}
+
+.panel :global(.input:focus) {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(232, 200, 154, 0.13);
+}
+
+.panel :global(.input-err) {
+  border-color: var(--bad);
+}
+
+.panel :global(.hint) {
+  color: rgba(240, 233, 220, 0.44);
+}
+
+/* An input with a leading icon, as in the design. The icon is positioned
+   against .inputWrap and the padding on the input clears it. */
+.inputWrap {
+  position: relative;
+  display: block;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 17px;
+  height: 17px;
+  color: rgba(232, 200, 154, 0.6);
+  pointer-events: none;
+}
+
+.withIcon {
+  /* Clears .inputIcon: 15px offset + 17px icon + 13px gap. */
+  padding-left: 45px !important;
+}
+
+/*
+ * The primary button, as a warm metallic pill.
+ *
+ * !important is load-bearing here, not laziness: .btn sets background and
+ * color from --acc/--acc-fg as an unlayered global rule, and an unlayered
+ * global beats a CSS-module class of equal specificity depending on file
+ * order. This keeps the gold pill gold whatever the network's accent is.
+ */
+.panel :global(.btn) {
+  background: linear-gradient(100deg, #f0dcbc, #d8b886 52%, #c49f66) !important;
+  color: #17130c !important;
+  border: 0 !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 26px rgba(201, 162, 103, 0.22);
+}
+
+.panel :global(.btn:disabled) {
+  opacity: 0.55;
+}
+
+/* The gap above the submit button, tighter on a phone. */
+.submit {
+  margin-top: 18px;
+  min-height: 48px;
+}
+
+@media (min-width: 1024px) {
+  .submit {
+    margin-top: 24px;
+  }
+}
+
+.panel :global(.btn:focus-visible) {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  box-shadow: none !important;
+}
+
+/* The plain text buttons under the form: resend, use another address. */
+.textLink {
+  display: block;
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin-top: 14px;
+  font-size: 12.5px;
+  color: rgba(240, 233, 220, 0.6);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.textLink:hover:not(:disabled) {
+  color: var(--gold);
+}
+
+.textLink:disabled {
+  cursor: default;
+  opacity: 0.55;
+  text-decoration: none;
+}
+
+/* The lock reassurance at the foot of the panel. */
+.secure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 16px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: rgba(240, 233, 220, 0.42);
+}
+
+@media (min-width: 1024px) {
+  .secure {
+    margin-top: 22px;
+    font-size: 11.5px;
+  }
+}
+
+.secure svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: rgba(232, 200, 154, 0.55);
+}
+
+/* The error banner. */
+.alert {
+  background: color-mix(in srgb, var(--bad) 14%, transparent);
+  border-left: 3px solid var(--bad);
+  border-radius: 10px;
+  padding: 11px 13px;
+  font-size: 12.5px;
+  color: #f0b4a2;
+  margin-bottom: 18px;
+}
+
+/* "We sent a code to you@example.com" — the OTP step's own intro line, and on
+   that step the only thing between the heading and the code field. */
+.sentTo {
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 14px;
+  margin-bottom: 18px;
+  color: rgba(240, 233, 220, 0.62);
+}
+
+.sentTo b {
+  color: #f5f1e8;
+  /* The address is the point of the line, and a long one must not push the
+     panel wide on a 360px phone. */
+  word-break: break-word;
+}
+
+/* The dev-mode OTP notice. Unchanged in behaviour, restyled to the panel. */
+.devNote {
+  background: color-mix(in srgb, var(--warn) 13%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--warn) 45%, transparent);
+  border-radius: 10px;
+  padding: 11px 13px;
+  font-size: 12px;
+  color: var(--warn);
+  margin-bottom: 15px;
+}
+
+.devNote b {
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 2px;
 }

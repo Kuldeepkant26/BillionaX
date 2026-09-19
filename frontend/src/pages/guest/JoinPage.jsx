@@ -13,8 +13,31 @@ const STEP = { IDENTIFIER: "identifier", OTP: "otp" };
  * code, and lands with a membership card. `slug` is optional — /login reuses
  * this same flow without a hotel context.
  */
-// The three fanned cards share every rule but their offset and depth.
-const mini = "absolute w-[190px] h-[116px] rounded-[15px] p-[13px] overflow-hidden text-white";
+
+/** The Billionax monogram: a ring crossed by a vertical stroke. */
+const Monogram = (props) => (
+  <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" {...props}>
+    <circle cx="16" cy="16" r="11" stroke="currentColor" strokeWidth="1.4" />
+    <path d="M16 2.5v27" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+  </svg>
+);
+
+/**
+ * The four value props along the foot of the brand column. Hand-written paths,
+ * like every other icon in the app — there is no icon library in the bundle.
+ */
+const PILLARS = [
+  {
+    label: "Premium\nhotels",
+    path: "M4 21V6.5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1V21M13 21V11h6a1 1 0 0 1 1 1v9M3 21h18M7 9h2M7 13h2M16 15h1",
+  },
+  { label: "Exclusive\noffers", path: "M12 3.5 21 10l-9 10.5L3 10z M3 10h18M8.5 10 12 3.5 15.5 10" },
+  {
+    label: "Billionax\ncoins",
+    path: "M12 5.5c4 0 7 1 7 2.3s-3 2.2-7 2.2-7-1-7-2.2S8 5.5 12 5.5ZM5 7.8v8c0 1.3 3 2.3 7 2.3s7-1 7-2.3v-8M5 12c0 1.3 3 2.2 7 2.2s7-1 7-2.2",
+  },
+  { label: "Curated\nexperiences", path: "M12 3.5 14 10l6.5 2-6.5 2-2 6.5-2-6.5L3.5 12 10 10z" },
+];
 
 const JoinPage = () => {
   const { slug } = useParams();
@@ -155,138 +178,276 @@ const JoinPage = () => {
   if (loadingHotel) return <Loading />;
 
   return (
-    <div className={styles.page}>
-      {/*
-        No margin escape here any more — .page handles it. The hero used to pull
-        itself out of <main>'s padding with -mt-5 -mx-[18px]; keeping the -mx on
-        top of .page's own negative margin shifted it a second 18px and made the
-        row 36px too wide, which is what pushed the form off the right edge.
-      */}
-      <div className={`relative h-[210px] mb-[22px] overflow-hidden ${styles.hero}`}>
-        <span className={styles.orbA} />
-        <span className={styles.orbB} />
-        <div className="absolute inset-0">
-          <div className={`${mini} top-[30px] -ml-7 opacity-[0.42] z-[1] ${styles.mini}`} />
-          <div className={`${mini} top-[52px] -ml-3.5 opacity-70 z-[2] ${styles.mini}`} />
-          <div className={`${mini} top-[74px] z-[3] ${styles.mini}`}>
-            <span className={styles.shine} />
-            <b className="text-[8.5px] tracking-[0.16em] font-bold opacity-[0.92]">WAVE COINS</b>
-            <i className="absolute left-[13px] bottom-[13px] not-italic text-[9px] tracking-[0.14em] opacity-[0.78]">
-              BILLIONAX
-            </i>
+    /*
+     * data-theme is pinned here rather than read from the store: the client's
+     * design for this screen is dark whatever theme the network is running.
+     * The tokens in themes.css are scoped to [data-theme], so this re-points
+     * them for this subtree alone and the store is never written — the app
+     * goes back to the configured theme as soon as the guest is signed in.
+     */
+    <div className={styles.page} data-theme="emerald-noir">
+      <div className={styles.shell}>
+        {/*
+          The wordmark is its own element rather than part of .brandCol: on a
+          phone the rest of the brand column moves BELOW the form, and a screen
+          whose first item is an unlabelled input reads as broken. This stays on
+          top at every width and rejoins the brand column on a desktop.
+        */}
+        <div className={styles.wordmark}>
+          <Monogram className={styles.mark} />
+          <span className={styles.wordmarkText}>BILLIONAX</span>
+        </div>
+
+        <div className={styles.brandCol}>
+          <span className={styles.kicker}>More than a stay</span>
+
+          <h1 className={`${styles.headline} ${styles.pitch}`}>
+            It&rsquo;s a world of
+            <em>privileges.</em>
+          </h1>
+
+          <p className={`${styles.blurb} ${styles.pitchSub}`}>
+            Unlock exclusive experiences, earn Billionax Coins and make every stay more rewarding.
+          </p>
+
+          <hr className={styles.rule} />
+
+          {/* The membership card and the pull quote are desktop furniture: on a
+              phone they are pure height between the guest and the form, so
+              .decor drops them there rather than making the page scroll. */}
+          <div className={`${styles.cardStack} ${styles.decor}`} aria-hidden="true">
+            <div className={styles.card}>
+              <span className={styles.shine} />
+              <b className={styles.cardName}>BILLIONAX</b>
+              <span className={styles.cardFoot}>
+                <span />
+                <Monogram className={styles.cardMark} />
+              </span>
+            </div>
+          </div>
+
+          <div className={styles.pillars}>
+            {PILLARS.map((pillar) => (
+              <span key={pillar.label} className={styles.pillar}>
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d={pillar.path}
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                {/* Two lines in the mockup; one line in the compact phone row. */}
+                <i className="not-italic">{pillar.label}</i>
+              </span>
+            ))}
+          </div>
+
+          <p className={`${styles.quote} ${styles.decor}`}>
+            Luxury isn&rsquo;t a place,
+            <br />
+            it&rsquo;s a feeling.
+          </p>
+        </div>
+
+        <div className={styles.formCol}>
+          <div className={styles.panel}>
+            <span className={styles.kicker}>
+              {step === STEP.IDENTIFIER ? "Welcome back" : "Almost there"}
+            </span>
+
+            <h2 className={`${styles.headline} ${styles.panelTitle}`}>
+              Your stay,
+              <em>rewarded.</em>
+            </h2>
+
+            {/* First step only: on the OTP step "We sent a code to …" says where
+                the guest is, and both lines together repeat themselves in the
+                space a phone has for one. */}
+            {step === STEP.IDENTIFIER && (
+              /* .keep marks the hotel variant: which hotel the guest has just
+                 scanned into is the one line worth the height on a short
+                 landscape screen, where the generic copy is dropped. */
+              <p className={`${styles.blurb} ${styles.panelSub} ${hotel ? styles.keep : ""}`}>
+                {hotel
+                  ? `You're at ${hotel.name}. Turn every bill here into coins you can spend right away.`
+                  : "Sign in with your email address to see your coins and unlock exclusive hotel experiences."}
+              </p>
+            )}
+
+            {message && <div className={styles.alert}>{message}</div>}
+
+            {step === STEP.IDENTIFIER ? (
+              <form onSubmit={sendCode}>
+                <Field label="Email address" error={errors.identifier}>
+                  <span className={styles.inputWrap}>
+                    <svg
+                      className={styles.inputIcon}
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <rect
+                        x="2.2"
+                        y="4.4"
+                        width="15.6"
+                        height="11.2"
+                        rx="2"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                      />
+                      <path
+                        d="m2.8 5.8 7.2 5 7.2-5"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    <Input
+                      type="email"
+                      inputMode="email"
+                      value={form.email}
+                      onChange={change("email")}
+                      error={errors.identifier}
+                      placeholder="rohan@example.com"
+                      autoComplete="email"
+                      className={styles.withIcon}
+                      autoFocus
+                      required
+                    />
+                  </span>
+                </Field>
+
+                <Field label="Your name" hint="Appears on your membership card" error={errors.name}>
+                  <span className={styles.inputWrap}>
+                    <svg
+                      className={styles.inputIcon}
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <circle cx="10" cy="7" r="3.1" stroke="currentColor" strokeWidth="1.4" />
+                      <path
+                        d="M3.9 16.6c.8-3.2 3.2-4.9 6.1-4.9s5.3 1.7 6.1 4.9"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <Input
+                      value={form.name}
+                      onChange={change("name")}
+                      error={errors.name}
+                      placeholder="Rohan Mehta"
+                      autoComplete="name"
+                      className={styles.withIcon}
+                    />
+                  </span>
+                </Field>
+
+                <Button type="submit" block size="lg" disabled={busy} className={styles.submit}>
+                  {busy ? "Sending…" : "Get my code"}
+                  {!busy && (
+                    <svg viewBox="0 0 20 20" width="17" height="17" fill="none" aria-hidden="true">
+                      <path
+                        d="M3.5 10h13M11.5 5l5 5-5 5"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={verify}>
+                <p className={styles.sentTo}>
+                  We sent a code to <b>{form.email}</b>
+                </p>
+
+                {devOtp && (
+                  <div className={styles.devNote}>
+                    Development mode — any code works. Yours is <b>{devOtp}</b>
+                  </div>
+                )}
+
+                <Field label="Verification code" error={errors.otp}>
+                  <Input
+                    inputMode="numeric"
+                    // Codes are digits only and exactly otpLength long. maxLength
+                    // alone would not be enough: a paste of "code: 1234" still lands
+                    // non-digits in the field, so the value is filtered on the way in.
+                    pattern="[0-9]*"
+                    maxLength={otpLength}
+                    value={form.otp}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        otp: e.target.value.replace(/\D/g, "").slice(0, otpLength),
+                      }))
+                    }
+                    error={errors.otp}
+                    placeholder={"1".repeat(otpLength)}
+                    className="font-display text-[22px] tracking-[6px] text-center"
+                    autoComplete="one-time-code"
+                    autoFocus
+                    required
+                  />
+                </Field>
+
+                <Button type="submit" block size="lg" disabled={busy} className={styles.submit}>
+                  {busy ? "Verifying…" : "Verify and continue"}
+                </Button>
+
+                <button
+                  type="button"
+                  className={styles.textLink}
+                  onClick={resendCode}
+                  disabled={busy || cooldown > 0}
+                >
+                  {cooldown > 0 ? `Resend code in ${cooldown}s` : "Didn't get it? Resend code"}
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.textLink}
+                  onClick={() => {
+                    setStep(STEP.IDENTIFIER);
+                    setDevOtp("");
+                    setCooldown(0);
+                  }}
+                >
+                  Use a different address
+                </button>
+              </form>
+            )}
+
+            <p className={styles.secure}>
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <rect
+                  x="4"
+                  y="8.6"
+                  width="12"
+                  height="8.4"
+                  rx="1.8"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                />
+                <path
+                  d="M6.9 8.6V6.8a3.1 3.1 0 0 1 6.2 0v1.8"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                />
+              </svg>
+              Your information is secure and protected
+            </p>
           </div>
         </div>
       </div>
-
-      <h1 className="display text-[27px] leading-[1.14]">
-        Your stay, <em className="italic text-accent">rewarded</em>.
-      </h1>
-
-      <p className="text-muted text-[13px] leading-[1.55] mt-[9px] mb-5">
-        {hotel
-          ? `You're at ${hotel.name}. Turn every bill here into coins you can spend right away.`
-          : "Sign in with your email address to see your coins."}
-      </p>
-
-      {message && (
-        <div className="bg-[color-mix(in_srgb,var(--bad)_12%,transparent)] border-l-[3px] border-l-[var(--bad)] rounded-token-sm px-3 py-2.5 text-[12.5px] text-[var(--bad)] mb-4">
-          {message}
-        </div>
-      )}
-
-      {step === STEP.IDENTIFIER ? (
-        <form onSubmit={sendCode} className="mt-1">
-          <Field label="Email address" error={errors.identifier}>
-            <Input
-              type="email"
-              inputMode="email"
-              value={form.email}
-              onChange={change("email")}
-              error={errors.identifier}
-              placeholder="rohan@example.com"
-              autoComplete="email"
-              autoFocus
-              required
-            />
-          </Field>
-
-          <Field label="Your name" hint="Appears on your membership card" error={errors.name}>
-            <Input
-              value={form.name}
-              onChange={change("name")}
-              error={errors.name}
-              placeholder="Rohan Mehta"
-              autoComplete="name"
-            />
-          </Field>
-
-          <Button type="submit" block size="lg" disabled={busy}>
-            {busy ? "Sending…" : "Get my code"}
-          </Button>
-        </form>
-      ) : (
-        <form onSubmit={verify} className="mt-1">
-          <p className="text-[13px] text-muted mb-3.5">
-            We sent a code to <b className="text-ink">{form.email}</b>
-          </p>
-
-          {devOtp && (
-            <div className="bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] border border-dashed border-[color-mix(in_srgb,var(--warn)_45%,transparent)] rounded-token-sm px-3 py-2.5 text-xs text-[var(--warn)] mb-3.5">
-              Development mode — any code works. Yours is{" "}
-              <b className="font-display text-[15px] tracking-[2px]">{devOtp}</b>
-            </div>
-          )}
-
-          <Field label="Verification code" error={errors.otp}>
-            <Input
-              inputMode="numeric"
-              // Codes are digits only and exactly otpLength long. maxLength
-              // alone would not be enough: a paste of "code: 1234" still lands
-              // non-digits in the field, so the value is filtered on the way in.
-              pattern="[0-9]*"
-              maxLength={otpLength}
-              value={form.otp}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  otp: e.target.value.replace(/\D/g, "").slice(0, otpLength),
-                }))
-              }
-              error={errors.otp}
-              placeholder={"1".repeat(otpLength)}
-              className="font-display text-[22px] tracking-[6px] text-center"
-              autoComplete="one-time-code"
-              autoFocus
-              required
-            />
-          </Field>
-
-          <Button type="submit" block size="lg" disabled={busy}>
-            {busy ? "Verifying…" : "Verify and continue"}
-          </Button>
-
-          <button
-            type="button"
-            className="block w-full bg-none border-0 text-muted enabled:hover:text-ink text-[12.5px] mt-3.5 cursor-pointer underline disabled:cursor-default disabled:opacity-60 disabled:no-underline"
-            onClick={resendCode}
-            disabled={busy || cooldown > 0}
-          >
-            {cooldown > 0 ? `Resend code in ${cooldown}s` : "Didn't get it? Resend code"}
-          </button>
-
-          <button
-            type="button"
-            className="block w-full bg-none border-0 text-muted hover:text-ink text-[12.5px] mt-2.5 cursor-pointer underline"
-            onClick={() => {
-              setStep(STEP.IDENTIFIER);
-              setDevOtp("");
-              setCooldown(0);
-            }}
-          >
-            Use a different address
-          </button>
-        </form>
-      )}
     </div>
   );
 };
