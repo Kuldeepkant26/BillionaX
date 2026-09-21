@@ -14,9 +14,11 @@ import {
 import { PageHead } from "../../features/panel/PageHead.jsx";
 import { ApplyBar } from "../../features/panel/ApplyBar.jsx";
 import { CardDesignPicker } from "../../features/panel/CardDesignPicker.jsx";
+import { LoginDesignPicker } from "../../features/panel/LoginDesignPicker.jsx";
 import { ThemePicker } from "../../features/panel/ThemePicker.jsx";
 import { FontPicker } from "../../features/panel/FontPicker.jsx";
 import { DEFAULT_CARD_DESIGN } from "../../features/guest/cardDesigns/registry.jsx";
+import { DEFAULT_LOGIN_DESIGN } from "../../features/guest/loginDesigns/registry.jsx";
 import {
   DEFAULT_ACCENT,
   DEFAULT_CUSTOM_COLOR,
@@ -36,6 +38,10 @@ const toForm = (s) => ({
   gold: s.tierCaps?.GOLD,
   platinum: s.tierCaps?.PLATINUM,
   cardDesign: s.cardDesign || DEFAULT_CARD_DESIGN,
+  loginDesign: s.loginDesign || DEFAULT_LOGIN_DESIGN,
+  loginTheme: s.loginTheme || "INHERIT",
+  loginThemeCustomColor: s.loginThemeCustomColor || "#5b6474",
+  loginMode: s.loginMode || "AUTO",
   themePreset: resolveAccent(s.themePreset || DEFAULT_ACCENT),
   themeCustomColor: isValidHex(s.themeCustomColor) ? s.themeCustomColor : DEFAULT_CUSTOM_COLOR,
   fontPreset: resolveFont(s.fontPreset || DEFAULT_FONT),
@@ -120,6 +126,10 @@ const RulesForm = ({ settings, reload }) => {
           PLATINUM: Number(form.platinum),
         },
         cardDesign: form.cardDesign,
+        loginDesign: form.loginDesign,
+        loginTheme: form.loginTheme,
+        loginThemeCustomColor: form.loginThemeCustomColor,
+        loginMode: form.loginMode,
         feedEnabled: form.feedEnabled,
         themePreset: form.themePreset,
         themeCustomColor: form.themeCustomColor,
@@ -309,6 +319,19 @@ const RulesForm = ({ settings, reload }) => {
         <CardDesignPicker
           value={form.cardDesign}
           onChange={(cardDesign) => setForm((f) => ({ ...f, cardDesign }))}
+        />
+      </Card>
+
+      <Card title="Sign-in screen design" className="my-4">
+        <LoginDesignPicker
+          value={form.loginDesign}
+          onChange={(loginDesign) => setForm((f) => ({ ...f, loginDesign }))}
+          theme={form.loginTheme}
+          customColor={form.loginThemeCustomColor}
+          mode={form.loginMode}
+          // One handler for all three: each control sends only the key it
+          // owns, so they compose without clobbering each other.
+          onThemeChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
         />
       </Card>
 

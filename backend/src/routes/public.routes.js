@@ -26,6 +26,16 @@ router.get(
         // Same reasoning as the theme: the login page has to paint in the
         // chosen typeface before anyone has a token.
         fontPreset: settings.fontPreset,
+        // Which sign-in screen to draw. Public for the most direct reason of
+        // all — this IS the login page's own design, and it has to be known
+        // before the first paint or the screen visibly swaps under the guest.
+        loginDesign: settings.loginDesign,
+        // The sign-in screen's own palette and ground, for the same reason.
+        // "INHERIT" means it follows themePreset above; the custom colour is
+        // only meaningful when loginTheme is "CUSTOM".
+        loginTheme: settings.loginTheme,
+        loginThemeCustomColor: settings.loginThemeCustomColor,
+        loginMode: settings.loginMode,
         // Whether the feed is switched on. Public for the same reason as the
         // theme: the guest shell reads it to build the bottom nav, and it has
         // to be right on the FIRST paint or the nav visibly reshuffles under

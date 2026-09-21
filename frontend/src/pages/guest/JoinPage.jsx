@@ -4,6 +4,11 @@ import { publicConfig, publicHotel, requestOtp, verifyOtp } from "../../api/auth
 import { useAppStore } from "../../store/useAppStore.js";
 import { ROUTES } from "../../constants/routePaths.js";
 import { Button, Field, Input, Loading } from "../../components/common/index.jsx";
+import {
+  DEFAULT_LOGIN_DESIGN,
+  resolveLoginDesign,
+} from "../../features/guest/loginDesigns/registry.jsx";
+import { useLoginTheme } from "../../features/guest/loginDesigns/useLoginTheme.js";
 import styles from "./JoinPage.module.css";
 
 const STEP = { IDENTIFIER: "identifier", OTP: "otp" };
@@ -14,30 +19,67 @@ const STEP = { IDENTIFIER: "identifier", OTP: "otp" };
  * this same flow without a hotel context.
  */
 
-/** The Billionax monogram: a ring crossed by a vertical stroke. */
-const Monogram = (props) => (
-  <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" {...props}>
-    <circle cx="16" cy="16" r="11" stroke="currentColor" strokeWidth="1.4" />
-    <path d="M16 2.5v27" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+/*
+ * Icons. Hand-written paths on a 20x20 box, matching the rest of the app —
+ * there is no icon library in the bundle.
+ */
+
+const MailIcon = (props) => (
+  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
+    <rect x="2.2" y="4.4" width="15.6" height="11.2" rx="2.4" stroke="currentColor" strokeWidth="1.5" />
+    <path
+      d="m3 6 6.3 4.4a1.2 1.2 0 0 0 1.4 0L17 6"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 
-/**
- * The four value props along the foot of the brand column. Hand-written paths,
- * like every other icon in the app — there is no icon library in the bundle.
- */
-const PILLARS = [
-  {
-    label: "Premium\nhotels",
-    path: "M4 21V6.5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1V21M13 21V11h6a1 1 0 0 1 1 1v9M3 21h18M7 9h2M7 13h2M16 15h1",
-  },
-  { label: "Exclusive\noffers", path: "M12 3.5 21 10l-9 10.5L3 10z M3 10h18M8.5 10 12 3.5 15.5 10" },
-  {
-    label: "Billionax\ncoins",
-    path: "M12 5.5c4 0 7 1 7 2.3s-3 2.2-7 2.2-7-1-7-2.2S8 5.5 12 5.5ZM5 7.8v8c0 1.3 3 2.3 7 2.3s7-1 7-2.3v-8M5 12c0 1.3 3 2.2 7 2.2s7-1 7-2.2",
-  },
-  { label: "Curated\nexperiences", path: "M12 3.5 14 10l6.5 2-6.5 2-2 6.5-2-6.5L3.5 12 10 10z" },
-];
+const UserIcon = (props) => (
+  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
+    <circle cx="10" cy="6.9" r="3.2" stroke="currentColor" strokeWidth="1.5" />
+    <path
+      d="M3.9 16.7c.9-3.3 3.2-5 6.1-5s5.2 1.7 6.1 5"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const LockIcon = (props) => (
+  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
+    <rect x="4.2" y="8.6" width="11.6" height="8.2" rx="2.2" stroke="currentColor" strokeWidth="1.5" />
+    <path
+      d="M7 8.6V6.9a3 3 0 0 1 6 0v1.7"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const AlertIcon = (props) => (
+  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
+    <circle cx="10" cy="10" r="7.4" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M10 6.2v4.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="10" cy="13.4" r="0.9" fill="currentColor" />
+  </svg>
+);
+
+const ArrowIcon = (props) => (
+  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
+    <path
+      d="M3.8 10h12.4M11.2 5.2 16.2 10l-5 4.8"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 const JoinPage = () => {
   const { slug } = useParams();
@@ -62,6 +104,18 @@ const JoinPage = () => {
    * the moment anyone raises it. The default matches the server's own.
    */
   const [otpLength, setOtpLength] = useState(4);
+  /**
+   * The public config: which design to draw, and the sign-in screen's own
+   * palette and ground. Held whole rather than picked apart into three
+   * useStates — they arrive together in one response and are consumed
+   * together by useLoginTheme.
+   *
+   * Starts empty, which resolves to the house default design inheriting the
+   * network accent — so the first paint is never blank and never wrong for a
+   * network that has not touched these settings.
+   */
+  const [config, setConfig] = useState(null);
+  const designKey = config?.loginDesign || DEFAULT_LOGIN_DESIGN;
 
   const setAuth = useAppStore((s) => s.setAuth);
   const setActiveHotel = useAppStore((s) => s.setActiveHotel);
@@ -80,10 +134,16 @@ const JoinPage = () => {
     let cancelled = false;
     publicConfig()
       .then((data) => {
-        if (!cancelled && data?.otpLength) setOtpLength(data.otpLength);
+        if (cancelled) return;
+        if (data?.otpLength) setOtpLength(data.otpLength);
+        // The design, palette and ground the main admin chose. All of it
+        // rides the SAME public config call the OTP length already uses —
+        // this screen must not make a second request to know how it looks.
+        setConfig(data || null);
       })
       // The default already makes the field usable; a failed config fetch must
-      // never block sign-in.
+      // never block sign-in. The design falls back to the house default for
+      // the same reason: a settings outage must not close the front door.
       .catch(() => {});
 
     return () => {
@@ -175,277 +235,235 @@ const JoinPage = () => {
     }
   };
 
+  /*
+   * The sign-in screen's own palette and ground. Called before the
+   * loadingHotel guard below so it sits with the other hooks and can never
+   * end up behind a conditional return.
+   */
+  const themeProps = useLoginTheme(config);
+
   if (loadingHotel) return <Loading />;
+
+  const isIdentifier = step === STEP.IDENTIFIER;
+
+  /*
+   * The admin's chosen design, resolved to its chrome. This decides the frame
+   * only — the backdrop art, where the brand sits, and how the sheet meets the
+   * band. The form below is one implementation shared by every design; see the
+   * note at the top of the registry for why that split is deliberate.
+   */
+  const { chrome } = resolveLoginDesign(designKey);
+  const Art = chrome.art;
+
+  const bandClass = {
+    none: styles.bandNone,
+    short: styles.bandShort,
+    mid: styles.bandMid,
+    tall: styles.bandTall,
+  }[chrome.band];
+
+  const joinClass = {
+    arc: styles.joinArc,
+    bevel: styles.joinBevel,
+    straight: styles.joinStraight,
+  }[chrome.join];
+
+  /*
+   * The MINIMAL family is a different composition, not a shorter band: no
+   * band, no join, and the brand stacked directly above the form, the whole
+   * thing centred in the viewport.
+   *
+   * It is one class on the page rather than a second JSX branch on purpose —
+   * the markup is identical, only the layout differs, and a branch here would
+   * be a second place for the form to drift out of step. The stylesheet
+   * neutralises the band and join rules under .stack.
+   */
+  const stacked = chrome.band === "none";
 
   return (
     /*
-     * data-theme is pinned here rather than read from the store: the client's
-     * design for this screen is dark whatever theme the network is running.
-     * The tokens in themes.css are scoped to [data-theme], so this re-points
-     * them for this subtree alone and the store is never written — the app
-     * goes back to the configured theme as soon as the guest is signed in.
+     * No data-theme here on purpose. GuestLayout already puts the guest's own
+     * theme and the network accent on an ancestor, so this screen inherits
+     * both: it renders light on lumen and dark on emerald-noir, and re-skins
+     * itself when the main admin changes the accent. Pinning a theme here (an
+     * earlier version pinned emerald-noir) is what made the screen ignore the
+     * network's colours.
      */
-    <div className={styles.page} data-theme="emerald-noir">
-      <div className={styles.shell}>
-        {/*
-          The wordmark is its own element rather than part of .brandCol: on a
-          phone the rest of the brand column moves BELOW the form, and a screen
-          whose first item is an unlabelled input reads as broken. This stays on
-          top at every width and rejoins the brand column on a desktop.
-        */}
-        <div className={styles.wordmark}>
-          <Monogram className={styles.mark} />
-          <span className={styles.wordmarkText}>BILLIONAX</span>
+    <div className={`${styles.page} ${stacked ? styles.stack : ""}`} {...themeProps}>
+      {/* The MINIMAL family's ground, sized to the page rather than a band.
+          It sits behind everything and is decorative by the same contract. */}
+      {stacked && (
+        <span className={styles.pageArt} aria-hidden="true">
+          <Art />
+        </span>
+      )}
+
+      <header
+        className={[
+          styles.header,
+          bandClass,
+          joinClass,
+          chrome.onDark ? styles.onDark : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {/* The design's backdrop. Decorative and non-interactive by contract —
+            see the note in artwork.jsx.
+
+            Skipped for the MINIMAL family: their art is a whole-page ground
+            rather than a band backdrop, so it is rendered on the page below
+            instead. Painting it here too would clip it to a band that these
+            designs do not have. */}
+        {!stacked && <Art />}
+
+        <div
+          className={`${styles.brand} ${chrome.brand === "center" ? styles.brandCenter : ""}`}
+        >
+          {/* The real Billionax mark from public/logo.png, the same asset the
+              panel rail and the favicon use — not a drawn stand-in. */}
+          <span
+            className={`${styles.logoTile} ${chrome.onDark ? "" : styles.logoTilePlain}`}
+            aria-hidden="true"
+          >
+            <img src="/logo.png" alt="" className={styles.logoMark} />
+          </span>
+          <span>
+            <b className={styles.brandName}>Billionax</b>
+            <small className={styles.brandTag}>Luxury stays, rewarded</small>
+          </span>
         </div>
+      </header>
 
-        <div className={styles.brandCol}>
-          <span className={styles.kicker}>More than a stay</span>
+      <div className={`${styles.sheet} ${joinClass}`}>
+        <div
+          className={`${styles.body} ${chrome.align === "left" ? styles.alignLeft : ""}`}
+        >
+          <h1 className={styles.title}>{isIdentifier ? "Sign in" : "Verify it's you"}</h1>
 
-          <h1 className={`${styles.headline} ${styles.pitch}`}>
-            It&rsquo;s a world of
-            <em>privileges.</em>
-          </h1>
+          {isIdentifier && (
+            <p className={styles.sub}>
+              {hotel
+                ? `You're at ${hotel.name}. Turn every bill here into coins you can spend right away.`
+                : "Enter your email and we'll send you a code — no password to remember."}
+            </p>
+          )}
 
-          <p className={`${styles.blurb} ${styles.pitchSub}`}>
-            Unlock exclusive experiences, earn Billionax Coins and make every stay more rewarding.
-          </p>
+          {!isIdentifier && (
+            <p className={styles.sentTo}>
+              We sent a code to <b>{form.email}</b>
+            </p>
+          )}
 
-          <hr className={styles.rule} />
-
-          {/* The membership card and the pull quote are desktop furniture: on a
-              phone they are pure height between the guest and the form, so
-              .decor drops them there rather than making the page scroll. */}
-          <div className={`${styles.cardStack} ${styles.decor}`} aria-hidden="true">
-            <div className={styles.card}>
-              <span className={styles.shine} />
-              <b className={styles.cardName}>BILLIONAX</b>
-              <span className={styles.cardFoot}>
-                <span />
-                <Monogram className={styles.cardMark} />
-              </span>
+          {message && (
+            <div className={styles.alert} role="alert">
+              <AlertIcon />
+              <span>{message}</span>
             </div>
-          </div>
+          )}
 
-          <div className={styles.pillars}>
-            {PILLARS.map((pillar) => (
-              <span key={pillar.label} className={styles.pillar}>
-                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path
-                    d={pillar.path}
-                    stroke="currentColor"
-                    strokeWidth="1.3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                {/* Two lines in the mockup; one line in the compact phone row. */}
-                <i className="not-italic">{pillar.label}</i>
-              </span>
-            ))}
-          </div>
-
-          <p className={`${styles.quote} ${styles.decor}`}>
-            Luxury isn&rsquo;t a place,
-            <br />
-            it&rsquo;s a feeling.
-          </p>
-        </div>
-
-        <div className={styles.formCol}>
-          <div className={styles.panel}>
-            <span className={styles.kicker}>
-              {step === STEP.IDENTIFIER ? "Welcome back" : "Almost there"}
-            </span>
-
-            <h2 className={`${styles.headline} ${styles.panelTitle}`}>
-              Your stay,
-              <em>rewarded.</em>
-            </h2>
-
-            {/* First step only: on the OTP step "We sent a code to …" says where
-                the guest is, and both lines together repeat themselves in the
-                space a phone has for one. */}
-            {step === STEP.IDENTIFIER && (
-              /* .keep marks the hotel variant: which hotel the guest has just
-                 scanned into is the one line worth the height on a short
-                 landscape screen, where the generic copy is dropped. */
-              <p className={`${styles.blurb} ${styles.panelSub} ${hotel ? styles.keep : ""}`}>
-                {hotel
-                  ? `You're at ${hotel.name}. Turn every bill here into coins you can spend right away.`
-                  : "Sign in with your email address to see your coins and unlock exclusive hotel experiences."}
-              </p>
-            )}
-
-            {message && <div className={styles.alert}>{message}</div>}
-
-            {step === STEP.IDENTIFIER ? (
-              <form onSubmit={sendCode}>
-                <Field label="Email address" error={errors.identifier}>
-                  <span className={styles.inputWrap}>
-                    <svg
-                      className={styles.inputIcon}
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <rect
-                        x="2.2"
-                        y="4.4"
-                        width="15.6"
-                        height="11.2"
-                        rx="2"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                      />
-                      <path
-                        d="m2.8 5.8 7.2 5 7.2-5"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    <Input
-                      type="email"
-                      inputMode="email"
-                      value={form.email}
-                      onChange={change("email")}
-                      error={errors.identifier}
-                      placeholder="rohan@example.com"
-                      autoComplete="email"
-                      className={styles.withIcon}
-                      autoFocus
-                      required
-                    />
-                  </span>
-                </Field>
-
-                <Field label="Your name" hint="Appears on your membership card" error={errors.name}>
-                  <span className={styles.inputWrap}>
-                    <svg
-                      className={styles.inputIcon}
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <circle cx="10" cy="7" r="3.1" stroke="currentColor" strokeWidth="1.4" />
-                      <path
-                        d="M3.9 16.6c.8-3.2 3.2-4.9 6.1-4.9s5.3 1.7 6.1 4.9"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <Input
-                      value={form.name}
-                      onChange={change("name")}
-                      error={errors.name}
-                      placeholder="Rohan Mehta"
-                      autoComplete="name"
-                      className={styles.withIcon}
-                    />
-                  </span>
-                </Field>
-
-                <Button type="submit" block size="lg" disabled={busy} className={styles.submit}>
-                  {busy ? "Sending…" : "Get my code"}
-                  {!busy && (
-                    <svg viewBox="0 0 20 20" width="17" height="17" fill="none" aria-hidden="true">
-                      <path
-                        d="M3.5 10h13M11.5 5l5 5-5 5"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </Button>
-              </form>
-            ) : (
-              <form onSubmit={verify}>
-                <p className={styles.sentTo}>
-                  We sent a code to <b>{form.email}</b>
-                </p>
-
-                {devOtp && (
-                  <div className={styles.devNote}>
-                    Development mode — any code works. Yours is <b>{devOtp}</b>
-                  </div>
-                )}
-
-                <Field label="Verification code" error={errors.otp}>
+          {isIdentifier ? (
+            <form onSubmit={sendCode} className={styles.form}>
+              <Field label="Email address" error={errors.identifier}>
+                <span className={styles.inputWrap}>
+                  <MailIcon className={styles.inputIcon} />
                   <Input
-                    inputMode="numeric"
-                    // Codes are digits only and exactly otpLength long. maxLength
-                    // alone would not be enough: a paste of "code: 1234" still lands
-                    // non-digits in the field, so the value is filtered on the way in.
-                    pattern="[0-9]*"
-                    maxLength={otpLength}
-                    value={form.otp}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        otp: e.target.value.replace(/\D/g, "").slice(0, otpLength),
-                      }))
-                    }
-                    error={errors.otp}
-                    placeholder={"1".repeat(otpLength)}
-                    className="font-display text-[22px] tracking-[6px] text-center"
-                    autoComplete="one-time-code"
+                    type="email"
+                    inputMode="email"
+                    value={form.email}
+                    onChange={change("email")}
+                    error={errors.identifier}
+                    placeholder="rohan@example.com"
+                    autoComplete="email"
+                    className={styles.withIcon}
                     autoFocus
                     required
                   />
-                </Field>
+                </span>
+              </Field>
 
-                <Button type="submit" block size="lg" disabled={busy} className={styles.submit}>
-                  {busy ? "Verifying…" : "Verify and continue"}
-                </Button>
+              <Field label="Your name" hint="Appears on your membership card" error={errors.name}>
+                <span className={styles.inputWrap}>
+                  <UserIcon className={styles.inputIcon} />
+                  <Input
+                    value={form.name}
+                    onChange={change("name")}
+                    error={errors.name}
+                    placeholder="Rohan Mehta"
+                    autoComplete="name"
+                    className={styles.withIcon}
+                  />
+                </span>
+              </Field>
 
-                <button
-                  type="button"
-                  className={styles.textLink}
-                  onClick={resendCode}
-                  disabled={busy || cooldown > 0}
-                >
-                  {cooldown > 0 ? `Resend code in ${cooldown}s` : "Didn't get it? Resend code"}
-                </button>
+              <Button type="submit" block size="lg" disabled={busy} className={styles.submit}>
+                {busy ? "Sending…" : "Get my code"}
+                {!busy && <ArrowIcon width="17" height="17" />}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={verify} className={styles.form}>
+              {devOtp && (
+                <div className={styles.devNote}>
+                  Development mode — any code works. Yours is <b>{devOtp}</b>
+                </div>
+              )}
 
-                <button
-                  type="button"
-                  className={styles.textLink}
-                  onClick={() => {
-                    setStep(STEP.IDENTIFIER);
-                    setDevOtp("");
-                    setCooldown(0);
-                  }}
-                >
-                  Use a different address
-                </button>
-              </form>
-            )}
-
-            <p className={styles.secure}>
-              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <rect
-                  x="4"
-                  y="8.6"
-                  width="12"
-                  height="8.4"
-                  rx="1.8"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
+              <Field label="Verification code" error={errors.otp}>
+                <Input
+                  inputMode="numeric"
+                  // Codes are digits only and exactly otpLength long. maxLength
+                  // alone would not be enough: a paste of "code: 1234" still lands
+                  // non-digits in the field, so the value is filtered on the way in.
+                  pattern="[0-9]*"
+                  maxLength={otpLength}
+                  value={form.otp}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      otp: e.target.value.replace(/\D/g, "").slice(0, otpLength),
+                    }))
+                  }
+                  error={errors.otp}
+                  placeholder={"1".repeat(otpLength)}
+                  className={styles.otpInput}
+                  autoComplete="one-time-code"
+                  autoFocus
+                  required
                 />
-                <path
-                  d="M6.9 8.6V6.8a3.1 3.1 0 0 1 6.2 0v1.8"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
-              </svg>
-              Your information is secure and protected
-            </p>
-          </div>
+              </Field>
+
+              <Button type="submit" block size="lg" disabled={busy} className={styles.submit}>
+                {busy ? "Verifying…" : "Verify and continue"}
+              </Button>
+
+              <button
+                type="button"
+                className={styles.textLink}
+                onClick={resendCode}
+                disabled={busy || cooldown > 0}
+              >
+                {cooldown > 0 ? `Resend code in ${cooldown}s` : "Didn't get it? Resend code"}
+              </button>
+
+              <button
+                type="button"
+                className={`${styles.textLink} ${styles.textLinkQuiet}`}
+                onClick={() => {
+                  setStep(STEP.IDENTIFIER);
+                  setDevOtp("");
+                  setCooldown(0);
+                }}
+              >
+                Use a different address
+              </button>
+            </form>
+          )}
+
+          <p className={styles.secure}>
+            <LockIcon />
+            Your information is secure and protected
+          </p>
         </div>
       </div>
     </div>

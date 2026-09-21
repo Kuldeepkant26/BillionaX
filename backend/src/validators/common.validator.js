@@ -7,6 +7,9 @@ import {
   PURCHASE_STATUS_VALUES,
   BILL_STATUS_VALUES,
   CARD_DESIGN_VALUES,
+  LOGIN_DESIGN_VALUES,
+  LOGIN_THEME_VALUES,
+  LOGIN_MODE_VALUES,
   THEME_PRESET_VALUES,
   FONT_PRESET_VALUES,
   SUPPORT_PARTY_VALUES,
@@ -409,6 +412,28 @@ export const settingsRules = [
     .optional()
     .isIn(CARD_DESIGN_VALUES)
     .withMessage("Unknown card design"),
+  // Rejected rather than defaulted, same as cardDesign: a typo would
+  // otherwise silently hand every guest a different sign-in screen.
+  body("loginDesign")
+    .optional()
+    .isIn(LOGIN_DESIGN_VALUES)
+    .withMessage("Unknown login design"),
+  // "INHERIT" or any theme preset key. Rejected rather than defaulted, so a
+  // typo cannot silently drop the sign-in screen back to the network accent.
+  body("loginTheme")
+    .optional()
+    .isIn(LOGIN_THEME_VALUES)
+    .withMessage("Unknown login theme"),
+  // Strict hex only: this value is interpolated into a CSS custom property
+  // on the sign-in screen, so anything else is refused rather than sanitised.
+  body("loginThemeCustomColor")
+    .optional()
+    .matches(/^#[0-9a-fA-F]{6}$/)
+    .withMessage("Enter a 6-digit hex colour"),
+  body("loginMode")
+    .optional()
+    .isIn(LOGIN_MODE_VALUES)
+    .withMessage("Unknown login mode"),
   body("themePreset")
     .optional()
     .isIn(THEME_PRESET_VALUES)
