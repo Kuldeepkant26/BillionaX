@@ -323,8 +323,10 @@
 
   /* The mark straddles the banner edge, which ties the two halves together
      and gives the form a clear starting point. */
+  /* grid, not block: .mark centres the logo with place-items, and block
+     would drop it into the circle's top-left corner. */
   .formMark {
-    display: block;
+    display: grid;
     margin: -27px 0 16px;
     position: relative;
     z-index: 1;
