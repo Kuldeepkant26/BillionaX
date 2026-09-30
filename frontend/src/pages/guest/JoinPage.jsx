@@ -1,22 +1,26 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { publicConfig, publicHotel, requestOtp, verifyOtp } from "../../api/auth.api.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import { ROUTES } from "../../constants/routePaths.js";
-import { Button, Field, Input, Loading } from "../../components/common/index.jsx";
-import {
-  DEFAULT_LOGIN_DESIGN,
-  resolveLoginDesign,
-} from "../../features/guest/loginDesigns/registry.jsx";
-import { useLoginTheme } from "../../features/guest/loginDesigns/useLoginTheme.js";
+import { Spinner } from "../../components/common/index.jsx";
+import { useAccentStyle, useFontRoot } from "../../components/layout/useThemeRoot.js";
+import { WelcomeScreen } from "../../features/guest/WelcomeScreen.jsx";
 import styles from "./JoinPage.module.css";
 
 const STEP = { IDENTIFIER: "identifier", OTP: "otp" };
 
 /**
- * The QR landing screen: guest scans at reception, enters their number, gets a
+ * The QR landing screen: guest scans at reception, enters their email, gets a
  * code, and lands with a membership card. `slug` is optional — /login reuses
  * this same flow without a hotel context.
+ *
+ * Two screens: a welcome screen with one "Get started" action, then the
+ * sign-in form. Which one shows is carried in the HISTORY ENTRY (location
+ * state), not in component state, so the phone's back button walks from the
+ * form back to the welcome screen instead of leaving the site — and a refresh
+ * on the form stays on the form. The URL itself never changes, so the QR
+ * token in `?t=` rides along untouched.
  */
 
 /*
@@ -26,11 +30,11 @@ const STEP = { IDENTIFIER: "identifier", OTP: "otp" };
 
 const MailIcon = (props) => (
   <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
-    <rect x="2.2" y="4.4" width="15.6" height="11.2" rx="2.4" stroke="currentColor" strokeWidth="1.5" />
+    <rect x="2.2" y="4.4" width="15.6" height="11.2" rx="2.4" stroke="currentColor" strokeWidth="1.4" />
     <path
       d="m3 6 6.3 4.4a1.2 1.2 0 0 0 1.4 0L17 6"
       stroke="currentColor"
-      strokeWidth="1.5"
+      strokeWidth="1.4"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
@@ -39,11 +43,23 @@ const MailIcon = (props) => (
 
 const UserIcon = (props) => (
   <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
-    <circle cx="10" cy="6.9" r="3.2" stroke="currentColor" strokeWidth="1.5" />
+    <circle cx="10" cy="6.9" r="3.2" stroke="currentColor" strokeWidth="1.4" />
     <path
       d="M3.9 16.7c.9-3.3 3.2-5 6.1-5s5.2 1.7 6.1 5"
       stroke="currentColor"
-      strokeWidth="1.5"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const KeyIcon = (props) => (
+  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
+    <circle cx="6.6" cy="10" r="3.4" stroke="currentColor" strokeWidth="1.4" />
+    <path
+      d="M10 10h7.2M14.6 10v2.6M17.2 10v1.8"
+      stroke="currentColor"
+      strokeWidth="1.4"
       strokeLinecap="round"
     />
   </svg>
@@ -51,11 +67,11 @@ const UserIcon = (props) => (
 
 const LockIcon = (props) => (
   <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
-    <rect x="4.2" y="8.6" width="11.6" height="8.2" rx="2.2" stroke="currentColor" strokeWidth="1.5" />
+    <rect x="4.2" y="8.6" width="11.6" height="8.2" rx="2.2" stroke="currentColor" strokeWidth="1.4" />
     <path
       d="M7 8.6V6.9a3 3 0 0 1 6 0v1.7"
       stroke="currentColor"
-      strokeWidth="1.5"
+      strokeWidth="1.4"
       strokeLinecap="round"
     />
   </svg>
@@ -81,10 +97,60 @@ const ArrowIcon = (props) => (
   </svg>
 );
 
+const BackIcon = (props) => (
+  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
+    <path
+      d="M12.2 4.6 6.8 10l5.4 5.4"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/**
+ * A labelled input in the sign-in style: spaced caps label, icon inside a
+ * rounded glass box, and one line underneath that is the error when there is
+ * one and the hint otherwise.
+ *
+ * Not the shared Field/Input: this screen's box carries the icon INSIDE the
+ * border, and the label is tied to the input by id so a tap on it focuses the
+ * field and a screen reader announces it.
+ */
+const LoginField = ({ id, label, icon: Icon, error, hint, className = "", ...input }) => {
+  const note = error || hint;
+  return (
+    <div className="flex flex-col">
+      <label htmlFor={id} className={styles.label}>
+        {label}
+      </label>
+      <span className={`${styles.control} ${error ? styles.controlErr : ""}`}>
+        {Icon && <Icon className={styles.controlIcon} />}
+        <input
+          id={id}
+          className={`${styles.input} ${className}`}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={note ? `${id}-note` : undefined}
+          {...input}
+        />
+      </span>
+      {note && (
+        <span id={`${id}-note`} className={error ? styles.err : styles.hint}>
+          {note}
+        </span>
+      )}
+    </div>
+  );
+};
+
 const JoinPage = () => {
   const { slug } = useParams();
   const [params] = useSearchParams();
   const qrToken = params.get("t") || undefined;
+  const location = useLocation();
+  // Which screen: see the note at the top. Only "Get started" ever sets it.
+  const started = !!location.state?.started;
 
   const [hotel, setHotel] = useState(null);
   const [loadingHotel, setLoadingHotel] = useState(!!slug);
@@ -104,22 +170,13 @@ const JoinPage = () => {
    * the moment anyone raises it. The default matches the server's own.
    */
   const [otpLength, setOtpLength] = useState(4);
-  /**
-   * The public config: which design to draw, and the sign-in screen's own
-   * palette and ground. Held whole rather than picked apart into three
-   * useStates — they arrive together in one response and are consumed
-   * together by useLoginTheme.
-   *
-   * Starts empty, which resolves to the house default design inheriting the
-   * network accent — so the first paint is never blank and never wrong for a
-   * network that has not touched these settings.
-   */
-  const [config, setConfig] = useState(null);
-  const designKey = config?.loginDesign || DEFAULT_LOGIN_DESIGN;
 
   const setAuth = useAppStore((s) => s.setAuth);
   const setActiveHotel = useAppStore((s) => s.setActiveHotel);
   const toastSuccess = useAppStore((s) => s.toastSuccess);
+  const accent = useAppStore((s) => s.accent);
+  const accentStyle = useAccentStyle();
+  const font = useFontRoot();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -134,16 +191,10 @@ const JoinPage = () => {
     let cancelled = false;
     publicConfig()
       .then((data) => {
-        if (cancelled) return;
-        if (data?.otpLength) setOtpLength(data.otpLength);
-        // The design, palette and ground the main admin chose. All of it
-        // rides the SAME public config call the OTP length already uses —
-        // this screen must not make a second request to know how it looks.
-        setConfig(data || null);
+        if (!cancelled && data?.otpLength) setOtpLength(data.otpLength);
       })
       // The default already makes the field usable; a failed config fetch must
-      // never block sign-in. The design falls back to the house default for
-      // the same reason: a settings outage must not close the front door.
+      // never block sign-in.
       .catch(() => {});
 
     return () => {
@@ -157,14 +208,22 @@ const JoinPage = () => {
     return () => clearTimeout(id);
   }, [cooldown]);
 
+  // Each screen starts at its top. The welcome screen's action sits at the
+  // bottom, so without this the form would open scrolled past its heading.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [started, step]);
+
   const change = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  // Caught here so the user sees the problem without a network round-trip.
+  // The API enforces the same rule regardless. Deliberately loose — the real
+  // test of an address is whether the code arrives.
+  const emailIsValid = () => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim());
 
   /** Shared by the initial "Get my code" submit and the resend button. */
   const requestCode = async () => {
-    // Caught here so the user sees the problem without a network round-trip.
-    // The API enforces the same rule regardless. Deliberately loose — the real
-    // test of an address is whether the code arrives.
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) {
+    if (!emailIsValid()) {
       setErrors({ identifier: "Enter a valid email address" });
       return false;
     }
@@ -194,12 +253,37 @@ const JoinPage = () => {
     if (await requestCode()) setStep(STEP.OTP);
   };
 
+  /**
+   * "Already have a code?" — straight to the code field WITHOUT issuing a new
+   * one. A guest whose browser reloaded mid-flow still holds a live code, and
+   * requesting another would kill it and spend one of their few sends.
+   */
+  const enterExistingCode = () => {
+    if (!emailIsValid()) {
+      setErrors({ identifier: "Enter the address your code was sent to" });
+      return;
+    }
+    setErrors({});
+    setMessage("");
+    setDevOtp("");
+    setCooldown(0);
+    setStep(STEP.OTP);
+  };
+
   const resendCode = async () => {
     if (cooldown > 0 || busy) return;
     // The old code is dead the moment a new one is issued, so clear the field
     // rather than leave a stale value that will now be rejected.
     setForm((f) => ({ ...f, otp: "" }));
     if (await requestCode()) setMessage("");
+  };
+
+  const changeAddress = () => {
+    setStep(STEP.IDENTIFIER);
+    setErrors({});
+    setMessage("");
+    setDevOtp("");
+    setCooldown(0);
   };
 
   const verify = async (e) => {
@@ -236,235 +320,229 @@ const JoinPage = () => {
   };
 
   /*
-   * The sign-in screen's own palette and ground. Called before the
-   * loadingHotel guard below so it sits with the other hooks and can never
-   * end up behind a conditional return.
+   * Pushes the form as its own history entry (see the note at the top).
+   * Existing state is kept: a guard's redirect leaves `from` in it.
    */
-  const themeProps = useLoginTheme(config);
+  const getStarted = () =>
+    navigate(
+      { pathname: location.pathname, search: location.search },
+      { state: { ...location.state, started: true } }
+    );
 
-  if (loadingHotel) return <Loading />;
+  // On the code step, back means "change the address"; on the address step
+  // it pops the entry getStarted pushed, which is the welcome screen.
+  const goBack = () => (step === STEP.OTP ? changeAddress() : navigate(-1));
 
   const isIdentifier = step === STEP.IDENTIFIER;
 
-  /*
-   * The admin's chosen design, resolved to its chrome. This decides the frame
-   * only — the backdrop art, where the brand sits, and how the sheet meets the
-   * band. The form below is one implementation shared by every design; see the
-   * note at the top of the registry for why that split is deliberate.
-   */
-  const { chrome } = resolveLoginDesign(designKey);
-  const Art = chrome.art;
-
-  const bandClass = {
-    none: styles.bandNone,
-    short: styles.bandShort,
-    mid: styles.bandMid,
-    tall: styles.bandTall,
-  }[chrome.band];
-
-  const joinClass = {
-    arc: styles.joinArc,
-    bevel: styles.joinBevel,
-    straight: styles.joinStraight,
-  }[chrome.join];
-
-  /*
-   * The MINIMAL family is a different composition, not a shorter band: no
-   * band, no join, and the brand stacked directly above the form, the whole
-   * thing centred in the viewport.
-   *
-   * It is one class on the page rather than a second JSX branch on purpose —
-   * the markup is identical, only the layout differs, and a branch here would
-   * be a second place for the form to drift out of step. The stylesheet
-   * neutralises the band and join rules under .stack.
-   */
-  const stacked = chrome.band === "none";
-
-  return (
-    /*
-     * No data-theme here on purpose. GuestLayout already puts the guest's own
-     * theme and the network accent on an ancestor, so this screen inherits
-     * both: it renders light on lumen and dark on emerald-noir, and re-skins
-     * itself when the main admin changes the accent. Pinning a theme here (an
-     * earlier version pinned emerald-noir) is what made the screen ignore the
-     * network's colours.
-     */
-    <div className={`${styles.page} ${stacked ? styles.stack : ""}`} {...themeProps}>
-      {/* The MINIMAL family's ground, sized to the page rather than a band.
-          It sits behind everything and is decorative by the same contract. */}
-      {stacked && (
-        <span className={styles.pageArt} aria-hidden="true">
-          <Art />
-        </span>
-      )}
-
-      <header
-        className={[
-          styles.header,
-          bandClass,
-          joinClass,
-          chrome.onDark ? styles.onDark : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      >
-        {/* The design's backdrop. Decorative and non-interactive by contract —
-            see the note in artwork.jsx.
-
-            Skipped for the MINIMAL family: their art is a whole-page ground
-            rather than a band backdrop, so it is rendered on the page below
-            instead. Painting it here too would clip it to a band that these
-            designs do not have. */}
-        {!stacked && <Art />}
-
-        <div
-          className={`${styles.brand} ${chrome.brand === "center" ? styles.brandCenter : ""}`}
-        >
-          {/* The real Billionax mark from public/logo.png, the same asset the
-              panel rail and the favicon use — not a drawn stand-in. */}
-          <span
-            className={`${styles.logoTile} ${chrome.onDark ? "" : styles.logoTilePlain}`}
-            aria-hidden="true"
+  let screen;
+  if (loadingHotel) {
+    screen = (
+      <div className="flex-1 grid place-items-center">
+        <Spinner />
+      </div>
+    );
+  } else if (!started) {
+    screen = (
+      <WelcomeScreen
+        hotel={hotel}
+        action={
+          <button type="button" className={styles.cta} onClick={getStarted}>
+            Get started
+            <ArrowIcon className={styles.ctaArrow} />
+          </button>
+        }
+      />
+    );
+  } else {
+    screen = (
+      <section className="flex flex-col flex-1 px-6 pt-6 pb-9">
+        <div className="grid grid-cols-[40px_1fr_40px] items-center">
+          <button
+            type="button"
+            className={styles.back}
+            onClick={goBack}
+            aria-label={isIdentifier ? "Back" : "Use a different address"}
           >
-            <img src="/logo.png" alt="" className={styles.logoMark} />
-          </span>
-          <span>
-            <b className={styles.brandName}>Billionax</b>
-            <small className={styles.brandTag}>Luxury stays, rewarded</small>
+            <BackIcon />
+          </button>
+          <span className="flex items-center justify-center gap-2.5">
+            <img src="/logo.png" alt="" className="w-7 h-7 object-contain brightness-135" />
+            <span className={styles.wordmark}>Billionax</span>
           </span>
         </div>
-      </header>
 
-      <div className={`${styles.sheet} ${joinClass}`}>
-        <div
-          className={`${styles.body} ${chrome.align === "left" ? styles.alignLeft : ""}`}
-        >
-          <h1 className={styles.title}>{isIdentifier ? "Sign in" : "Verify it's you"}</h1>
+        <p className={styles.kicker}>
+          {isIdentifier ? (hotel ? hotel.name : "Welcome back") : "One last step"}
+        </p>
 
-          {isIdentifier && (
-            <p className={styles.sub}>
-              {hotel
-                ? `You're at ${hotel.name}. Turn every bill here into coins you can spend right away.`
-                : "Enter your email and we'll send you a code — no password to remember."}
-            </p>
-          )}
-
-          {!isIdentifier && (
-            <p className={styles.sentTo}>
-              We sent a code to <b>{form.email}</b>
-            </p>
-          )}
-
-          {message && (
-            <div className={styles.alert} role="alert">
-              <AlertIcon />
-              <span>{message}</span>
-            </div>
-          )}
-
+        <h1 className={styles.title}>
           {isIdentifier ? (
-            <form onSubmit={sendCode} className={styles.form}>
-              <Field label="Email address" error={errors.identifier}>
-                <span className={styles.inputWrap}>
-                  <MailIcon className={styles.inputIcon} />
-                  <Input
-                    type="email"
-                    inputMode="email"
-                    value={form.email}
-                    onChange={change("email")}
-                    error={errors.identifier}
-                    placeholder="rohan@example.com"
-                    autoComplete="email"
-                    className={styles.withIcon}
-                    autoFocus
-                    required
-                  />
-                </span>
-              </Field>
-
-              <Field label="Your name" hint="Appears on your membership card" error={errors.name}>
-                <span className={styles.inputWrap}>
-                  <UserIcon className={styles.inputIcon} />
-                  <Input
-                    value={form.name}
-                    onChange={change("name")}
-                    error={errors.name}
-                    placeholder="Rohan Mehta"
-                    autoComplete="name"
-                    className={styles.withIcon}
-                  />
-                </span>
-              </Field>
-
-              <Button type="submit" block size="lg" disabled={busy} className={styles.submit}>
-                {busy ? "Sending…" : "Get my code"}
-                {!busy && <ArrowIcon width="17" height="17" />}
-              </Button>
-            </form>
+            <>
+              Your stay, <em>rewarded.</em>
+            </>
           ) : (
-            <form onSubmit={verify} className={styles.form}>
-              {devOtp && (
-                <div className={styles.devNote}>
-                  Development mode — any code works. Yours is <b>{devOtp}</b>
-                </div>
-              )}
+            <>
+              Check your <em>inbox.</em>
+            </>
+          )}
+        </h1>
 
-              <Field label="Verification code" error={errors.otp}>
-                <Input
-                  inputMode="numeric"
-                  // Codes are digits only and exactly otpLength long. maxLength
-                  // alone would not be enough: a paste of "code: 1234" still lands
-                  // non-digits in the field, so the value is filtered on the way in.
-                  pattern="[0-9]*"
-                  maxLength={otpLength}
-                  value={form.otp}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      otp: e.target.value.replace(/\D/g, "").slice(0, otpLength),
-                    }))
-                  }
-                  error={errors.otp}
-                  placeholder={"1".repeat(otpLength)}
-                  className={styles.otpInput}
-                  autoComplete="one-time-code"
-                  autoFocus
-                  required
-                />
-              </Field>
+        <p className={styles.sub}>
+          {isIdentifier ? (
+            hotel ? (
+              `You're at ${hotel.name}. Sign in with your email to turn every bill here into coins you can spend right away.`
+            ) : (
+              "Sign in with your email address to see your coins and unlock exclusive hotel experiences."
+            )
+          ) : (
+            <>
+              Enter the {otpLength}-digit code we sent to <b>{form.email.trim()}</b>
+            </>
+          )}
+        </p>
 
-              <Button type="submit" block size="lg" disabled={busy} className={styles.submit}>
-                {busy ? "Verifying…" : "Verify and continue"}
-              </Button>
+        {message && (
+          <div className={styles.alert} role="alert">
+            <AlertIcon />
+            <span>{message}</span>
+          </div>
+        )}
 
+        {isIdentifier ? (
+          <form onSubmit={sendCode} className="flex flex-col gap-6 mt-9" noValidate>
+            <LoginField
+              id="login-email"
+              label="Email address"
+              icon={MailIcon}
+              type="email"
+              inputMode="email"
+              value={form.email}
+              onChange={change("email")}
+              error={errors.identifier}
+              placeholder="rohan@example.com"
+              autoComplete="email"
+              autoFocus
+              required
+            />
+
+            <LoginField
+              id="login-name"
+              label="Your name"
+              icon={UserIcon}
+              value={form.name}
+              onChange={change("name")}
+              error={errors.name}
+              hint="Appears on your membership card"
+              placeholder="Rohan Mehta"
+              autoComplete="name"
+            />
+
+            <button type="submit" className={`${styles.cta} mt-3`} disabled={busy}>
+              {busy ? "Sending…" : "Get my code"}
+              {!busy && <ArrowIcon className={styles.ctaArrow} />}
+            </button>
+
+            <p className="text-center text-[14.5px] text-ink">
+              Already have a code?{" "}
+              <button type="button" className={styles.link} onClick={enterExistingCode}>
+                Sign in
+              </button>
+            </p>
+          </form>
+        ) : (
+          <form onSubmit={verify} className="flex flex-col gap-6 mt-9">
+            {devOtp && (
+              <div className={styles.devNote}>
+                Development mode — any code works. Yours is <b>{devOtp}</b>
+              </div>
+            )}
+
+            <LoginField
+              id="login-otp"
+              label="Verification code"
+              icon={KeyIcon}
+              inputMode="numeric"
+              // Codes are digits only and exactly otpLength long. maxLength
+              // alone would not be enough: a paste of "code: 1234" still lands
+              // non-digits in the field, so the value is filtered on the way in.
+              pattern="[0-9]*"
+              maxLength={otpLength}
+              value={form.otp}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  otp: e.target.value.replace(/\D/g, "").slice(0, otpLength),
+                }))
+              }
+              error={errors.otp}
+              placeholder={"•".repeat(otpLength)}
+              className={styles.otpInput}
+              autoComplete="one-time-code"
+              autoFocus
+              required
+            />
+
+            <button type="submit" className={`${styles.cta} mt-3`} disabled={busy}>
+              {busy ? "Verifying…" : "Verify and continue"}
+              {!busy && <ArrowIcon className={styles.ctaArrow} />}
+            </button>
+
+            <div className="flex flex-col items-center gap-3.5">
               <button
                 type="button"
-                className={styles.textLink}
+                className={styles.link}
                 onClick={resendCode}
                 disabled={busy || cooldown > 0}
               >
                 {cooldown > 0 ? `Resend code in ${cooldown}s` : "Didn't get it? Resend code"}
               </button>
-
               <button
                 type="button"
-                className={`${styles.textLink} ${styles.textLinkQuiet}`}
-                onClick={() => {
-                  setStep(STEP.IDENTIFIER);
-                  setDevOtp("");
-                  setCooldown(0);
-                }}
+                className={`${styles.link} ${styles.linkQuiet}`}
+                onClick={changeAddress}
               >
                 Use a different address
               </button>
-            </form>
-          )}
+            </div>
+          </form>
+        )}
 
-          <p className={styles.secure}>
-            <LockIcon />
-            Your information is secure and protected
-          </p>
-        </div>
+        <p className={styles.secure}>
+          <LockIcon />
+          <span>
+            Your information is secure
+            <br />
+            and protected
+          </span>
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    /*
+     * Always the dark ground, whatever the guest's own toggle says: this is
+     * the brand's front door, built for a dark room. The ACCENT and FONT still
+     * come from the network — they are re-stated here beside data-theme
+     * because the dark-mode accent corrections in themes.css are compound
+     * [data-theme][data-accent] selectors, and the font tokens are declared
+     * per theme block. Without both on this element the screen would lose the
+     * admin's colour and typeface.
+     *
+     * Nothing is persisted: the guest's stored theme is untouched, and the
+     * app returns to it the moment they are signed in.
+     */
+    <div
+      className={styles.page}
+      data-theme="emerald-noir"
+      data-accent={accent}
+      data-font={font}
+      style={accentStyle}
+    >
+      <span className={styles.backdrop} aria-hidden="true" />
+      <div key={started ? step : "welcome"} className={styles.screen}>
+        {screen}
       </div>
     </div>
   );

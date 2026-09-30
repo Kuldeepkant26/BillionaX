@@ -126,7 +126,7 @@ describe("index.html loads every family the registry names", () => {
   const html = readFileSync(join(here, "../../frontend/index.html"), "utf8");
 
   it("requests each family", () => {
-    const families = [...registry.matchAll(/"([A-Za-z+]+):(?:opsz,)?wght@[^"]+"/g)].map(
+    const families = [...registry.matchAll(/"([A-Za-z+]+):(?:ital,)?(?:opsz,)?wght@[^"]+"/g)].map(
       (m) => m[1]
     );
     assert.ok(families.length > 0, "no families parsed from the registry");

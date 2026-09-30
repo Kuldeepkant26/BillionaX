@@ -1,22 +1,18 @@
 /*
- * The sign-in screen.
+ * The sign-in screens: the shell both share, the call-to-action pill, and the
+ * sign-in form. The welcome screen's own art lives beside it in
+ * features/guest/WelcomeScreen.module.css.
  *
- * Built from scratch against the theme tokens — --hero, --acc, --acc2,
- * --acc-soft, --acc-fg, --bg, --bg2, --fg, --dim, --line, --bad. No literal
- * brand colour appears here, which is what lets nine designs serve 27 accents
- * in both light and dark mode.
- *
- * THE COMPOSITION. A full-bleed art band at the top, and a sheet carrying the
- * form that rises to meet it. The join between the two is the design's
- * signature and comes in three shapes (arc, bevel, straight) — see the join
- * section below.
+ * Painted from the theme tokens only — --acc, --acc2, --acc-fg, --fg, --dim,
+ * --bg, --bad, --warn. The page pins the dark ground, so --acc is always the
+ * accent's dark variant; no literal brand colour appears here, which is what
+ * lets one design follow whichever accent the main admin picks.
  */
 
 .page {
   /*
-   * Cancels <main>'s px-[18px] pt-5 pb-7 so the band reaches the true top and
-   * side edges of the viewport. The sides are NOT padded back here — the band
-   * is full-bleed and .body applies the inset to the content instead.
+   * Cancels <main>'s px-[18px] pt-5 pb-7 so the screen reaches the true edges
+   * of the viewport. Each screen applies its own inset.
    */
   position: relative;
   margin: -20px -18px -28px;
@@ -25,563 +21,345 @@
   flex-direction: column;
   background: var(--bg);
   color: var(--fg);
-}
-
-/* ================================================================== *
- * The art band.
- * ================================================================== */
-
-/*
- * The band takes the screen's spare height (flex: 1) while the sheet stays
- * exactly as tall as the form needs.
- *
- * That is what keeps the composition anchored: the form hangs directly under
- * the join at every screen size, and a tall phone grows the art above it
- * rather than opening a gap. The brand is set in whatever height results.
- *
- * This rule owns only the box. The BACKDROP is supplied per design by an art
- * component (see loginDesigns/artwork.jsx), which renders inside as an
- * absolutely positioned layer.
- */
-.header {
-  position: relative;
-  flex: 1;
-  display: flex;
-  align-items: flex-end;
-  padding: 34px 24px 104px;
-  max-height: 300px;
-  /*
-   * NOT `overflow: hidden`. The backdrop deliberately bleeds past the band's
-   * bottom edge so the sheet's arc and bevel cut into artwork rather than
-   * bare page (see .art). Clipping here would undo that. The art layer sits
-   * at z-index -1 and the sheet at 1, so the bleed is covered by the sheet
-   * everywhere it is not wanted.
-   */
-  overflow: clip;
-  overflow-clip-margin: 52px;
+  font-family: var(--font-ui);
+  /* Keeps .backdrop's z-index: -1 above the layout's own ground. */
   isolation: isolate;
 }
 
 /*
- * The design's backdrop, behind the brand.
+ * The ground, pinned to the VIEWPORT rather than the 460px guest column.
  *
- * It bleeds 52px PAST the band's bottom edge on purpose. The sheet overlaps
- * the band by 44px, so a backdrop stopping at the band's own edge would leave
- * the page ground showing through wherever the sheet is cut away — the arc's
- * curve and the bevel's diagonal. Bleeding past means whatever the sheet does
- * not cover is still the design's art.
+ * The column sits on the guest's own theme, which is white for a lumen guest;
+ * a ground sized to the column would leave white bands either side on a
+ * tablet or desktop. Fixed + inset: 0 covers the whole window, and the
+ * isolation on .page keeps it behind the content but above every ancestor.
+ *
+ * The glows are the accent at low strength, as if lamplight were falling on
+ * the edges of a dark room.
  */
-.art {
-  position: absolute;
-  inset: 0 0 -52px;
+.backdrop {
+  position: fixed;
+  inset: 0;
   z-index: -1;
   pointer-events: none;
+  background:
+    radial-gradient(90% 55% at 100% 0%, color-mix(in srgb, var(--acc) 14%, transparent), transparent 65%),
+    radial-gradient(80% 50% at 0% 100%, color-mix(in srgb, var(--acc) 10%, transparent), transparent 70%),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--acc) 6%, transparent),
+      transparent 22%,
+      transparent 78%,
+      color-mix(in srgb, var(--acc) 6%, transparent)
+    ),
+    var(--bg);
 }
 
-/* -- band heights -------------------------------------------------- */
-
-/* No band at all — the MINIMAL family. The height rules are inert here; the
-   .stack block below owns this layout. */
-.bandNone {
-  flex: none;
-  max-height: none;
+/* Each screen fades up on arrival. Keyed in JoinPage, so it replays per step. */
+.screen {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
-.bandShort {
-  flex: none;
-  max-height: none;
-  padding: 30px 24px 88px;
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-.bandMid {
-  max-height: 240px;
-  padding: 32px 24px 96px;
-}
+/* ------------------------------------------------------------------ *
+ * The call to action — a lit accent pill, text centred, arrow at the end
+ * ------------------------------------------------------------------ */
 
-.bandTall {
-  max-height: 300px;
-  padding: 34px 24px 104px;
-}
-
-/* A straight join needs no clearance for a cut, so some bottom padding comes
-   back off. */
-.joinStraight.bandMid,
-.joinStraight.bandTall,
-.joinStraight.bandShort {
-  padding-bottom: 46px;
-}
-
-/*
- * Dark mode: settle the band down to meet the near-black sheet.
- *
- * --hero is defined once per accent in the LIGHT layer and no dark accent
- * block overrides it, so on emerald-noir the band would otherwise be the
- * full-brightness light-mode ground against a near-black sheet — a hard,
- * glaring edge. This deepens it while keeping the accent's own hue, which is
- * why it is a black wash over the art rather than a second gradient: it works
- * for all ~27 accents without naming any of them.
- *
- * Local to this screen on purpose. Fixing it properly means adding --hero to
- * each dark accent block in themes.css, which changes every surface that uses
- * the token across the whole app.
- */
-:global([data-theme="emerald-noir"]) .onDark .art::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.3) 0%,
-    rgba(0, 0, 0, 0.5) 55%,
-    rgba(0, 0, 0, 0.7) 100%
-  );
-  pointer-events: none;
-}
-
-/* ================================================================== *
- * Brand lockup.
- * ================================================================== */
-
-.brand {
+.cta {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 15px;
-  width: 100%;
-}
-
-.brandCenter {
-  flex-direction: column;
   justify-content: center;
-  text-align: center;
-  gap: 13px;
+  width: 100%;
+  min-height: 60px;
+  padding: 0 56px;
+  border: 0;
+  border-radius: 999px;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--acc-fg);
+  cursor: pointer;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(100deg, var(--acc2), var(--acc) 45%, color-mix(in srgb, var(--acc) 70%, #fff) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 12px 30px -10px color-mix(in srgb, var(--acc) 70%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--acc) 50%, transparent);
+  transition:
+    transform 0.15s ease,
+    filter 0.15s ease,
+    box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/*
- * The logo plate.
- *
- * 60px, carrying a 40px mark — a ~67% fill. The previous lockup ran a 24px
- * mark in a 42px plate, and because the mark is fine gold line-art its
- * strokes landed near a single pixel and read as a smudge. The mark is the
- * brand on the one screen that is nothing but brand, so it is sized to be
- * seen.
- */
-.logoTile {
-  width: 60px;
-  height: 60px;
-  flex: none;
-  position: relative;
+.cta:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.cta:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+
+.cta:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cta:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 3px;
+}
+
+.ctaArrow {
+  position: absolute;
+  right: 26px;
+  width: 20px;
+  height: 20px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Sign-in header and copy
+ * ------------------------------------------------------------------ */
+
+.back {
   display: grid;
   place-items: center;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  backdrop-filter: blur(7px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-}
-
-/*
- * The Billionax mark — public/logo.png, the same asset the panel rail and the
- * favicon use.
- *
- * The file is gold line-art on transparency. On an accent band that is
- * gold-on-colour and can go muddy, so it is lifted rather than flattened: a
- * drop-shadow separates it from the ground while the gold itself survives.
- * The previous rule knocked it to a flat white silhouette with
- * `brightness(0) invert(1)`, which threw the brand colour away entirely.
- */
-.logoMark {
   width: 40px;
   height: 40px;
-  object-fit: contain;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--fg) 16%, transparent);
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+  color: var(--fg);
+  cursor: pointer;
 }
 
-/* On a page-ground band the glass plate has nothing to lift off, so it takes
-   a soft accent plate instead. */
-.logoTilePlain {
-  background: var(--acc-soft);
-  border-color: var(--line);
-  box-shadow: none;
+.back svg {
+  width: 18px;
+  height: 18px;
 }
 
-/*
- * Brand type has two colourways, because the band is not always the accent.
- *
- * On an ACCENT band (.onDark) it is white: --hero is a saturated mid-tone in
- * every accent and dark in both modes, so --fg would invert with the theme
- * and vanish on the light one.
- *
- * On a PAGE-GROUND band white would be invisible on lumen, so it takes --fg
- * and follows the theme normally.
- */
-.brandName {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 27px;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  line-height: 1.08;
+.back:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+
+.wordmark {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
   color: var(--fg);
 }
 
-.brandTag {
-  display: block;
-  font-family: var(--font-ui);
+.kicker {
+  margin: 44px 0 0;
   font-size: 12px;
   font-weight: 500;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.32em;
+  line-height: 1.6;
   text-transform: uppercase;
-  color: var(--dim);
-  margin-top: 6px;
-}
-
-.onDark .brandName {
-  color: #fff;
-  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.3);
-}
-
-.onDark .brandTag {
-  color: rgba(255, 255, 255, 0.72);
-}
-
-/* ================================================================== *
- * The sheet, and the join where it meets the band.
- * ================================================================== */
-
-.sheet {
-  position: relative;
-  /*
-   * Grows to fill whatever the band leaves, so the sheet's own background
-   * reaches the bottom of the screen. The band still takes the slack FIRST —
-   * it is `flex: 1` with a max-height — so the band grows to its cap and the
-   * sheet takes the remainder. That keeps the form anchored under the join
-   * rather than floating.
-   */
-  flex: 1;
-  z-index: 1;
-  margin-top: -44px;
-  background: var(--bg);
-}
-
-/*
- * ARC — the sheet's top edge is a wide, shallow ellipse.
- *
- * border-radius with a percentage on the horizontal and a pixel value on the
- * vertical gives a curve that stays shallow on a wide screen instead of
- * turning into a half-circle, which a symmetric radius would.
- */
-.joinArc {
-  border-radius: 50% 50% 0 0 / 46px 46px 0 0;
-}
-
-/*
- * BEVEL — a single straight diagonal cut across the sheet's top edge.
- *
- * clip-path rather than a rotated pseudo-element: the cut has to follow the
- * sheet's own background, including in dark mode, and a pseudo-element would
- * need its colour kept in step by hand.
- */
-.joinBevel {
-  clip-path: polygon(0 40px, 100% 0, 100% 100%, 0 100%);
-}
-
-/*
- * STRAIGHT — no cut. The sheet meets the band on a hard horizontal edge, with
- * a hairline to keep the two surfaces distinct when they are close in value.
- *
- * Scoped to .sheet, NOT left as a bare .joinStraight. The join class is put on
- * BOTH the header and the sheet — the header needs it to drop its clearance
- * padding — so an unscoped rule here drew the hairline above the brand as
- * well, a stray line across the top of the page. On the MINIMAL family, which
- * has no band, that line landed directly over the logo.
- *
- * The same reasoning applies to .joinArc and .joinBevel above: their radius
- * and clip-path are already inert on the header (it has no background to cut),
- * but any future join must scope a visible edge to .sheet for this reason.
- */
-.sheet.joinStraight {
-  margin-top: 0;
-  border-radius: 0;
-  border-top: 1px solid var(--line);
-}
-
-/* ================================================================== *
- * Form body.
- * ================================================================== */
-
-.body {
-  position: relative;
-  width: 100%;
-  max-width: 400px;
-  margin: 0 auto;
-  padding: 0 24px 40px;
-  text-align: center;
-}
-
-/* Clears the arc's curve and the bevel's diagonal, so the first line of copy
-   never collides with the cut. */
-.joinArc .body {
-  padding-top: 46px;
-}
-
-.joinBevel .body {
-  padding-top: 54px;
-}
-
-.joinStraight .body {
-  padding-top: 36px;
-}
-
-.alignLeft .title,
-.alignLeft .sub,
-.alignLeft .sentTo {
-  text-align: left;
-}
-
-.alignLeft {
-  text-align: left;
+  color: color-mix(in srgb, var(--fg) 86%, transparent);
 }
 
 .title {
+  margin: 14px 0 0;
   font-family: var(--font-display);
-  font-size: 30px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.12;
+  font-size: clamp(38px, 11.6vw, 48px);
+  font-weight: 400;
+  line-height: 1.04;
+  letter-spacing: -0.015em;
   color: var(--fg);
-  margin: 0;
+}
+
+.title em {
+  display: block;
+  font-style: italic;
+  color: var(--acc);
 }
 
 .sub {
-  font-size: 14.5px;
-  line-height: 1.55;
-  color: var(--dim);
-  margin: 11px 0 0;
-}
-
-/* ================================================================== *
- * Fields.
- * ================================================================== */
-
-.form {
-  margin-top: 30px;
-  text-align: left;
-}
-
-.form :global(.field) {
-  margin-bottom: 17px;
-}
-
-.form :global(.label) {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dim);
-  margin-bottom: 9px;
-}
-
-/*
- * 16px keeps iOS Safari from zooming the viewport on focus. Below that it
- * scales the page and the form is pushed off screen the moment it is tapped.
- * 56px is the tap target.
- */
-.form :global(.input) {
-  width: 100%;
-  min-height: 56px;
-  padding: 15px 17px;
-  font-size: 16px;
-  color: var(--fg);
-  background: var(--bg2);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-}
-
-.form :global(.input::placeholder) {
-  color: var(--dim);
-  opacity: 0.55;
-}
-
-.form :global(.input:focus) {
-  outline: none;
-  background: var(--bg);
-  border-color: var(--acc);
-  box-shadow: 0 0 0 4px var(--acc-soft);
-}
-
-.form :global(.input-err) {
-  border-color: var(--bad);
-}
-
-.form :global(.hint) {
-  display: block;
-  font-size: 11.5px;
-  color: var(--dim);
-  margin-top: 7px;
-}
-
-.form :global(.err) {
-  display: block;
-  font-size: 11.5px;
-  color: var(--bad);
-  margin-top: 7px;
-}
-
-/*
- * The code field. Set wide and centred so the digits read as a code rather
- * than a word, in the display face the rest of the app uses for numerals.
- */
-.otpInput {
-  font-family: var(--font-display);
-  font-size: 27px;
-  font-weight: 600;
-  letter-spacing: 0.36em;
-  text-align: center;
-  /* The tracking is applied to the right of the last glyph too, which pushes
-     the run visually left of centre; half of it back as padding re-centres. */
-  padding-left: calc(17px + 0.36em) !important;
-}
-
-/* An input with a leading icon. */
-.inputWrap {
-  position: relative;
-  display: block;
-}
-
-.inputIcon {
-  position: absolute;
-  left: 17px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 19px;
-  height: 19px;
-  color: var(--dim);
-  opacity: 0.7;
-  pointer-events: none;
-  transition: color 0.18s ease, opacity 0.18s ease;
-}
-
-/* Clears the icon: 17px offset + 19px icon + 13px gap. */
-.withIcon {
-  padding-left: 49px !important;
-}
-
-/* The icon picks up the accent while its field has focus. */
-.inputWrap:focus-within .inputIcon {
-  color: var(--acc);
-  opacity: 1;
-}
-
-/* ================================================================== *
- * Buttons.
- * ================================================================== */
-
-/*
- * The primary button.
- *
- * !important is load-bearing, not laziness: .btn sets background and color
- * from --acc/--acc-fg as an UNLAYERED global rule, and an unlayered global
- * beats a CSS-module class of equal specificity regardless of order. The
- * values still come from the same tokens — this only wins the cascade back so
- * the radius and the lift can be applied.
- */
-.form :global(.btn) {
-  width: 100%;
-  min-height: 58px;
-  border-radius: 16px !important;
+  margin: 20px 0 0;
+  max-width: 320px;
   font-size: 15.5px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  box-shadow: 0 12px 26px -12px var(--acc);
-  transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
-}
-
-.form :global(.btn:hover:not(:disabled)) {
-  transform: translateY(-1px);
-  box-shadow: 0 16px 32px -12px var(--acc);
-}
-
-.form :global(.btn:active:not(:disabled)) {
-  transform: translateY(0);
-  box-shadow: 0 8px 18px -12px var(--acc);
-}
-
-.form :global(.btn:disabled) {
-  opacity: 0.6;
-  box-shadow: none;
-}
-
-.submit {
-  margin-top: 6px;
-}
-
-/* A button that reads as a link — resend, and the change-address escape. */
-.textLink {
-  display: block;
-  width: 100%;
-  margin-top: 16px;
-  padding: 6px 0;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--acc);
-  background: none;
-  border: 0;
-  cursor: pointer;
-  text-align: center;
-  transition: opacity 0.16s ease;
-}
-
-.textLink:hover:not(:disabled) {
-  opacity: 0.75;
-}
-
-.textLink:disabled {
-  color: var(--dim);
-  cursor: default;
-  opacity: 0.8;
-}
-
-.textLinkQuiet {
-  margin-top: 4px;
-  font-weight: 500;
-  color: var(--dim);
-}
-
-/* ================================================================== *
- * Notices.
- * ================================================================== */
-
-.sentTo {
-  font-size: 14.5px;
   line-height: 1.55;
-  color: var(--dim);
-  margin: 11px 0 0;
+  color: color-mix(in srgb, var(--fg) 88%, transparent);
 }
 
-.sentTo b {
-  color: var(--fg);
+.sub b {
   font-weight: 600;
+  color: var(--fg);
+  /* Breaks inside the address only when it cannot fit on a line of its own. */
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ *
+ * Fields
+ * ------------------------------------------------------------------ */
+
+.label {
+  margin-bottom: 12px;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--fg) 90%, transparent);
+}
+
+.control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 58px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent);
+  background: color-mix(in srgb, var(--fg) 3%, transparent);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.control:focus-within {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--acc) 18%, transparent);
+}
+
+.controlErr,
+.controlErr:focus-within {
+  border-color: var(--bad);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--bad) 16%, transparent);
+}
+
+.controlIcon {
+  position: absolute;
+  left: 20px;
+  width: 22px;
+  height: 22px;
+  color: color-mix(in srgb, var(--fg) 88%, transparent);
+  pointer-events: none;
+}
+
+.input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 56px;
+  padding: 0 18px 0 60px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--fg);
+  font-family: var(--font-ui);
+  /* 16px, not less: iOS zooms the page into any focused field set smaller. */
+  font-size: 16px;
+  caret-color: var(--acc);
+}
+
+.input::placeholder {
+  color: color-mix(in srgb, var(--fg) 42%, transparent);
+}
+
+/* Autofill paints its own light fill; keep the field on the dark glass. */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--fg);
+  caret-color: var(--acc);
+  transition: background-color 99999s ease-in-out 0s;
+  box-shadow: 0 0 0 100px transparent inset;
+}
+
+.otpInput {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.5em;
+  font-variant-numeric: tabular-nums;
+}
+
+.otpInput::placeholder {
+  letter-spacing: 0.5em;
+}
+
+.hint,
+.err {
+  margin-top: 10px;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.hint {
+  color: color-mix(in srgb, var(--fg) 58%, transparent);
+}
+
+.err {
+  color: var(--bad);
+}
+
+/* ------------------------------------------------------------------ *
+ * Links, notices, the secure note
+ * ------------------------------------------------------------------ */
+
+.link {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--acc);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 5px;
+  cursor: pointer;
+}
+
+.link:disabled {
+  color: color-mix(in srgb, var(--fg) 50%, transparent);
+  text-decoration: none;
+  cursor: default;
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.linkQuiet {
+  color: color-mix(in srgb, var(--fg) 70%, transparent);
+  text-decoration: none;
 }
 
 .alert {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  margin-top: 20px;
+  margin-top: 24px;
   padding: 13px 15px;
-  font-size: 13.5px;
-  line-height: 1.5;
-  text-align: left;
-  color: var(--bad);
-  background: color-mix(in srgb, var(--bad) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--bad) 28%, transparent);
   border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--bad) 40%, transparent);
+  background: color-mix(in srgb, var(--bad) 12%, transparent);
+  color: var(--fg);
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .alert svg {
@@ -589,389 +367,46 @@
   width: 18px;
   height: 18px;
   margin-top: 1px;
+  color: var(--bad);
 }
 
-/* The dev bypass notice. Deliberately plain — it must never be mistaken for
-   part of the real flow. */
 .devNote {
-  margin-bottom: 16px;
-  padding: 12px 15px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px dashed color-mix(in srgb, var(--warn) 55%, transparent);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  color: color-mix(in srgb, var(--fg) 85%, transparent);
   font-size: 13px;
-  line-height: 1.5;
-  color: var(--dim);
-  background: var(--bg2);
-  border: 1px dashed var(--line);
-  border-radius: 13px;
+  line-height: 1.45;
 }
 
 .devNote b {
-  font-family: var(--font-display);
-  font-size: 15px;
-  letter-spacing: 0.1em;
   color: var(--fg);
+  letter-spacing: 0.12em;
 }
 
+/* Pushed to the foot of the screen on a tall phone, directly under the form
+   on a short one. */
 .secure {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  margin: 26px 0 0;
-  font-size: 12px;
-  color: var(--dim);
-  opacity: 0.8;
+  gap: 14px;
+  margin: auto 0 0;
+  padding-top: 40px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--fg) 62%, transparent);
 }
 
 .secure svg {
   flex: none;
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
 }
 
-
-/* ================================================================== *
- * MINIMAL — the centred stack.
- * ================================================================== *
- *
- * A different composition, not a shorter band: no band, no join, no sheet
- * edge. The mark sits directly above the form and the whole stack is centred
- * in the viewport.
- *
- * These rules NEUTRALISE the band and join rules above rather than the JSX
- * branching, so the form markup stays identical across all twelve designs —
- * see the note in JoinPage. Everything here is scoped under .stack, so a
- * banded design is untouched by any of it.
- */
-
-.stack {
-  justify-content: center;
-  padding: 40px 0;
-}
-
-/* The whole-page ground (Halo's pool, Enclosure's frame). Behind everything,
-   and sized to the page rather than clipped to a band that does not exist. */
-.pageArt {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-
-/*
- * The band becomes a brand block: no flex growth, no minimum height, no
- * clearance for a join. Its padding is what sets the gap to the form, so the
- * mark and the fields read as one stack rather than two regions.
- */
-.stack .header {
-  position: relative;
-  z-index: 1;
-  flex: none;
-  max-height: none;
-  /*
-   * 46px, not the 30px this first carried. The brand and the heading are both
-   * centred display type, so at a tighter gap they read as one four-line
-   * block and "Sign in" looks like a third line of the lockup. The space is
-   * what separates identity from instruction.
-   */
-  padding: 0 24px 46px;
-  justify-content: center;
-  overflow: visible;
-}
-
-.stack .brand {
-  justify-content: center;
-}
-
-/*
- * The sheet stops being a sheet. No overlap, no cut, no hairline, and no
- * background of its own — the page ground shows through, which is the whole
- * point of the family.
- */
-/*
- * .stack .sheet.joinStraight, not .stack .sheet: the MINIMAL designs all use
- * join: "straight", and .sheet.joinStraight above is an equal-specificity
- * rule. This one would win on source order alone, which is the kind of tie
- * that breaks silently the moment the rules are reordered. The extra class
- * makes it win outright.
- */
-.stack .sheet,
-.stack .sheet.joinStraight {
-  position: relative;
-  z-index: 1;
-  flex: none;
-  margin-top: 0;
-  background: none;
-  border-top: 0;
-  border-radius: 0;
-  clip-path: none;
-}
-
-.stack .body {
-  padding-top: 0;
-  padding-bottom: 0;
-  text-align: center;
-}
-
-/*
- * The plate is dropped entirely: on a bare page it is a box around the mark,
- * and the mark alone is the more confident statement. This is also why the
- * MINIMAL designs set onDark: false — .logoTilePlain is what would otherwise
- * paint an accent plate here.
- */
-.stack .logoTile {
-  width: auto;
-  height: auto;
-  background: none;
-  border: 0;
-  box-shadow: none;
-  backdrop-filter: none;
-  border-radius: 0;
-}
-
-/* The mark carries the screen alone here, so it is set larger than anywhere
-   else and keeps its own gold — no drop-shadow, which on a pale ground reads
-   as a smudge rather than lift. */
-.stack .logoMark {
-  width: 64px;
-  height: 64px;
-  filter: none;
-}
-
-.stack .brandName {
-  font-size: 25px;
-}
-
-.stack .brandTag {
-  margin-top: 7px;
-}
-
-/* The heading is the mark's partner here, not a page title competing with a
-   band, so it settles back a step. */
-.stack .title {
-  font-size: 27px;
-}
-
-/* ================================================================== *
- * Short screens.
- * ================================================================== */
-
-/*
- * A landscape phone, or a small window. The band is the first thing to give
- * up height — it is the part with nothing functional in it — and the brand
- * lockup shrinks with it so the two stay in proportion.
- */
-@media (max-height: 700px) {
-  .header,
-  .bandTall,
-  .bandMid {
-    max-height: 190px;
-    padding-top: 24px;
-    padding-bottom: 82px;
-  }
-
-  .bandShort {
-    padding-top: 24px;
-    padding-bottom: 70px;
-  }
-
-  .logoTile {
-    width: 52px;
-    height: 52px;
-    border-radius: 16px;
-  }
-
-  .logoMark {
-    width: 34px;
-    height: 34px;
-  }
-
-  .brandName {
-    font-size: 23px;
-  }
-
-  .title {
-    font-size: 26px;
-  }
-
-  .form {
-    margin-top: 24px;
-  }
-
-  .secure {
-    margin-top: 20px;
-  }
-}
-
-/* The stack has no band to shrink, so the mark and the gap take the cut. */
-@media (max-height: 700px) {
-  .stack {
-    padding: 28px 0;
-  }
-
-  .stack .header {
-    padding-bottom: 32px;
-  }
-
-  .stack .logoMark {
-    width: 52px;
-    height: 52px;
-  }
-}
-
-/*
- * Very short and wide — a landscape phone. The band would eat the form, so it
- * collapses to a brand strip and the tag is dropped.
- */
-@media (max-height: 540px) and (min-width: 640px) {
-  .header,
-  .bandTall,
-  .bandMid,
-  .bandShort {
-    max-height: 130px;
-    padding-bottom: 58px;
-  }
-
-  .brandTag {
-    display: none;
-  }
-
-  .joinArc .body,
-  .joinBevel .body {
-    padding-top: 30px;
-  }
-}
-
-/* ================================================================== *
- * Larger screens.
- * ================================================================== */
-
-/*
- * GuestLayout caps the app at 460px and centres it, which is right for the
- * phone this is designed around. Rather than escape that cap and invent a
- * desktop layout, the sheet becomes a centred card on the art ground — the
- * same composition, sized for a mouse.
- */
-@media (min-width: 720px) and (min-height: 620px) {
-  .page {
-    justify-content: center;
-    padding: 40px 0;
-    /*
-     * The tinted ground is painted by a fixed pseudo-element rather than on
-     * .page itself: .page is inside GuestLayout's 460px cap, so its own
-     * background would be a coloured column with bare page either side. A
-     * fixed element is sized against the viewport and so escapes the cap
-     * without the layout having to be widened.
-     */
-    background: none;
-  }
-
-  /*
-   * z-index 0, not -1: .theme-root paints its own --bg, and a negative index
-   * puts this behind that rather than behind only the card. The children are
-   * lifted above it instead (see .header / .sheet below).
-   */
-  .page::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    background: var(--hero);
-  }
-
-  .header,
-  .sheet {
-    position: relative;
-    z-index: 1;
-  }
-
-  /*
-   * On the card layout the band carries the brand only — the art is already
-   * covering the whole viewport behind it via .page::after plus the design's
-   * own layer, so a second art box here would be a seam.
-   */
-  .header {
-    flex: none;
-    max-height: none;
-    padding: 0 24px 46px;
-    justify-content: center;
-  }
-
-  .brand {
-    justify-content: center;
-  }
-
-  /* The mark carries the screen on desktop, where there is room for it. */
-  .logoTile {
-    width: 68px;
-    height: 68px;
-    border-radius: 20px;
-  }
-
-  .logoMark {
-    width: 46px;
-    height: 46px;
-  }
-
-  .brandName {
-    font-size: 30px;
-  }
-
-  .sheet {
-    flex: none;
-    margin-top: 0;
-    border-radius: 28px;
-    box-shadow: 0 34px 80px rgba(0, 0, 0, 0.3);
-  }
-
-  /* The arc and bevel are cuts into a band that is not there on this layout,
-     so the card gets a clean rounded top edge instead. */
-  .joinArc,
-  .joinBevel {
-    clip-path: none;
-    border-radius: 28px;
-  }
-
-  .joinStraight {
-    border-top: 0;
-  }
-
-  .joinArc .body,
-  .joinBevel .body,
-  .joinStraight .body {
-    padding-top: 38px;
-  }
-
-  .body {
-    width: 372px;
-    max-width: none;
-    padding-bottom: 38px;
-  }
-
-  /*
-   * On desktop the banded designs become a card on a tinted ground. The stack
-   * does NOT: a card would reintroduce the frame the family exists to remove.
-   * It stays a centred column on the page ground, just wider.
-   */
-  .stack.page::after {
-    display: none;
-  }
-
-  .stack .sheet {
-    background: none;
-    box-shadow: none;
-    border-radius: 0;
-  }
-
-  .stack .header {
-    padding-bottom: 34px;
-  }
-
-  .stack .logoMark {
-    width: 72px;
-    height: 72px;
-  }
-
-  .stack .body {
-    padding-top: 0;
+@media (prefers-reduced-motion: reduce) {
+  .screen {
+    animation: none;
   }
 }

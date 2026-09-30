@@ -43,7 +43,11 @@ export const FONT_PRESETS = {
     // Named so the picker can say what changes without the admin guessing.
     display: "Fraunces",
     ui: "Schibsted Grotesk",
-    families: ["Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700", "Schibsted+Grotesk:wght@400;500;600;700"],
+    // Italic 400/500 are for the sign-in screens' accent words ("privileges.",
+    // "rewarded."). Without them the browser slants the roman, which reads as
+    // a rendering fault on a serif this distinctive. Same for the other two
+    // serif display faces below.
+    families: ["Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500", "Schibsted+Grotesk:wght@400;500;600;700"],
     stacks: {
       display: `"Fraunces", ${SERIF_FALLBACK}`,
       ui: `"Schibsted Grotesk", ${SANS_FALLBACK}`,
@@ -67,7 +71,7 @@ export const FONT_PRESETS = {
     note: "Playfair Display over Lato — traditional hotel stationery.",
     display: "Playfair Display",
     ui: "Lato",
-    families: ["Playfair+Display:wght@400;500;600;700", "Lato:wght@400;700"],
+    families: ["Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500", "Lato:wght@400;700"],
     stacks: {
       display: `"Playfair Display", ${SERIF_FALLBACK}`,
       ui: `"Lato", ${SANS_FALLBACK}`,
@@ -79,7 +83,7 @@ export const FONT_PRESETS = {
     note: "High-contrast Cormorant with airy Jost — the most formal pairing.",
     display: "Cormorant Garamond",
     ui: "Jost",
-    families: ["Cormorant+Garamond:wght@400;500;600;700", "Jost:wght@400;500;600;700"],
+    families: ["Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500", "Jost:wght@400;500;600;700"],
     stacks: {
       display: `"Cormorant Garamond", ${SERIF_FALLBACK}`,
       ui: `"Jost", ${SANS_FALLBACK}`,

@@ -1,0 +1,377 @@
+/*
+ * The welcome screen.
+ *
+ * Painted from the theme tokens only — --acc, --acc2, --fg, --dim, --bg. The
+ * page forces the dark ground (see JoinPage), so --acc here is always the
+ * accent's DARK variant: champagne gold on Champagne, a lifted coral on
+ * Coral. No literal brand colour appears, which is what lets one screen
+ * serve every accent the main admin can pick.
+ *
+ * The literal colours that DO appear are the scene's physical materials —
+ * night sky, black card stock, dark marble — which should not change hue
+ * with the brand.
+ */
+
+/* ------------------------------------------------------------------ *
+ * Type
+ * ------------------------------------------------------------------ */
+
+.wordmark {
+  font-family: var(--font-ui);
+  font-size: 21px;
+  font-weight: 400;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+.kicker {
+  margin: 0 0 16px;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  line-height: 1.6;
+  text-transform: uppercase;
+  color: var(--acc);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(38px, 11.4vw, 48px);
+  font-weight: 400;
+  line-height: 1.04;
+  letter-spacing: -0.015em;
+  color: var(--fg);
+  text-wrap: balance;
+}
+
+.title em {
+  display: block;
+  font-style: italic;
+  color: var(--acc);
+}
+
+.sub {
+  margin: 18px 0 0;
+  max-width: 290px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--fg) 82%, transparent);
+}
+
+.rule {
+  display: block;
+  width: 42px;
+  height: 1px;
+  margin-top: 26px;
+  background: var(--acc);
+}
+
+.tagline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-style: italic;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--fg) 88%, transparent);
+}
+
+/* The short accent rule under the tagline, as in the brand sheet. */
+.tagline::after {
+  content: "";
+  display: block;
+  width: 42px;
+  height: 1px;
+  margin-top: 14px;
+  background: var(--acc);
+}
+
+/*
+ * The action, pinned to the bottom of the viewport while the poster scrolls
+ * under it, and settling into place at the end. The fade lets the content
+ * pass beneath without a hard edge; the safe-area inset keeps it clear of
+ * the iPhone home indicator.
+ */
+.dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: auto;
+  padding: 52px 24px calc(22px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--bg) 82%, transparent) 38%,
+    var(--bg) 62%
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Features — four equal cells split by hairlines
+ * ------------------------------------------------------------------ */
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 0;
+  padding: 0 12px;
+  list-style: none;
+}
+
+.feature {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 4px 2px;
+  text-align: center;
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1.55;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+.feature + .feature {
+  border-left: 1px solid color-mix(in srgb, var(--fg) 14%, transparent);
+}
+
+.feature svg {
+  width: 26px;
+  height: 26px;
+  color: var(--acc);
+}
+
+/* ------------------------------------------------------------------ *
+ * The scene
+ *
+ * One box, every layer absolutely positioned inside it. It takes the
+ * screen's spare height (flex: 1) so a tall phone grows the scene rather
+ * than opening a gap, and it never shrinks below the height the cards need.
+ *
+ * Sizes inside are in container units (cqw) so the cards and the table keep
+ * their proportions at every width from 320 to the 460px column.
+ * ------------------------------------------------------------------ */
+
+.scene {
+  position: relative;
+  flex: 1 0 auto;
+  min-height: 280px;
+  max-height: 440px;
+  /* Reaches up behind the rule so the sky rises out of the ground rather than
+     starting at a hard edge. The mask does the blending. */
+  margin: -26px 0 18px;
+  overflow: hidden;
+  container-type: inline-size;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 86%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 86%, transparent);
+}
+
+/* Dusk: a cold sky settling into a horizon lit in the accent's hue. */
+.sky {
+  position: absolute;
+  inset: 0 0 32% 0;
+  background:
+    radial-gradient(
+      85% 60% at 70% 100%,
+      color-mix(in oklab, var(--acc) 70%, #ffd9a8) 0%,
+      transparent 72%
+    ),
+    linear-gradient(
+      180deg,
+      #121418 0%,
+      #1d1f27 30%,
+      color-mix(in oklab, var(--acc) 26%, #2a2229) 62%,
+      color-mix(in oklab, var(--acc) 58%, #6b4029) 100%
+    );
+}
+
+.skyline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 31%;
+  width: 100%;
+  height: 42%;
+}
+
+/* The far city sits in the haze of the horizon, the near one against it. */
+.far {
+  fill: color-mix(in oklab, var(--acc) 22%, #1e1a1f);
+  opacity: 0.8;
+}
+
+.near {
+  fill: #0e0d10;
+}
+
+.lights {
+  fill: color-mix(in oklab, var(--acc) 55%, #ffe7c2);
+}
+
+/*
+ * The window: two mullions and a sill rail, drawn as gradients so they cost
+ * no elements. The rail sits on the horizon line, where the real one would.
+ */
+.frame {
+  position: absolute;
+  inset: 0 0 30% 0;
+  background:
+    linear-gradient(90deg, transparent 58%, #09090a 58%, #1a1917 59.2%, #09090a 60.4%, transparent 60.4%),
+    linear-gradient(90deg, transparent 91%, #09090a 91%, #1a1917 92.2%, #09090a 93.4%, transparent 93.4%),
+    linear-gradient(180deg, transparent 86%, rgba(9, 9, 10, 0.9) 86%, rgba(9, 9, 10, 0.9) 88%, transparent 88%);
+}
+
+/* Heavy drapes on the left, with a lamp glowing warm in the fold. */
+.curtain {
+  position: absolute;
+  inset: 0 auto 28% 0;
+  width: 30%;
+  background:
+    radial-gradient(
+      60% 30% at 40% 42%,
+      color-mix(in oklab, var(--acc) 32%, transparent),
+      transparent 70%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      #0c0b0a 0 6px,
+      #17140f 6px 11px,
+      #0e0c0a 11px 17px,
+      #1c1813 17px 21px
+    );
+  -webkit-mask-image: linear-gradient(90deg, #000 70%, transparent);
+  mask-image: linear-gradient(90deg, #000 70%, transparent);
+}
+
+/*
+ * The marble table. A slab much wider than the scene with a gently curved
+ * front edge, so it reads as the top of a round table seen from above.
+ */
+.table {
+  position: absolute;
+  left: -18%;
+  right: -18%;
+  bottom: -6%;
+  height: 40%;
+  border-radius: 50% 50% 0 0 / 26% 26% 0 0;
+  background:
+    radial-gradient(40% 50% at 64% 0%, color-mix(in srgb, var(--acc) 22%, transparent), transparent 70%),
+    radial-gradient(80% 60% at 50% 0%, rgba(255, 255, 255, 0.07), transparent 70%),
+    linear-gradient(180deg, #1b1a19 0%, #0e0d0c 55%, #080807 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 -12px 40px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.veins {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: color-mix(in oklab, var(--acc) 45%, #d9d2c3);
+  stroke-width: 0.7;
+  opacity: 0.32;
+}
+
+/*
+ * The cards. Anchored to the table surface rather than the scene's top, so
+ * they sit on the marble at every scene height.
+ */
+.cards {
+  position: absolute;
+  left: 50%;
+  bottom: 10%;
+  width: 56cqw;
+  aspect-ratio: 1.586;
+  transform: translateX(-42%);
+  perspective: 900px;
+  animation: float 7s ease-in-out infinite;
+}
+
+.cardShadow {
+  position: absolute;
+  left: 4%;
+  right: 0;
+  bottom: -9%;
+  height: 22%;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.72);
+  filter: blur(12px);
+}
+
+.card {
+  position: absolute;
+  inset: 0;
+  border-radius: 5.2cqw;
+  overflow: hidden;
+  background:
+    linear-gradient(118deg, transparent 34%, rgba(255, 255, 255, 0.08) 46%, transparent 58%),
+    linear-gradient(145deg, #252321 0%, #0d0c0c 52%, #1a1814 100%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 18px 30px -10px rgba(0, 0, 0, 0.8);
+}
+
+.cardBack {
+  transform: translate(15%, -13%) rotateX(20deg) rotateY(-10deg) rotateZ(4deg) scale(0.92);
+  filter: brightness(0.62);
+}
+
+.cardFront {
+  transform: rotateX(16deg) rotateY(-12deg) rotateZ(-7deg);
+}
+
+.cardWaves {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: var(--acc);
+  stroke-width: 0.45;
+}
+
+.cardName {
+  position: absolute;
+  top: 17%;
+  left: 9%;
+  font-size: 3cqw;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--acc);
+}
+
+.cardMark {
+  position: absolute;
+  right: 8%;
+  bottom: 12%;
+  width: 11cqw;
+  height: 11cqw;
+  object-fit: contain;
+  /* The asset's gold is set for a light page; lifted to read on black. */
+  filter: brightness(1.35);
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateX(-42%) translateY(0);
+  }
+  50% {
+    transform: translateX(-42%) translateY(-5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cards {
+    animation: none;
+  }
+}
