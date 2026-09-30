@@ -282,59 +282,6 @@ export const CARD_DESIGN_VALUES = Object.values(CARD_DESIGNS);
 export const DEFAULT_CARD_DESIGN = CARD_DESIGNS.BRUSHED_STEEL;
 
 /**
- * Sign-in screen art. The main admin picks one and it applies network-wide.
- *
- * KEYS ONLY, exactly like CARD_DESIGNS — every design is drawn in the guest
- * app (see the frontend's loginDesigns registry). This matters more here than
- * anywhere else: the sign-in screen is UNAUTHENTICATED, so storing markup
- * would mean rendering admin-supplied content to anyone who loads /login.
- * A key cannot do that.
- *
- * Every design paints from the accent tokens, so these are layouts, not
- * palettes — the colour still comes from themePreset and the guest's own
- * light/dark choice. One design times 27 accents times two modes.
- *
- * A key here that the frontend does not know falls back to the default, so
- * removing a design cannot leave guests unable to sign in. Keep the two lists
- * in step (see tests/loginDesign.test.js).
- *
- * The comments mirror the picker's sections to keep the list readable, but
- * the grouping itself is PRESENTATION and lives only in the frontend
- * registry — a design can be refiled without a migration.
- */
-export const LOGIN_DESIGNS = Object.freeze({
-  // Minimal — no band and no artwork; the mark and the form, centred.
-  MONOGRAM: "MONOGRAM",
-  HALO: "HALO",
-  VIGNETTE: "VIGNETTE",
-
-  // Premium — deep grounds, one confident gesture, nothing decorative.
-  ATELIER: "ATELIER",
-  COLONNADE: "COLONNADE",
-  MERIDIAN: "MERIDIAN",
-
-  // Modern — hard-edged structure and high contrast.
-  BLUEPRINT: "BLUEPRINT",
-  ESCARP: "ESCARP",
-  MONOLITH: "MONOLITH",
-
-  // Luxe — ornament, gloss and repeated motif.
-  REGENCY: "REGENCY",
-  OPULENCE: "OPULENCE",
-  IMPERIAL: "IMPERIAL",
-});
-
-export const LOGIN_DESIGN_VALUES = Object.values(LOGIN_DESIGNS);
-
-
-/**
- * The most broadly wearable of the nine, and the one that holds up across the
- * widest range of accents. A stored key the frontend does not know falls back
- * to this, so the retired designs cannot leave a guest unable to sign in.
- */
-export const DEFAULT_LOGIN_DESIGN = LOGIN_DESIGNS.ATELIER;
-
-/**
  * Dashboard/app colour theme. The main admin picks one and it applies
  * network-wide — to the admin panel, the hotel panels, and the guest app's
  * accent colours (guests keep their own light/dark choice).
@@ -392,52 +339,6 @@ export const THEME_PRESETS = Object.freeze({
 });
 
 export const THEME_PRESET_VALUES = Object.values(THEME_PRESETS);
-
-/**
- * The sign-in screen's own colour, independent of the network accent.
- *
- * INHERIT is the default and means "whatever themePreset says" — the
- * behaviour before this setting existed. An admin who never touches it sees
- * no change, and "back to matching the app" is always one click.
- *
- * Every other value is a THEME_PRESET key, so this reuses the palettes the
- * network already ships rather than introducing a second colour system. The
- * frontend resolves the key against the same accentPresets registry, which is
- * why there is no separate list to keep in step here.
- *
- * Why a login-only override at all: the sign-in screen is the one surface
- * that is pure brand — no data, no navigation — so a network whose app is
- * (say) a restrained teal may still want a dramatic gold front door.
- */
-export const LOGIN_THEME_INHERIT = "INHERIT";
-
-export const LOGIN_THEME_VALUES = Object.freeze([
-  LOGIN_THEME_INHERIT,
-  ...THEME_PRESET_VALUES,
-]);
-
-export const DEFAULT_LOGIN_THEME = LOGIN_THEME_INHERIT;
-
-/**
- * Light/dark for the sign-in screen.
- *
- * AUTO follows the guest's own choice, which is the default and what the app
- * did before. The other two force it, because several designs are built for a
- * specific ground — a glass panel with floating 3D shapes is a dark-room
- * design, and rendering it on white throws away most of what makes it work.
- *
- * This never writes the guest's stored theme: the rest of the app still
- * obeys their toggle the moment they are signed in.
- */
-export const LOGIN_MODES = Object.freeze({
-  AUTO: "AUTO",
-  LIGHT: "LIGHT",
-  DARK: "DARK",
-});
-
-export const LOGIN_MODE_VALUES = Object.values(LOGIN_MODES);
-
-export const DEFAULT_LOGIN_MODE = LOGIN_MODES.AUTO;
 
 export const DEFAULT_THEME_PRESET = THEME_PRESETS.CORAL;
 

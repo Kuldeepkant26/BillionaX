@@ -3,12 +3,6 @@ import {
   TIERS,
   CARD_DESIGN_VALUES,
   DEFAULT_CARD_DESIGN,
-  LOGIN_DESIGN_VALUES,
-  DEFAULT_LOGIN_DESIGN,
-  LOGIN_THEME_VALUES,
-  DEFAULT_LOGIN_THEME,
-  LOGIN_MODE_VALUES,
-  DEFAULT_LOGIN_MODE,
   THEME_PRESET_VALUES,
   DEFAULT_THEME_PRESET,
   FONT_PRESET_VALUES,
@@ -72,45 +66,6 @@ const platformSettingsSchema = new mongoose.Schema(
       type: String,
       enum: CARD_DESIGN_VALUES,
       default: DEFAULT_CARD_DESIGN,
-    },
-
-    // Which sign-in screen every guest meets. Network-wide for the same
-    // reason as cardDesign: it is the first thing anyone sees of the product,
-    // so it stays consistent rather than varying by property.
-    loginDesign: {
-      type: String,
-      enum: LOGIN_DESIGN_VALUES,
-      default: DEFAULT_LOGIN_DESIGN,
-    },
-
-    // The sign-in screen's own palette. "INHERIT" (the default) means it
-    // follows themePreset like every other surface; any other value is a
-    // THEME_PRESET key that applies to the sign-in screen alone.
-    loginTheme: {
-      type: String,
-      enum: LOGIN_THEME_VALUES,
-      default: DEFAULT_LOGIN_THEME,
-    },
-
-    // The hue behind loginTheme: "CUSTOM". Same contract as
-    // themeCustomColor — pattern-validated, because it is interpolated into
-    // a CSS custom property.
-    // Defaults to a real hex rather than null for the same reason
-    // themeCustomColor does: `match` runs on the default too, and a null
-    // would fail its own validator the first time settings are created.
-    loginThemeCustomColor: {
-      type: String,
-      default: "#5b6474",
-      match: [/^#[0-9a-fA-F]{6}$/, "Enter a 6-digit hex colour"],
-    },
-
-    // Light/dark for the sign-in screen only. AUTO follows the guest's own
-    // choice; the other two force it, for designs built for one ground.
-    // Never writes the guest's stored theme.
-    loginMode: {
-      type: String,
-      enum: LOGIN_MODE_VALUES,
-      default: DEFAULT_LOGIN_MODE,
     },
 
     // Which colour theme every dashboard uses. Network-wide like cardDesign:
