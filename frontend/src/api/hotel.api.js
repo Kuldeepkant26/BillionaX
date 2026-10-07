@@ -6,6 +6,13 @@ export const dashboard = () => api.get("/hotel/dashboard").then(unwrap);
 export const monthlyRedemptions = (params) =>
   api.get("/hotel/reports/monthly-redemptions", { params }).then(unwrap);
 export const listRebates = () => api.get("/hotel/rebates").then(unwrap);
+
+/** Month-end payouts the manager has not been shown yet. */
+export const unseenRebates = () => api.get("/hotel/rebates/unseen").then(unwrap);
+
+// `{}`, never null: axios sends a null body as the literal "null", which
+// express.json rejects with a 400 before the route is even reached.
+export const markRebateSeen = (id) => api.post(`/hotel/rebates/${id}/seen`, {}).then(unwrap);
 export const listMembers = (params) => api.get("/hotel/members", { params }).then(unwrap);
 export const allocate = (payload) => api.post("/hotel/members/allocate", payload).then(unwrap);
 

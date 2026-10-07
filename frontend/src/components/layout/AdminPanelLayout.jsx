@@ -1,6 +1,7 @@
 import PanelLayout from "./PanelLayout.jsx";
 import { ROUTES } from "../../constants/routePaths.js";
 import { useAdminSupportBadge } from "../../hooks/useAdminSupportBadge.js";
+import { useDistributionBadge } from "../../hooks/useDistributionBadge.js";
 
 const NAV = [
   {
@@ -50,6 +51,15 @@ const NAV = [
     icon: "M3 6h9l-2.5-2.5L11 2l5 5-5 5-1.5-1.5L12 8H3zm14 8H8l2.5 2.5L9 18l-5-5 5-5 1.5 1.5L8 12h9z",
   },
   {
+    // Beside Transactions: it is the month-end money movement, and the badge
+    // lights up on the 1st while last month waits to be paid out.
+    to: ROUTES.ADMIN_DISTRIBUTION,
+    label: "Coin distribution",
+    badge: "distribution",
+    // One coin above two — a share fanning out. Filled, like every icon here.
+    icon: "M10 1.8a3.6 3.6 0 1 1 0 7.2 3.6 3.6 0 0 1 0-7.2zM4.6 11a3.1 3.1 0 1 1 0 6.2 3.1 3.1 0 0 1 0-6.2zm10.8 0a3.1 3.1 0 1 1 0 6.2 3.1 3.1 0 0 1 0-6.2zM9.3 9.6h1.4v2.6l1.9 1-.6 1.2-2.7-1.4zm-1.9 3.6-.6-1.2 1.6-.9.6 1.2z",
+  },
+  {
     to: ROUTES.ADMIN_PAYMENTS,
     label: "Payments",
     icon: "M3 6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1H5a2 2 0 0 0 0 4h12v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
@@ -74,6 +84,9 @@ const AdminPanelLayout = () => {
   // Mounted here rather than in PanelLayout: the hotel panels share that shell
   // and have no support queue to count.
   useAdminSupportBadge();
+  // Same reason it lives here and not in PanelLayout: only the main admin
+  // distributes, and the endpoint would 403 for hotel staff.
+  useDistributionBadge();
 
   return <PanelLayout brand="Billionax" subtitle="Super admin" nav={NAV} />;
 };

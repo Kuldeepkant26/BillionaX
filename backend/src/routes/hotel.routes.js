@@ -90,6 +90,15 @@ router.get(
   hotelController.monthlyRedemptions
 );
 router.get("/rebates", adminOnly, hotelController.listSettlements);
+// The "coins received" announcement. Manager-only, like the figures it repeats.
+router.get("/rebates/unseen", adminOnly, hotelController.unseenSettlements);
+router.post(
+  "/rebates/:settlementId/seen",
+  adminOnly,
+  objectIdParam("settlementId"),
+  validate,
+  hotelController.markSettlementSeen
+);
 router.post("/members/allocate", adminOnly, allocateRules, validate, hotelController.allocate);
 
 router.get("/coins/balance", adminOnly, hotelController.coinBalance);

@@ -48,6 +48,24 @@ export const listSettlements = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, { settlements }));
 });
 
+/**
+ * Month-end payouts the manager has not been shown yet. The panel asks on
+ * sign-in, so a hotel that was offline when the coins landed still gets the
+ * announcement instead of only a silently larger inventory.
+ */
+export const unseenSettlements = asyncHandler(async (req, res) => {
+  const notices = await rebateService.listUnseenForHotel(hotelIdFor(req));
+  res.status(200).json(new ApiResponse(200, { notices }));
+});
+
+export const markSettlementSeen = asyncHandler(async (req, res) => {
+  const data = await rebateService.markSeen({
+    hotelId: hotelIdFor(req),
+    settlementId: req.params.settlementId,
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
 export const listMembers = asyncHandler(async (req, res) => {
   const { q, tier, minBalance, maxBalance, joinedFrom, joinedTo, page = 1, limit = 25 } = req.query;
   const data = await reportService.listMembers({

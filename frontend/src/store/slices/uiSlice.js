@@ -9,6 +9,13 @@ export const createUiSlice = (set, get) => ({
   sidebarCollapsed: false,
   toggleSidebar: () => set({ sidebarCollapsed: !get().sidebarCollapsed }),
 
+  // Whether last month still waits to be distributed — the admin panel's
+  // Coin distribution badge. A count (0 or 1) because nav badges are counts.
+  // Not persisted: it is re-asked on every admin-panel load, and a stale
+  // "1" surviving a reload would point at a month already paid.
+  distributionPending: 0,
+  setDistributionPending: (n) => set({ distributionPending: n ? 1 : 0 }),
+
   toast: (message, variant = "info") => {
     const id = ++toastId;
     set({ toasts: [...get().toasts, { id, message, variant }] });

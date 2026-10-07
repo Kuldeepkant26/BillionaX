@@ -495,19 +495,30 @@ export const monthlyReportRules = [
 ];
 
 /**
- * Triggering the month-end rebate by hand.
+ * Distributing a month's coins from the admin panel.
  *
  * `period` is validated against the same YYYY-MM shape the settlement model
  * stores, so a malformed month is refused here rather than reaching the
  * aggregation and quietly matching nothing.
+ *
+ * There is no hotelId: a month is distributed as a whole, exactly once, and a
+ * single-hotel run would have no place in that.
  */
 export const runRebateRules = [
   body("period")
     .optional({ values: "falsy" })
     .matches(/^\d{4}-(0[1-9]|1[0-2])$/)
     .withMessage('Period must look like "2026-08"'),
-  body("hotelId").optional({ values: "falsy" }).isMongoId(),
   body("dryRun").optional().isBoolean().toBoolean(),
+  body("expectedRatePercent").optional({ values: "null" }).isFloat({ min: 0, max: 100 }).toFloat(),
+];
+
+/** The distribution tab's month. Omitted means "last month", decided server-side. */
+export const distributionRules = [
+  query("period")
+    .optional({ values: "falsy" })
+    .matches(/^\d{4}-(0[1-9]|1[0-2])$/)
+    .withMessage('Period must look like "2026-08"'),
 ];
 
 export const memberDetailsRules = [

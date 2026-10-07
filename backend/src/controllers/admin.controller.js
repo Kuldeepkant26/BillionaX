@@ -44,29 +44,40 @@ export const listSettlements = asyncHandler(async (req, res) => {
 });
 
 /**
- * Runs the month-end rebate on demand.
+ * Distributes a month's coins to hotels — the distribution tab's button.
  *
- * Idempotent by construction: a hotel already settled for the period is
- * skipped, so clicking twice cannot pay twice. Defaults to the previous
- * calendar month, which is what "run it for last month" means.
+ * Once per month: a completed period answers 409. Defaults to the previous
+ * calendar month. `expectedRatePercent` is the rate on the admin's screen when
+ * they confirmed; if the setting has moved since, the run is refused rather
+ * than paid at a rate nobody approved.
  */
 export const runRebate = asyncHandler(async (req, res) => {
-  const { period, hotelId, dryRun } = req.body;
+  const { period, dryRun, expectedRatePercent } = req.body;
 
   const result = await rebateService.runMonthlyRebate({
     period: period || undefined,
-    hotelId: hotelId || null,
     runBy: req.user._id,
     dryRun: Boolean(dryRun),
+    expectedRatePercent: expectedRatePercent ?? null,
   });
 
   const message = result.dryRun
     ? `${result.settled.length} hotel(s) would be credited ${result.totalCredited.toLocaleString("en-IN")} coins`
-    : result.settled.length
-      ? `Credited ${result.totalCredited.toLocaleString("en-IN")} coins to ${result.settled.length} hotel(s)`
-      : "Nothing to credit — this period is already settled";
+    : `Distributed ${result.run.coinsCredited.toLocaleString("en-IN")} coins to ${result.run.hotelsCredited} hotel(s)`;
 
   res.status(200).json(new ApiResponse(200, result, message));
+});
+
+/** One month's distribution picture: per-hotel figures, status and history. */
+export const distributionOverview = asyncHandler(async (req, res) => {
+  const data = await rebateService.distributionOverview({ period: req.query.period || undefined });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+/** Whether last month is waiting to be distributed — drives the nav badge. */
+export const distributionPending = asyncHandler(async (req, res) => {
+  const data = await rebateService.distributionPending();
+  res.status(200).json(new ApiResponse(200, data));
 });
 
 export const listHotels = asyncHandler(async (req, res) => {

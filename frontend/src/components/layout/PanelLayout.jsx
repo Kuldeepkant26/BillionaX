@@ -42,6 +42,7 @@ const PanelLayout = ({ brand, subtitle, nav, showHotel = false }) => {
   const setStaffHotel = useAppStore((s) => s.setStaffHotel);
   const supportUnread = useAppStore((s) => s.supportUnread);
   const guestChatsUnread = useAppStore((s) => s.guestChatsUnread);
+  const distributionPending = useAppStore((s) => s.distributionPending);
   const feedEnabled = useAppStore((s) => s.feedEnabled);
   const [open, setOpen] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
@@ -107,11 +108,15 @@ const PanelLayout = ({ brand, subtitle, nav, showHotel = false }) => {
       (!item.feature || features[item.feature])
   );
 
-  // Counts a nav item can carry, keyed by the name an item's `badge` names.
-  // Two entries: the session's own platform thread, and — on the hotel panel —
-  // the property's queue of guest conversations. They are separate numbers on
-  // separate nav items and can both be non-zero at once.
-  const badges = { support: supportUnread, guestChats: guestChatsUnread };
+  // Counts a nav item can carry, keyed by the name an item's `badge` names:
+  // the session's own platform thread, the hotel panel's queue of guest
+  // conversations, and the admin panel's undistributed month. Separate numbers
+  // on separate nav items, any of which can be non-zero at once.
+  const badges = {
+    support: supportUnread,
+    guestChats: guestChatsUnread,
+    distribution: distributionPending,
+  };
 
   return (
     <div className="theme-root" data-theme="ink-minimal" data-accent={accent} data-font={font} style={accentStyle}>

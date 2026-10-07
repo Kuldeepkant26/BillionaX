@@ -7,7 +7,6 @@ import { RankedBars } from "../../features/panel/charts/RankedBars.jsx";
 import { RatioDonut } from "../../features/panel/charts/RatioDonut.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
 import MonthlyRedemptions from "../../features/panel/MonthlyRedemptions.jsx";
-import RebateRunner from "../../features/panel/RebateRunner.jsx";
 import { ROUTES } from "../../constants/routePaths.js";
 import { formatCoinsCompact, formatCompact, greeting } from "../../utils/format.js";
 
@@ -139,13 +138,12 @@ const AdminDashboardPage = () => {
       </div>
 
       {/*
-        Month-wise redemptions across the network, and the control that settles
-        them. Placed together so the figure being credited and the act of
-        crediting it are read side by side.
+        Month-wise redemptions across the network. Paying them out is the Coin
+        distribution tab's job — once per month, with its own confirmation —
+        so the dashboard only reads the figures.
       */}
-      <div className="grid grid-cols-1 [@media(min-width:1100px)]:grid-cols-[2fr_1fr] gap-4 mt-4 items-start">
+      <div className="mt-4">
         <MonthlyRedemptions fetcher={monthlyRedemptions} />
-        <RebateRunner onDone={run} />
       </div>
     </div>
   );

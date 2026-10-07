@@ -66,6 +66,7 @@ const HotelDetailPage = lazy(() => import("../pages/admin/HotelDetailPage.jsx"))
 const GuestsPage = lazy(() => import("../pages/admin/GuestsPage.jsx"));
 const AdminsPage = lazy(() => import("../pages/admin/AdminsPage.jsx"));
 const AdminTransactionsPage = lazy(() => import("../pages/admin/AdminTransactionsPage.jsx"));
+const AdminDistributionPage = lazy(() => import("../pages/admin/AdminDistributionPage.jsx"));
 const AdminSettingsPage = lazy(() => import("../pages/admin/AdminSettingsPage.jsx"));
 const AdminPaymentsPage = lazy(() => import("../pages/admin/AdminPaymentsPage.jsx"));
 const AdminInvoicesPage = lazy(() => import("../pages/admin/AdminInvoicesPage.jsx"));
@@ -310,6 +311,7 @@ const router = createBrowserRouter([
       { path: "support/:userId", element: lazyEl(<AdminSupportPage />) },
       { path: "admins", element: lazyEl(<AdminsPage />) },
       { path: "transactions", element: lazyEl(<AdminTransactionsPage />) },
+      { path: "distribution", element: lazyEl(<AdminDistributionPage />) },
       { path: "payments", element: lazyEl(<AdminPaymentsPage />) },
       { path: "invoices", element: lazyEl(<AdminInvoicesPage />) },
       { path: "settings", element: lazyEl(<AdminSettingsPage />) },

@@ -1,0 +1,450 @@
+/*
+ * Coin distribution tab. Utilities carry the ordinary layout in the JSX; what
+ * lives here is the hero's night-sky treatment, its floating coins, the gold
+ * call to action and the test-mode switch — keyframes, color-mix and pseudo
+ * elements, per the pragmatic-hybrid convention.
+ */
+
+/* ---------- test mode ---------- */
+
+.testSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--fg);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+.testSwitch:hover {
+  border-color: color-mix(in srgb, var(--fg) 30%, transparent);
+}
+.track {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--chip);
+  transition: background 0.2s;
+}
+.track i {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.22s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.testOn {
+  border-color: rgba(217, 119, 6, 0.55);
+  background: rgba(245, 158, 11, 0.1);
+  color: #92400e;
+}
+.testOn .track {
+  background: #f59e0b;
+}
+.testOn .track i {
+  transform: translateX(12px);
+}
+
+.testBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 11px 14px;
+  border-radius: var(--rad-sm);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.09);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--fg);
+}
+.testBanner b {
+  color: #92400e;
+}
+.testDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: #f59e0b;
+  animation: ping 1.6s ease-out infinite;
+}
+@keyframes ping {
+  from { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6); }
+  to { box-shadow: 0 0 0 9px rgba(245, 158, 11, 0); }
+}
+
+/* ---------- hero ---------- */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  padding: 22px;
+  border-radius: var(--rad);
+  color: #f6f1e4;
+  background:
+    radial-gradient(620px 320px at 88% -20%, color-mix(in srgb, var(--acc) 55%, transparent), transparent 70%),
+    radial-gradient(500px 260px at 0% 120%, rgba(245, 196, 67, 0.16), transparent 70%),
+    linear-gradient(150deg, #19171f, #0b0a0f);
+  box-shadow: var(--shadow-sm);
+}
+@media (min-width: 1100px) {
+  .hero {
+    grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr);
+    align-items: stretch;
+    padding: 26px;
+  }
+}
+
+.floatCoin {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle at 34% 28%, #fff6d2, #ffd65c 36%, #db9614 72%, #8a5606);
+  box-shadow: 0 0 30px rgba(245, 196, 67, 0.4);
+  opacity: 0.85;
+  animation: float 7s ease-in-out infinite;
+}
+.fc1 { width: 22px; height: 22px; top: 18px; right: 40%; }
+.fc2 { width: 12px; height: 12px; top: 64%; right: 44%; animation-duration: 9s; animation-delay: -2s; opacity: 0.6; }
+.fc3 { width: 16px; height: 16px; bottom: 16px; left: 46%; animation-duration: 8s; animation-delay: -4s; opacity: 0.7; }
+@keyframes float {
+  50% { transform: translateY(-12px) rotate(25deg) scaleX(0.6); }
+}
+
+.heroMain {
+  position: relative;
+  min-width: 0;
+}
+.kicker {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(246, 241, 228, 0.55);
+}
+.period {
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3.4vw, 40px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+}
+.pill i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.ready { color: #ffd65c; border-color: rgba(255, 214, 92, 0.45); background: rgba(255, 214, 92, 0.1); }
+.ready i { animation: ping-gold 1.6s ease-out infinite; }
+.done { color: #7cf0b5; border-color: rgba(124, 240, 181, 0.45); background: rgba(124, 240, 181, 0.1); }
+.open { color: #a9c1ff; }
+.muted { color: rgba(246, 241, 228, 0.6); }
+@keyframes ping-gold {
+  from { box-shadow: 0 0 0 0 rgba(255, 214, 92, 0.65); }
+  to { box-shadow: 0 0 0 8px rgba(255, 214, 92, 0); }
+}
+
+.summary {
+  margin-top: 10px;
+  max-width: 560px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(246, 241, 228, 0.75);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+@media (min-width: 640px) {
+  .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.stats > span {
+  display: block;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.045);
+}
+.stats u {
+  display: block;
+  text-decoration: none;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(246, 241, 228, 0.55);
+}
+.stats b {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stats i {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  color: rgba(246, 241, 228, 0.5);
+}
+.statGold {
+  border-color: rgba(255, 214, 92, 0.35) !important;
+  background: linear-gradient(160deg, rgba(255, 214, 92, 0.16), rgba(255, 214, 92, 0.04)) !important;
+}
+.statGold b {
+  color: #ffe7a3;
+}
+
+/* The control card sits light-on-dark, so the shared form controls inside it
+   keep their normal theme styling. */
+.panel {
+  position: relative;
+  align-self: start;
+  padding: 18px;
+  border-radius: var(--rad-sm);
+  background: var(--card);
+  color: var(--fg);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.cta {
+  position: relative;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  color: #2b1c02;
+  cursor: pointer;
+  background: linear-gradient(135deg, #fff1c1, #ffd65c 45%, #e09e19);
+  box-shadow: 0 12px 30px rgba(224, 158, 25, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+}
+.cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.6) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: shine 3s ease-in-out 1s infinite;
+}
+.cta:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 38px rgba(224, 158, 25, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.cta:disabled {
+  cursor: default;
+  color: var(--dim);
+  background: var(--chip);
+  box-shadow: none;
+}
+.cta:disabled::after,
+.cta:disabled .ctaCoin {
+  display: none;
+}
+.ctaTest {
+  background: linear-gradient(135deg, #fde68a, #f59e0b);
+  box-shadow: 0 12px 30px rgba(245, 158, 11, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.ctaCoin {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #fff6d2, #ffd65c 40%, #b87708);
+  box-shadow: 0 0 0 2px rgba(122, 76, 4, 0.25);
+  animation: flip 2.4s ease-in-out infinite;
+}
+@keyframes flip {
+  50% { transform: scaleX(0.2); }
+}
+@keyframes shine {
+  60%, 100% { transform: translateX(100%); }
+}
+.ctaHint {
+  margin-top: 8px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--dim);
+  text-align: center;
+}
+
+.doneBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.doneBox b {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+}
+.doneBox p {
+  margin-bottom: 6px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.doneIcon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  background: radial-gradient(circle at 34% 28%, #a6f5cd, #22b26e 60%, #0f7a47);
+  box-shadow: 0 0 0 6px color-mix(in srgb, #22b26e 14%, transparent), 0 10px 26px rgba(34, 178, 110, 0.35);
+  animation: pop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+@keyframes pop {
+  from { transform: scale(0.3); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* ---------- table + history ---------- */
+
+.hotelCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.hotelCell b {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+}
+.hotelCell i {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--dim);
+}
+.hotelCell:hover b {
+  text-decoration: underline;
+}
+.logo {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 9px;
+  background: var(--chip);
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--dim);
+}
+.logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.payout {
+  color: #a16207;
+  font-variant-numeric: tabular-nums;
+}
+
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.history button {
+  width: 100%;
+  display: block;
+  padding: 10px 12px;
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.history button:hover {
+  background: var(--soft);
+}
+.history .historyActive {
+  border-color: color-mix(in srgb, var(--acc) 50%, transparent);
+  background: var(--acc-soft);
+}
+.historyTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.historyTop b {
+  font-size: 13px;
+  font-weight: 650;
+}
+.historyTop em {
+  font-style: normal;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #15803d;
+  font-variant-numeric: tabular-nums;
+}
+.history i {
+  display: block;
+  margin-top: 2px;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--dim);
+}

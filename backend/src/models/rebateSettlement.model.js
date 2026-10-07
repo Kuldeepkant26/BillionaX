@@ -40,6 +40,16 @@ const rebateSettlementSchema = new mongoose.Schema(
 
     // Null for the scheduled run; set when an admin triggered it by hand.
     runBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+
+    /**
+     * When the hotel's manager dismissed the "coins received" announcement.
+     *
+     * Written as an explicit null on every new row and queried with
+     * `$type: "null"`, NOT `seenAt: null`. The plain form also matches a
+     * MISSING field, so every settlement written before this existed would pop
+     * up as brand-new news the first time a manager signed in after the deploy.
+     */
+    seenAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
@@ -48,5 +58,10 @@ const rebateSettlementSchema = new mongoose.Schema(
 // the database rather than by a check-then-write race in application code.
 rebateSettlementSchema.index({ hotelId: 1, period: 1 }, { unique: true });
 rebateSettlementSchema.index({ period: -1 });
+// The hotel panel's "anything unannounced?" check on every manager sign-in.
+rebateSettlementSchema.index(
+  { hotelId: 1, createdAt: -1 },
+  { partialFilterExpression: { seenAt: { $type: "null" } } }
+);
 
 export const RebateSettlement = mongoose.model("RebateSettlement", rebateSettlementSchema);

@@ -100,8 +100,8 @@ export const useAsync = (
       else patch({ error: null });
 
       try {
-        // Only argument-less calls are shared: run(true) in RebateRunner means
-        // something different from run(false), and they must not collapse.
+        // Only argument-less calls are shared: a call with arguments asks for
+        // something different, and two of them must not collapse into one.
         const result = await (key && !args.length
           ? dedupe(key, () => fetcherRef.current())
           : fetcherRef.current(...args));

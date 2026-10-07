@@ -6,6 +6,20 @@ export const dashboard = () => api.get("/admin/dashboard").then(unwrap);
 export const monthlyRedemptions = (params) =>
   api.get("/admin/reports/monthly-redemptions", { params }).then(unwrap);
 export const listRebates = (params) => api.get("/admin/rebates", { params }).then(unwrap);
+
+/* ---- coin distribution ------------------------------------------------ */
+
+/** One month's per-hotel figures, status and history. No period = last month. */
+export const distributionOverview = (period) =>
+  api.get("/admin/distribution", { params: period ? { period } : {} }).then(unwrap);
+
+/** { period, pending } — whether last month still waits to be distributed. */
+export const distributionPending = () => api.get("/admin/distribution/pending").then(unwrap);
+
+/**
+ * Distributes a month. `expectedRatePercent` is the rate on screen when the
+ * admin confirmed; the server refuses if the setting has moved since.
+ */
 export const runRebate = (payload) => api.post("/admin/rebates/run", payload).then(unwrap);
 
 export const listHotels = (params) => api.get("/admin/hotels", { params }).then(unwrap);

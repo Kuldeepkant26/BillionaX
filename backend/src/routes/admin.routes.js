@@ -19,6 +19,7 @@ import {
   hotelFilterRules,
   monthlyReportRules,
   runRebateRules,
+  distributionRules,
   paymentSettingsRules,
   onboardingRules,
   bankVerificationRules,
@@ -44,6 +45,10 @@ router.get(
 );
 router.get("/rebates", adminController.listSettlements);
 router.post("/rebates/run", runRebateRules, validate, adminController.runRebate);
+// The coin distribution tab. "pending" is a literal sibling of the overview,
+// not an id, so it needs no ordering care.
+router.get("/distribution", distributionRules, validate, adminController.distributionOverview);
+router.get("/distribution/pending", adminController.distributionPending);
 
 router.get("/hotels", paginationRules, hotelFilterRules, validate, adminController.listHotels);
 router.post("/hotels", hotelRules, validate, adminController.createHotel);

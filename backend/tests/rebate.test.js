@@ -15,14 +15,33 @@
  */
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 let periodRange, previousPeriod, currentPeriod, computeRebate;
+let periodLabel, runBlocker, distributionState, STALE_RUN_MS;
 
 before(async () => {
-  ({ periodRange, previousPeriod, currentPeriod, computeRebate } = await import(
-    "../src/services/rebate.service.js"
-  ));
+  ({
+    periodRange,
+    previousPeriod,
+    currentPeriod,
+    computeRebate,
+    periodLabel,
+    runBlocker,
+    distributionState,
+    STALE_RUN_MS,
+  } = await import("../src/services/rebate.service.js"));
 });
+
+const here = dirname(fileURLToPath(import.meta.url));
+const read = (rel) =>
+  readFileSync(join(here, rel), "utf8")
+    // Comments explain the traps below in the same words the code uses, so a
+    // naive match against the raw file would pass on the comment alone.
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 describe("periodRange", () => {
   it("starts at midnight on the 1st", () => {
@@ -121,5 +140,129 @@ describe("computeRebate", () => {
     for (const coins of [1, 7, 99, 1000, 123_456]) {
       assert.ok(computeRebate(coins, 50) <= coins);
     }
+  });
+});
+
+describe("periodLabel", () => {
+  it("names the month in full", () => {
+    assert.equal(periodLabel("2026-09"), "September 2026");
+    assert.equal(periodLabel("2027-01"), "January 2027");
+  });
+});
+
+/**
+ * The once-per-month rule. A month distributed twice pays every hotel twice
+ * (the per-hotel index would stop that, but only after the admin has watched
+ * the button "work" a second time), so the run itself must refuse.
+ */
+describe("runBlocker", () => {
+  const now = new Date(2026, 9, 7, 12, 0, 0);
+  const base = { period: "2026-09", ratePercent: 50, now };
+
+  it("lets a fresh month through", () => {
+    assert.equal(runBlocker({ ...base, existingRun: null }), null);
+  });
+
+  it("refuses a month that is already complete", () => {
+    const blocked = runBlocker({ ...base, existingRun: { status: "COMPLETE" } });
+    assert.equal(blocked.status, 409);
+    assert.match(blocked.message, /September 2026 have already been distributed/);
+  });
+
+  it("refuses while another run holds the month", () => {
+    const startedAt = new Date(now.getTime() - 60_000);
+    const blocked = runBlocker({ ...base, existingRun: { status: "RUNNING", startedAt } });
+    assert.equal(blocked.status, 409);
+    assert.match(blocked.message, /in progress/);
+  });
+
+  it("lets a run resume once the previous claim has gone stale", () => {
+    // The process that claimed it died. Hotels it paid are protected by their
+    // own unique index, so finishing the month is safe — and necessary, or the
+    // rest of the network is never paid.
+    const startedAt = new Date(now.getTime() - STALE_RUN_MS - 1);
+    assert.equal(runBlocker({ ...base, existingRun: { status: "RUNNING", startedAt } }), null);
+  });
+
+  it("refuses a 0% rate rather than locking the month for nothing", () => {
+    const blocked = runBlocker({ ...base, existingRun: null, ratePercent: 0 });
+    assert.equal(blocked.status, 400);
+  });
+
+  it("refuses when the rate changed after the admin confirmed", () => {
+    const blocked = runBlocker({ ...base, existingRun: null, expectedRatePercent: 40 });
+    assert.equal(blocked.status, 409);
+    assert.match(blocked.message, /changed to 50%/);
+  });
+
+  it("accepts the confirmed rate however it was serialised", () => {
+    assert.equal(runBlocker({ ...base, existingRun: null, expectedRatePercent: "50" }), null);
+  });
+
+  it("checks completion before the rate — a done month says so first", () => {
+    const blocked = runBlocker({
+      ...base,
+      existingRun: { status: "COMPLETE" },
+      ratePercent: 0,
+      expectedRatePercent: 30,
+    });
+    assert.match(blocked.message, /already been distributed/);
+  });
+});
+
+describe("distributionState", () => {
+  it("is OPEN while the month is still running", () => {
+    assert.equal(distributionState({ isClosed: false, run: null, coinsRedeemed: 900 }), "OPEN");
+  });
+
+  it("is READY once closed with redemptions to pay", () => {
+    assert.equal(distributionState({ isClosed: true, run: null, coinsRedeemed: 900 }), "READY");
+  });
+
+  it("is EMPTY when closed with nothing redeemed", () => {
+    assert.equal(distributionState({ isClosed: true, run: null, coinsRedeemed: 0 }), "EMPTY");
+  });
+
+  it("is COMPLETE whatever the figures say once the run finished", () => {
+    assert.equal(
+      distributionState({ isClosed: true, run: { status: "COMPLETE" }, coinsRedeemed: 0 }),
+      "COMPLETE"
+    );
+  });
+
+  it("reports a run in flight", () => {
+    assert.equal(
+      distributionState({ isClosed: true, run: { status: "RUNNING" }, coinsRedeemed: 5 }),
+      "RUNNING"
+    );
+  });
+});
+
+/**
+ * `seenAt: null` in Mongo also matches a MISSING field. Every settlement
+ * written before the announcement existed has no seenAt at all, so the plain
+ * form would greet every manager with old payouts as if they had just landed.
+ */
+describe("unseen payouts ignore rows that predate the field", () => {
+  const service = () => read("../src/services/rebate.service.js");
+
+  it("queries seenAt by $type, never by bare null", () => {
+    const src = service();
+    // Two reads (the unseen list and markSeen), both by $type...
+    assert.equal(src.match(/seenAt:\s*\{\s*\$type:\s*"null"\s*\}/g)?.length, 2);
+    // ...and the ONE bare null is the write on create, checked below.
+    assert.equal(src.match(/seenAt:\s*null\b/g)?.length, 1);
+  });
+
+  it("writes an explicit null on every new settlement", () => {
+    const src = service();
+    const create = src.slice(src.indexOf("RebateSettlement.create("));
+    assert.match(create.slice(0, 600), /seenAt:\s*null/);
+  });
+
+  it("scopes markSeen to the caller's hotel", () => {
+    const src = service();
+    const fn = src.slice(src.indexOf("export const markSeen"));
+    assert.match(fn, /_id:\s*settlementId,\s*hotelId/);
   });
 });

@@ -9,6 +9,10 @@
 
 const BRAND = "#8d4360";
 
+/** For free text a person typed, such as a hotel's name. */
+const esc = (value) =>
+  String(value ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
 /** Codes are read and retyped by hand, so they are spaced for legibility. */
 export const otpEmailTemplate = (otp, expiresMinutes) => ({
   text:
@@ -34,6 +38,51 @@ export const otpEmailTemplate = (otp, expiresMinutes) => ({
     <p style="margin:26px 0 0;font-size:12.5px;line-height:1.6;color:#8b8189;">
       If you did not try to sign in, you can ignore this email — the code is
       useless to anyone who does not have it. Never share it with anyone.
+    </p>
+  </div>
+</div>`,
+});
+
+/**
+ * The month-end payout, sent to the hotel's own address.
+ *
+ * Every figure is passed in already formatted. This template must not compute
+ * money: the settlement row is the record, and the email only repeats it.
+ */
+export const rebateCreditedEmailTemplate = ({
+  hotelName,
+  periodLabel,
+  coinsCredited,
+  coinsRedeemed,
+  ratePercent,
+  coinInventory,
+}) => ({
+  text:
+    `${coinsCredited} coins have been added to ${hotelName}'s inventory.\n\n` +
+    `This is your month-end payout for ${periodLabel}: ${ratePercent}% of the ` +
+    `${coinsRedeemed} coins your guests redeemed with you.\n\n` +
+    `Your inventory now stands at ${coinInventory} coins.\n`,
+
+  html: `<div style="margin:0;padding:32px 16px;background:#f6f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <div style="max-width:460px;margin:0 auto;background:#ffffff;border-radius:14px;padding:36px 32px;">
+    <div style="font-size:11px;letter-spacing:2.4px;color:${BRAND};font-weight:700;">BILLIONAX</div>
+
+    <h1 style="margin:18px 0 8px;font-size:21px;line-height:1.3;color:#1a1418;font-weight:600;">
+      Your coins for ${periodLabel} have arrived
+    </h1>
+    <p style="margin:0 0 26px;font-size:14px;line-height:1.6;color:#6b6169;">
+      ${ratePercent}% of the ${coinsRedeemed} coins your guests redeemed at ${esc(hotelName)}
+      has been credited back to your inventory.
+    </p>
+
+    <div style="background:#fbf6e9;border:1px solid #f0e2bd;border-radius:10px;padding:22px;text-align:center;">
+      <div style="font-size:11px;letter-spacing:1.6px;color:#8a6a1f;font-weight:700;">COINS CREDITED</div>
+      <div style="margin-top:6px;font-size:32px;font-weight:700;color:#1a1418;">+${coinsCredited}</div>
+    </div>
+
+    <p style="margin:22px 0 0;font-size:13px;line-height:1.6;color:#6b6169;">
+      Your inventory now stands at <b style="color:#1a1418;">${coinInventory} coins</b>,
+      ready to allocate to guests from the hotel panel.
     </p>
   </div>
 </div>`,

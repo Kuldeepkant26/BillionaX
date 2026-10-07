@@ -1,0 +1,245 @@
+/*
+ * The hotel's "coins received" moment. Dark glass over a blurred panel, a 3D
+ * coin that spins in, and coin rain on a canvas behind the card.
+ */
+
+.back {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background:
+    radial-gradient(700px 500px at 50% 40%, rgba(245, 196, 67, 0.22), transparent 70%),
+    rgba(6, 6, 10, 0.78);
+  backdrop-filter: blur(8px);
+  animation: fade-in 0.35s ease both;
+  transition: opacity 0.3s ease;
+}
+.leaving {
+  opacity: 0;
+}
+.leaving .card {
+  transform: translateY(-18px) scale(0.96);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.card {
+  position: relative;
+  width: min(420px, 100%);
+  padding: 34px 28px 26px;
+  border-radius: 24px;
+  text-align: center;
+  color: #f6f1e4;
+  font-family: var(--font-ui, system-ui, sans-serif);
+  background: linear-gradient(165deg, rgba(40, 34, 22, 0.94), rgba(14, 13, 18, 0.96));
+  border: 1px solid rgba(255, 214, 92, 0.35);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 0 60px rgba(245, 196, 67, 0.15);
+  animation: card-up 0.7s cubic-bezier(0.2, 0.9, 0.2, 1.05) both;
+  transition: transform 0.3s ease;
+  overflow: hidden;
+}
+@keyframes card-up {
+  from { opacity: 0; transform: translateY(40px) scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+
+/* A slow sweep of light across the card's border. */
+.halo {
+  position: absolute;
+  inset: -40%;
+  background: conic-gradient(from 0deg, transparent 0 70%, rgba(255, 214, 92, 0.18) 85%, transparent 100%);
+  animation: spin 6s linear infinite;
+  pointer-events: none;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.previewTag {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #ffe2a0;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.coin {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  margin: 0 auto 16px;
+  perspective: 600px;
+}
+.face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 40px;
+  font-weight: 900;
+  color: #fff4cd;
+  text-shadow: 0 2px 0 rgba(110, 66, 0, 0.6);
+  background: radial-gradient(circle at 34% 28%, #fff6d2, #ffd65c 36%, #db9614 72%, #8a5606);
+  box-shadow:
+    0 0 0 5px rgba(122, 76, 4, 0.35) inset,
+    0 0 0 10px rgba(255, 214, 92, 0.12),
+    0 0 50px rgba(245, 196, 67, 0.6);
+  animation:
+    coin-in 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    coin-float 3s ease-in-out 1.4s infinite;
+}
+@keyframes coin-in {
+  from { transform: rotateY(900deg) scale(0.2); opacity: 0; }
+  to { transform: rotateY(0) scale(1); opacity: 1; }
+}
+@keyframes coin-float {
+  50% { transform: translateY(-6px) rotateY(18deg); }
+}
+
+.kicker {
+  position: relative;
+  display: block;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ffd65c;
+}
+.title {
+  position: relative;
+  margin-top: 6px;
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.amount {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  margin: 14px 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+.amount em {
+  font-style: normal;
+  font-size: 28px;
+  font-weight: 700;
+  color: #ffd65c;
+}
+.amount b {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 46px;
+  font-weight: 700;
+  line-height: 1;
+  color: transparent;
+  background: linear-gradient(180deg, #fff6d2, #ffd65c 55%, #e09e19);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 18px rgba(245, 196, 67, 0.35));
+}
+.amount small {
+  margin-left: 4px;
+  font-size: 13px;
+  color: rgba(246, 241, 228, 0.6);
+}
+
+.body {
+  position: relative;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(246, 241, 228, 0.72);
+}
+
+.inventory {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+}
+.inventory span {
+  color: rgba(246, 241, 228, 0.6);
+}
+.inventory b {
+  font-variant-numeric: tabular-nums;
+}
+
+.collect {
+  position: relative;
+  width: 100%;
+  margin-top: 18px;
+  padding: 13px 18px;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  color: #2b1c02;
+  cursor: pointer;
+  background: linear-gradient(135deg, #fff1c1, #ffd65c 45%, #e09e19);
+  box-shadow: 0 12px 34px rgba(245, 196, 67, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.collect::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: shine 2.6s ease-in-out 1.6s infinite;
+}
+.collect:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 40px rgba(245, 196, 67, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.collect:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+@keyframes shine {
+  60%, 100% { transform: translateX(100%); }
+}
+
+.position {
+  position: relative;
+  display: block;
+  margin-top: 10px;
+  font-style: normal;
+  font-size: 11px;
+  color: rgba(246, 241, 228, 0.5);
+}

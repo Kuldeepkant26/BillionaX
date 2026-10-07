@@ -3,6 +3,7 @@ import { ROUTES } from "../../constants/routePaths.js";
 import { ROLES } from "../../store/slices/authSlice.js";
 import { useHotelSupportBadge } from "../../hooks/useHotelSupportBadge.js";
 import { useHotelGuestChatsBadge } from "../../hooks/useHotelGuestChatsBadge.js";
+import RebateNotice from "../../features/panel/distribution/RebateNotice.jsx";
 
 // Hotel-admin-only nav items. MAIN_ADMIN never reaches this panel — they work
 // from the admin panel, which targets a specific hotel.
@@ -128,7 +129,14 @@ const HotelPanelLayout = () => {
   // calls is a hook that silently never runs.
   useHotelGuestChatsBadge();
 
-  return <PanelLayout brand="Hotel panel" subtitle="Billionax" nav={NAV} showHotel />;
+  return (
+    <>
+      <PanelLayout brand="Hotel panel" subtitle="Billionax" nav={NAV} showHotel />
+      {/* The month-end "coins received" announcement. Portalled to body, so
+          it sits above the panel rather than inside its scroll. */}
+      <RebateNotice />
+    </>
+  );
 };
 
 export default HotelPanelLayout;
