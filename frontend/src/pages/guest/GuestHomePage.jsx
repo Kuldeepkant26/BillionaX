@@ -10,6 +10,7 @@ import { HotelSwitcher } from "../../features/guest/HotelSwitcher.jsx";
 import { HotelShowcase } from "../../features/guest/HotelShowcase.jsx";
 import { HowItWorks } from "../../features/guest/HowItWorks.jsx";
 import { OfferArt } from "../../features/guest/OfferArt.jsx";
+import { PrivilegeCards } from "../../features/guest/PrivilegeCards.jsx";
 import { Empty, ErrorState } from "../../components/common/index.jsx";
 import { HomeSkeleton } from "../../features/guest/GuestSkeletons.jsx";
 import { endsIn, formatCoins, greeting } from "../../utils/format.js";
@@ -253,36 +254,9 @@ const GuestHomePage = () => {
       <HowItWorks rate={earnRate} cap={cap} />
 
       {/* Already filtered to this guest's tier by the API — anything they are
-          not entitled to never reaches the payload. */}
-      {contentData?.privileges?.length > 0 && (
-        <section className="mt-6">
-          <span className="kicker">Your privileges</span>
-          <div className={`gap-2 mt-2.5 ${styles.privGrid}`}>
-            {/* Not capped at 4: the grid fills two rows then scrolls
-                sideways, so a hotel with six perks shows all six. */}
-            {contentData.privileges.slice(0, 8).map((privilege) => (
-              <article
-                key={privilege._id}
-                className={`relative overflow-hidden min-h-[92px] flex items-end rounded-token-sm px-[11px] py-2.5 text-white ${styles.priv}`}
-                style={
-                  privilege.imageUrl
-                    ? { backgroundImage: `url(${privilege.imageUrl})` }
-                    : undefined
-                }
-              >
-                <span className="relative z-[1]">
-                  <b className="block text-[12.5px] font-semibold leading-[1.25]">{privilege.title}</b>
-                  {privilege.valueLabel && (
-                    <u className="block no-underline text-[10.5px] opacity-[0.88] mt-0.5">
-                      {privilege.valueLabel}
-                    </u>
-                  )}
-                </span>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
+          not entitled to never reaches the payload. Renders nothing when the
+          hotel has published no privileges. */}
+      <PrivilegeCards privileges={contentData?.privileges} />
 
       {/* Videos and offers are separate rows, because they are separate
           things: one is watchable, the other is redeemable. They used to share

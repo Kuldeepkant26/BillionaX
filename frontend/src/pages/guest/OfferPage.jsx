@@ -8,7 +8,7 @@ import { Button, ErrorState } from "../../components/common/index.jsx";
 import { OfferArt } from "../../features/guest/OfferArt.jsx";
 import { OfferSkeleton } from "../../features/guest/GuestSkeletons.jsx";
 import { ROUTES } from "../../constants/routePaths.js";
-import { endsIn, formatDate, mmss } from "../../utils/format.js";
+import { endsIn, formatDate, mmss, tierLabel } from "../../utils/format.js";
 import styles from "./OfferPage.module.css";
 
 /**
@@ -19,14 +19,6 @@ import styles from "./OfferPage.module.css";
  */
 
 const HOUR_SECONDS = 60 * 60;
-
-/** "Gold & Platinum" / "Platinum only" — reads as a sentence, not an enum. */
-const tierLabel = (tiers = []) => {
-  const names = tiers.map((t) => t.charAt(0) + t.slice(1).toLowerCase());
-  if (!names.length) return null;
-  if (names.length === 1) return `${names[0]} only`;
-  return `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
-};
 
 const OfferScreen = ({ contentId }) => {
   const navigate = useNavigate();

@@ -1,0 +1,488 @@
+/*
+ * PrivilegeCards — the client's photo-card design, set at phone scale.
+ *
+ * Each card is a ground colour with a photograph bleeding in from the right:
+ * an eyebrow and rule, a serif title, a short description and a "View
+ * details" call to action down the left, a glass category chip top right.
+ *
+ * Kept as a module rather than utilities, like HowItWorks: the card is mostly
+ * gradients, pseudo-elements, two colour tones and a container query, none of
+ * which a utility expresses. The JSX puts no Tailwind class on anything inside
+ * the card, deliberately — this file is unlayered, so it would silently beat
+ * any utility setting the same property, and a class that "does nothing" is
+ * the hardest kind of bug to see.
+ */
+
+/* ------------------------------------------------------------------ *
+ * The row
+ *
+ * One line of cards that scrolls sideways, the next card peeking in from the
+ * right edge so the guest can see there is more. The client's reference is a
+ * 2x2 grid of landscape cards; at the guest shell's 460px those would be too
+ * narrow to hold a title, so the grid becomes a row.
+ * ------------------------------------------------------------------ */
+
+.row {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  /* A sideways fling that runs past the last card must not turn into the
+     browser's back-swipe on the page underneath. */
+  overscroll-behavior-x: contain;
+  /* Cancels the page gutter so a scrolled row bleeds to the screen edge, as
+     the offer and video rows do. scroll-padding keeps the snap origin on the
+     gutter; without it the first card rests flush against the screen edge
+     while every heading above sits 18px in. */
+  margin-inline: -18px;
+  padding-inline: 18px;
+  scroll-padding-inline: 18px;
+  /* A scroll container clips its children's shadows; this is room for the
+     card shadow (it reaches ~9px below a card). The equal negative margin
+     hands it back, so the next section's top margin measures from the cards
+     themselves — 24px to "Watch", exactly as before the redesign. */
+  padding-bottom: 16px;
+  margin-bottom: -16px;
+}
+
+.row::-webkit-scrollbar {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ *
+ * The card
+ * ------------------------------------------------------------------ */
+
+.card {
+  position: relative;
+  /* The photo sits at z-index -1 inside this context — above the card's own
+     ground, beneath its text — so the copy needs no positioning of its own.
+     That matters: the CTA's tap area (.cta::after) is laid out against the
+     nearest POSITIONED ancestor, and keeping the copy unpositioned is what
+     makes that ancestor the card. */
+  isolation: isolate;
+  /* Lets the chip choose its label by the card's own width — see the
+     container query at the bottom. */
+  container-type: inline-size;
+  flex: none;
+  /* Leaves ~34px of the next card showing at every phone width. */
+  width: calc(100% - 26px);
+  min-height: 204px;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 18px;
+  overflow: hidden;
+  border: 1px solid var(--perk-line);
+  border-radius: var(--rad);
+  background: var(--perk-ground);
+  box-shadow: 0 14px 26px -18px rgba(0, 0, 0, 0.55);
+  color: var(--perk-ink);
+  font-family: var(--font-ui);
+  text-align: left;
+  scroll-snap-align: start;
+}
+
+/* A hotel with a single privilege gets the full width — there is nothing to
+   peek at. */
+.card:only-child {
+  width: 100%;
+}
+
+/*
+ * The two tones. The card is imagery, like the membership card, so it keeps
+ * its own ground in BOTH guest themes rather than inverting with them; which
+ * tone a card gets comes from its category (privilegeCategory.js).
+ *
+ * --perk-mark is the eyebrow, the rule and the call to action.
+ */
+.dark {
+  --perk-ground: #0f0d0b;
+  --perk-ink: #f7f2e8;
+  --perk-body: rgba(247, 242, 232, 0.78);
+  --perk-line: rgba(246, 231, 198, 0.14);
+  /*
+   * The accent, lifted until it reads on the near-black ground.
+   *
+   * On the light theme --acc is tuned for WHITE: Graphite's is near-black
+   * and would vanish here. Mixed 45% into a warm cream, every preset clears
+   * 4.8:1 against the ground, and so does every colour the custom wheel can
+   * derive (6.1:1 at worst). The dark theme already supplies lifted variants,
+   * so there it only needs a touch of the cream — Champagne lands on #dcbd72,
+   * the gold of the reference, and the weakest preset still clears 8:1.
+   * The custom accent is the one exception: it has no dark variant, so it
+   * keeps the stronger lift in both themes.
+   */
+  --perk-acc: color-mix(in oklab, var(--acc) 45%, #f6e7c6);
+  --perk-mark: var(--perk-acc);
+  --perk-ring: color-mix(in srgb, var(--perk-acc) 62%, transparent);
+}
+
+:global([data-theme="emerald-noir"]:not([data-accent="CUSTOM"])) .dark {
+  --perk-acc: color-mix(in oklab, var(--acc) 85%, #f6e7c6);
+}
+
+/* The reference sets its daylight cards in ink, eyebrow included — no
+   accent. */
+.light {
+  --perk-ground: #efe9e0;
+  --perk-ink: #17130e;
+  --perk-body: rgba(23, 19, 14, 0.74);
+  --perk-line: rgba(23, 19, 14, 0.08);
+  --perk-mark: #17130e;
+  --perk-ring: rgba(23, 19, 14, 0.4);
+}
+
+/* ------------------------------------------------------------------ *
+ * Photo, scrim and the no-photo art
+ * ------------------------------------------------------------------ */
+
+.media {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 70%;
+  z-index: -1;
+}
+
+.media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/*
+ * The ground bleeding in over the photo's left edge. It is fully opaque where
+ * the photo begins, so the seam never shows, and still well over half strength
+ * where a long line of copy runs onto the picture — the text column is wider
+ * than the solid ground to its left.
+ *
+ * It starts 2px LEFT of the photo. At 30% of the card the photo's edge falls
+ * on a fractional pixel, and two anti-aliased edges sharing that pixel never
+ * add up to full cover: Safari let a quarter of the photo's colour through
+ * there, a hairline seam down every card. Overhanging the edge puts the
+ * photo's partial pixel under fully opaque ground, and the overhang itself is
+ * ground colour on ground colour.
+ */
+.media::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 -2px;
+  background: linear-gradient(
+    90deg,
+    var(--perk-ground) 0%,
+    color-mix(in srgb, var(--perk-ground) 92%, transparent) 16%,
+    color-mix(in srgb, var(--perk-ground) 66%, transparent) 38%,
+    color-mix(in srgb, var(--perk-ground) 24%, transparent) 62%,
+    transparent 84%
+  );
+}
+
+/* After dark the photo is also weighted top and bottom, the way the
+   reference's bar and city shots fall off into shadow. */
+.dark .media::after {
+  background:
+    linear-gradient(
+      90deg,
+      var(--perk-ground) 0%,
+      color-mix(in srgb, var(--perk-ground) 92%, transparent) 16%,
+      color-mix(in srgb, var(--perk-ground) 66%, transparent) 38%,
+      color-mix(in srgb, var(--perk-ground) 24%, transparent) 62%,
+      transparent 84%
+    ),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.3), transparent 32%, transparent 64%, rgba(0, 0, 0, 0.36));
+}
+
+/*
+ * No photo (or a dead link): the category's own glyph, drawn large and faint
+ * on a soft glow of the mark colour, so the card reads as designed rather
+ * than as a missing image.
+ */
+.art {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 9%;
+  color: var(--perk-mark);
+  background: radial-gradient(
+    58% 72% at 72% 52%,
+    color-mix(in srgb, var(--perk-mark) 14%, transparent),
+    transparent 72%
+  );
+}
+
+.art svg {
+  width: 46%;
+  max-width: 124px;
+  height: auto;
+  opacity: 0.34;
+}
+
+/* Strokes stay a fine line at this size instead of scaling up with the
+   glyph — the art should read as engraving, not as a big icon. */
+.art svg * {
+  vector-effect: non-scaling-stroke;
+  stroke-width: 1.3px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Eyebrow and chip
+ * ------------------------------------------------------------------ */
+
+/* One row, so the chip and the eyebrow can never overlap: the eyebrow wraps
+   within whatever width the chip leaves it. */
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 28px;
+}
+
+.eyebrow {
+  min-width: 0;
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--perk-mark);
+  /* Real labels are a word or two ("Included", "Till 8pm"), but the field
+     allows 40 characters, and on a 360px phone beside a wide chip that runs
+     to three lines. The label is what the guest actually gets, so three
+     lines show it whole rather than ellipsising the end of it. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* The same dark glass on both tones, as in the reference: it sits on the
+   photograph, not on the card's ground. */
+.chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding-right: 11px;
+  border: 1px solid rgba(255, 250, 240, 0.16);
+  border-radius: 999px;
+  background: rgba(16, 14, 12, 0.58);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 14px -8px rgba(0, 0, 0, 0.6);
+  color: #fbf6ec;
+}
+
+/* The ringed glyph IS the chip's left end: the negative margins lay the ring
+   over the chip's own border. */
+.chipIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: -1px 0 -1px -1px;
+  border: 1px solid rgba(255, 250, 240, 0.36);
+  border-radius: 50%;
+}
+
+.chipIcon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.chipLabel {
+  font-size: 8.5px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* The short label waits for a narrow card — see the container query below. */
+.chipShort {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ *
+ * The copy
+ * ------------------------------------------------------------------ */
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 62%;
+  min-width: 0;
+}
+
+.rule {
+  display: block;
+  width: 26px;
+  height: 1px;
+  margin-top: 9px;
+  background: var(--perk-mark);
+}
+
+/*
+ * An h3, so it carries no letter-spacing of its own: fonts.css sets tracking
+ * on `[data-font="LUXE"] h3`, which outranks a single class, and the house
+ * tracking for that face is the right one here anyway.
+ */
+.title {
+  margin: 12px 0 0;
+  font-family: var(--font-display);
+  font-size: 23px;
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--perk-ink);
+  text-wrap: balance;
+  /* break-word, not anywhere: a long word ("Complimentary") may run a few
+     pixels past the text column onto the scrim rather than split mid-word.
+     The cap stops that at the card's own width (cqw is the card — it is the
+     size container), past which break-word does split it. */
+  overflow-wrap: break-word;
+  max-width: 100cqw;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+/*
+ * Small lowercase in a narrow column — exactly where the font presets
+ * disagree (x-heights run 0.46 for Jost to 0.55 for Inter). font-size-adjust
+ * sets every face to the default face's x-height, so three lines hold the
+ * same text under any preset. The full description is one tap away in the
+ * details sheet.
+ */
+.desc {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  font-size-adjust: 0.52;
+  line-height: 1.5;
+  color: var(--perk-body);
+  /* anywhere rather than break-word, so a pasted URL counts as breakable when
+     the box is sized and cannot stretch the paragraph across the photo. */
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------------ *
+ * Call to action
+ * ------------------------------------------------------------------ */
+
+.cta {
+  /* Pinned to the card's foot however much copy sits above it, so the CTAs
+     line up along the row. The padding is the minimum gap above. */
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0 0;
+  border: 0;
+  background: none;
+  color: var(--perk-mark);
+  font: inherit;
+  cursor: pointer;
+}
+
+/*
+ * The whole card is the tap target. This layer covers it edge to edge and
+ * belongs to the button, so a tap anywhere on the photo or the copy is a
+ * press of a real, labelled <button> — no click handler on the article, no
+ * button wrapped around a heading.
+ */
+.cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+/* The focus ring traces the card, which is what the button stands for. It is
+   drawn inside the edge: the card clips anything outside it. */
+.cta:focus-visible {
+  outline: none;
+}
+
+.cta:focus-visible::after {
+  border-radius: calc(var(--rad) - 1px);
+  outline: 2px solid var(--perk-mark);
+  outline-offset: -4px;
+}
+
+/* One line, always. On a 320px phone the button is wider than the text
+   column, and it is allowed to run past it — the card still holds it — rather
+   than stacking "VIEW" over "DETAILS". */
+.ctaLabel {
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ctaRing {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--perk-ring);
+  border-radius: 50%;
+  color: var(--perk-ink);
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.ctaRing svg {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.2s ease;
+}
+
+/* ------------------------------------------------------------------ *
+ * Narrow cards
+ *
+ * Measured against the card's own content box, not the viewport, so it holds
+ * wherever the card is placed. Under 270px — a 360px phone — "Food &
+ * beverage" leaves the eyebrow ~108px, and a value label like "Complimentary"
+ * then breaks mid-word. The short chip label hands that width back. A 375px
+ * phone and up keeps the reference's full labels.
+ * ------------------------------------------------------------------ */
+
+@container (max-width: 269px) {
+  .chipFull {
+    display: none;
+  }
+
+  .chipShort {
+    display: inline;
+  }
+}
+
+/* Hover only where hovering is real — on a phone a tap would leave the ring
+   stuck filled. */
+@media (hover: hover) {
+  .card:hover .ctaRing {
+    background: var(--perk-mark);
+    border-color: var(--perk-mark);
+    color: var(--perk-ground);
+  }
+
+  .card:hover .ctaRing svg {
+    transform: translateX(2px);
+  }
+}

@@ -13,66 +13,6 @@
   background: var(--hero);
 }
 
-/*
- * Two columns that fill DOWN, then scroll sideways.
- *
- * grid-auto-flow: column means items fill row 1 then row 2 of a column before
- * starting the next column, so 1-4 look like a plain 2x2 block and the 5th
- * starts a third column off the right edge instead of pushing the page taller.
- * The row cap is what stops it growing into a third row.
- */
-.privGrid {
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: repeat(2, auto);
-  grid-auto-columns: calc(50% - 4px);
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-  scrollbar-width: none;
-  /* Cancels the page gutter so a scrolled row bleeds to the screen edge
-     rather than stopping short at an arbitrary margin. */
-  margin-inline: -18px;
-  padding-inline: 18px;
-  /* Without this the browser can rest the scroll position past the leading
-     padding, which parks the first card flush against the screen edge while
-     every section above it sits on the 18px gutter. scroll-padding keeps the
-     snap origin at the gutter, so the row starts aligned and returns there. */
-  scroll-padding-inline: 18px;
-}
-.privGrid::-webkit-scrollbar {
-  display: none;
-}
-.privGrid > * {
-  scroll-snap-align: start;
-}
-
-/*
- * A photo tile, not a text box. The text sits on white over a gradient scrim
- * in BOTH themes — like the membership card, this is imagery rather than a
- * theme surface, so it does not invert.
- *
- * No border: the tile is imagery, and a themed hairline around it drew a pale
- * line along the bottom edge in dark mode where the scrim could not reach.
- * An absolutely-positioned ::after is laid out against the PADDING box, so a
- * border ring always sits outside it however the inset is written. The photo
- * edge is its own boundary and needs no hairline.
- */
-.priv {
-  /* --hero is the fallback ground when a privilege has no image of its own. */
-  background: var(--hero);
-  background-size: cover;
-  background-position: center;
-}
-
-/* Bottom-weighted scrim: dark enough under the text to hold contrast on a
-   bright photo, clear at the top so the image still reads. */
-.priv::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.74), rgba(0, 0, 0, 0.14) 62%, transparent);
-}
-
 .offerRow {
   /* Explicit: this row must NEVER become two rows. However many cards a hotel
      publishes, they stay on one line and run off the right edge. */
@@ -82,9 +22,10 @@
   /* Bleeds to the screen edge, so a scrolled row does not stop at the gutter. */
   margin-inline: -18px;
   padding-inline: 18px;
-  /* See .privGrid: without this the row rests at scrollLeft = 18, hiding the
-     leading padding and butting the first video card against the screen edge
-     while the heading above it stays on the gutter. */
+  /* Without this the row rests at scrollLeft = 18, hiding the leading padding
+     and butting the first video card against the screen edge while the
+     heading above it stays on the gutter. scroll-padding keeps the snap
+     origin on the gutter, so the row starts aligned and returns there. */
   scroll-padding-inline: 18px;
 }
 .offerRow::-webkit-scrollbar {

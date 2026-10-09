@@ -150,6 +150,18 @@ export const mmss = (seconds) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
 
+/**
+ * "Gold & Platinum" / "Platinum only" — reads as a sentence, not an enum.
+ * Null for an untargeted row (no tiers), so callers decide what "everyone"
+ * should say on their own screen.
+ */
+export const tierLabel = (tiers) => {
+  const names = (tiers || []).map((t) => t.charAt(0) + t.slice(1).toLowerCase());
+  if (!names.length) return null;
+  if (names.length === 1) return `${names[0]} only`;
+  return `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
+};
+
 /** Defaults matching the Hotel model, so a preview works before settings load. */
 export const DEFAULT_NIGHT_THRESHOLDS = { GOLD: 30, PLATINUM: 75 };
 export const DEFAULT_TIER_EARN_RATES = { SILVER: 15, GOLD: 20, PLATINUM: 30 };
