@@ -312,12 +312,18 @@ export const resendInvoice = async (invoiceId, { hotelId } = {}) => {
  * `hotelId` is passed by the HOTEL panel and omitted by the admin, and it is
  * applied as part of the QUERY rather than checked afterwards — a hotel admin
  * must not be able to learn that an invoice exists by its 404 differing.
+ *
+ * `kinds` narrows it further, to the invoice kinds the caller's role may see,
+ * and is part of the query for exactly the same reason: front-desk staff
+ * asking for a coin-purchase invoice get the same "not found" as for an id
+ * that was never issued. Omitted, every kind is visible.
  */
-export const findInvoice = async (invoiceId, { hotelId } = {}) => {
+export const findInvoice = async (invoiceId, { hotelId, kinds } = {}) => {
   if (!mongoose.isValidObjectId(invoiceId)) throw new ApiError(404, "Invoice not found");
 
   const query = { _id: invoiceId };
   if (hotelId) query.hotelId = new mongoose.Types.ObjectId(String(hotelId));
+  if (kinds) query.kind = { $in: kinds };
 
   const invoice = await Invoice.findOne(query).lean();
   if (!invoice) throw new ApiError(404, "Invoice not found");
@@ -325,8 +331,8 @@ export const findInvoice = async (invoiceId, { hotelId } = {}) => {
 };
 
 /** One invoice, rendered. What the preview popup and the print view show. */
-export const getInvoiceHtml = async (invoiceId, { hotelId } = {}) => {
-  const invoice = await findInvoice(invoiceId, { hotelId });
+export const getInvoiceHtml = async (invoiceId, { hotelId, kinds } = {}) => {
+  const invoice = await findInvoice(invoiceId, { hotelId, kinds });
   return { invoice, html: await renderInvoiceHtml(invoice) };
 };
 
@@ -335,11 +341,17 @@ export const getInvoiceHtml = async (invoiceId, { hotelId } = {}) => {
  *
  * Mirrors listTransactions' filter shape so the Transactions tab can drive
  * both from one set of controls.
+ *
+ * `kinds` is the caller's ALLOWED kinds (see findInvoice) and `kind` is the
+ * one they asked to filter by. The two intersect: asking for a kind outside
+ * the allowed set matches nothing, rather than quietly answering with a
+ * different kind's invoices.
  */
 export const listInvoices = async ({
   hotelId,
   guestId,
   kind,
+  kinds,
   from,
   to,
   q,
@@ -349,7 +361,8 @@ export const listInvoices = async ({
   const filter = {};
   if (hotelId) filter.hotelId = new mongoose.Types.ObjectId(String(hotelId));
   if (guestId) filter.guestId = new mongoose.Types.ObjectId(String(guestId));
-  if (kind) filter.kind = kind;
+  if (kinds) filter.kind = { $in: kind ? kinds.filter((k) => k === kind) : kinds };
+  else if (kind) filter.kind = kind;
 
   // Invoice numbers are what people quote when they ask about a charge, so the
   // search is anchored on them rather than being a broad text scan.
@@ -397,7 +410,7 @@ export const invoiceIdsForBills = async (billIds = []) => {
   }, {});
 };
 
-/** The same, for coin purchases on the hotel's Coins page. */
+/** The same, for coin purchases — the purchase rows in the Transactions tables. */
 export const invoiceIdsForPurchases = async (purchaseIds = []) => {
   const ids = purchaseIds.filter((id) => id && mongoose.isValidObjectId(id));
   if (!ids.length) return {};

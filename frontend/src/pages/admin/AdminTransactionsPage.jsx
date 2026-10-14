@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { listTransactions, listHotels, getInvoice } from "../../api/admin.api.js";
 import { useAsync } from "../../hooks/useAsync.js";
 import { usePaginatedList } from "../../hooks/usePaginatedList.js";
@@ -14,10 +14,22 @@ import {
 } from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
 import { InvoiceButton, InvoiceModal } from "../../features/panel/InvoiceModal.jsx";
+import { mergeFeeds, purchaseRows } from "../../features/panel/transactionFeed.js";
 import { formatCoins, formatCurrency, formatDateTime } from "../../utils/format.js";
 
 const TYPES = ["", "EARN", "REDEEM", "WELCOME", "ADJUSTMENT"];
 const TONE = { EARN: "ok", WELCOME: "ok", REDEEM: "acc" };
+
+/**
+ * Hotels buying coin inventory from the platform, shown alongside the ledger.
+ *
+ * A purchase is a coin movement the ledger cannot hold — its rows are guest
+ * balances, and this has no guest. The server sends the purchases that fall
+ * within the page in hand, honouring the hotel and date filters (which mean
+ * the same thing for a purchase) and sending none under a type filter (which
+ * does not), each with the invoice the platform issued for it.
+ */
+const PURCHASE_LABEL = "PURCHASE";
 
 const AdminTransactionsPage = () => {
   const list = usePaginatedList(listTransactions, {
@@ -29,6 +41,13 @@ const AdminTransactionsPage = () => {
   // actual investigation tool.
   const { data: hotelData } = useAsync(() => listHotels({ limit: 100 }), []);
   const hotels = hotelData?.items || [];
+
+  // The ledger plus the purchases riding along, newest first. Purchases are
+  // wrapped in `__purchase` so renderRow can tell the two shapes apart.
+  const rows = useMemo(
+    () => mergeFeeds(list.items, purchaseRows(list.data?.purchases)),
+    [list.items, list.data]
+  );
 
   const [invoiceId, setInvoiceId] = useState(null);
 
@@ -103,41 +122,80 @@ const AdminTransactionsPage = () => {
                 { label: "Fee", num: true },
                 { label: "Invoice" },
               ]}
-              rows={list.items}
+              rows={rows}
               empty={{
                 title: list.activeFilterCount ? "No matching transactions" : "No transactions yet",
                 hint: list.activeFilterCount ? "Try clearing the filters." : undefined,
               }}
-              renderRow={(t) => (
-                <tr key={t._id}>
-                  <td>
-                    <b>{t.hotelId?.name || "—"}</b>
-                  </td>
-                  <td>{t.guestId?.name || "Guest"}</td>
-                  <td>
-                    <Badge tone={TONE[t.type]}>{t.type}</Badge>
-                  </td>
-                  <td>{formatDateTime(t.createdAt)}</td>
-                  <td className="num">{t.billAmount ? formatCurrency(t.billAmount) : "—"}</td>
-                  <td className="num">
-                    {t.coins > 0 ? "+" : "−"}
-                    {formatCoins(Math.abs(t.coins))}
-                  </td>
-                  <td className="num">
-                    <b>{t.platformFee != null ? formatCurrency(t.platformFee) : "—"}</b>
-                  </td>
-                  <td>
-                    {invoiceFor(t) ? (
-                      <InvoiceButton
-                        onClick={() => setInvoiceId(invoiceFor(t).id)}
-                        title={`View invoice ${invoiceFor(t).number}`}
-                      />
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
-              )}
+              renderRow={(row) => {
+                if (row.__purchase) {
+                  const purchase = row.__purchase;
+                  return (
+                    <tr key={row._id}>
+                      <td>
+                        <b>{purchase.hotelName || "—"}</b>
+                      </td>
+                      {/* The hotel is the buyer; there is no guest. */}
+                      <td>—</td>
+                      <td>
+                        <Badge>{PURCHASE_LABEL}</Badge>
+                      </td>
+                      <td>{formatDateTime(purchase.at)}</td>
+                      {/* What the hotel was billed — the figure on the
+                          invoice. Rupees, like the ledger's own amounts. */}
+                      <td className="num">{formatCurrency(purchase.amountPaid)}</td>
+                      <td className="num">+{formatCoins(purchase.coins)}</td>
+                      {/* The fee is the platform's cut of a guest's bill. A
+                          sale of inventory carries none. */}
+                      <td className="num">—</td>
+                      <td>
+                        {/* Issuing is best-effort after the sale, so a
+                            purchase can genuinely have no invoice. */}
+                        {purchase.invoice ? (
+                          <InvoiceButton
+                            onClick={() => setInvoiceId(purchase.invoice.id)}
+                            title={`View invoice ${purchase.invoice.number}`}
+                          />
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  );
+                }
+
+                const t = row;
+                return (
+                  <tr key={t._id}>
+                    <td>
+                      <b>{t.hotelId?.name || "—"}</b>
+                    </td>
+                    <td>{t.guestId?.name || "Guest"}</td>
+                    <td>
+                      <Badge tone={TONE[t.type]}>{t.type}</Badge>
+                    </td>
+                    <td>{formatDateTime(t.createdAt)}</td>
+                    <td className="num">{t.billAmount ? formatCurrency(t.billAmount) : "—"}</td>
+                    <td className="num">
+                      {t.coins > 0 ? "+" : "−"}
+                      {formatCoins(Math.abs(t.coins))}
+                    </td>
+                    <td className="num">
+                      <b>{t.platformFee != null ? formatCurrency(t.platformFee) : "—"}</b>
+                    </td>
+                    <td>
+                      {invoiceFor(t) ? (
+                        <InvoiceButton
+                          onClick={() => setInvoiceId(invoiceFor(t).id)}
+                          title={`View invoice ${invoiceFor(t).number}`}
+                        />
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                );
+              }}
             />
             <Pagination
               page={list.page}

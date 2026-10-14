@@ -327,6 +327,18 @@ export const listTransactions = async ({
   to,
   page = 1,
   limit = 25,
+  /**
+   * Also report `nextAt`: when the first row of the NEXT page was written
+   * (null on the last page).
+   *
+   * The panels lay coin purchases over this list — see
+   * coinService.purchasesForLedgerPage — and a purchase belongs on the page
+   * whose rows surround it in time. Where this page ends is only knowable
+   * from the row after it, so that one row is read in the same query rather
+   * than by a second one. Off by default: every other caller gets exactly the
+   * shape it always has.
+   */
+  peekNext = false,
 }) => {
   const filter = {};
   if (hotelId) filter.hotelId = oid(hotelId);
@@ -349,18 +361,27 @@ export const listTransactions = async ({
 
   const skip = (page - 1) * limit;
 
-  const [items, total] = await Promise.all([
+  const [rows, total] = await Promise.all([
     CoinTransaction.find(filter)
       .populate("guestId", "name phone")
       .populate("hotelId", "name slug")
       .populate("performedBy", "name")
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit),
+      .limit(peekNext ? limit + 1 : limit),
     CoinTransaction.countDocuments(filter),
   ]);
 
-  return { items, total, page, limit };
+  if (!peekNext) return { items: rows, total, page, limit };
+
+  // The extra row is the next page's, never this one's.
+  return {
+    items: rows.slice(0, limit),
+    total,
+    page,
+    limit,
+    nextAt: rows[limit]?.createdAt ?? null,
+  };
 };
 
 export const listMembers = async ({

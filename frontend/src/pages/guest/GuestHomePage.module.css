@@ -63,29 +63,39 @@
   margin-left: 13px;
 }
 
-/* ---- quick actions ----------------------------------------------------
+/* ---- quick actions and lifetime figures -------------------------------
  *
- * Icon-led rather than a row of text buttons, the way a payments app opens:
- * four fixed targets a thumb learns the position of, so Pay is muscle memory
- * rather than something to read for.
+ * One row of four tiles: two actions, then two figures. Icon-led rather than
+ * a row of text buttons, the way a payments app opens — fixed targets a thumb
+ * learns the position of, so Pay is muscle memory rather than something to
+ * read for.
  */
 
 .actions {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* minmax(0, …), not a bare 1fr: 1fr is minmax(auto, 1fr), and `auto` lets a
+     long figure widen its own column at the other three's expense. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-top: 14px;
 }
 
-.action {
+/* The box is declared once for both kinds of tile, so they cannot drift a
+   pixel apart: the row only reads as a row while all four match. */
+.action,
+.stat {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 7px;
+  min-width: 0;
   padding: 13px 4px 11px;
   border: 1px solid var(--line);
   border-radius: var(--rad-sm);
   background: var(--card);
+}
+
+.action {
   color: inherit;
   font: inherit;
   cursor: pointer;
@@ -132,6 +142,38 @@
 .action:hover .actionPay {
   background: var(--acc);
   color: var(--acc-fg);
+}
+
+/*
+ * A figure tile. Same box as an action; what differs is everything that says
+ * "press me" — no pointer, no hover, no press — because nothing happens.
+ *
+ * The number takes the icon's 42px so the labels of all four tiles sit on one
+ * line. Its size follows the screen: at 17px "99,999" fits a 390px phone's
+ * tile with room to spare, but not a 320px one's, and Inter (the Modern
+ * preset) sets digits a tenth wider than the default face.
+ */
+.statValue {
+  display: grid;
+  place-items: center;
+  max-width: 100%;
+  height: 42px;
+  font-family: var(--font-display);
+  font-size: clamp(14px, 4.3vw, 17px);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.2px;
+  font-variant-numeric: lining-nums;
+  white-space: nowrap;
+}
+
+/* The action captions' size, a step lighter and dimmed: a caption for a
+   figure, not a name for a button. */
+.statLabel {
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: -0.1px;
+  color: var(--dim);
 }
 
 /* Count of bills waiting. Sits on the icon so it reads as "there is something

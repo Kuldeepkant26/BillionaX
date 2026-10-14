@@ -19,28 +19,24 @@ export const HomeSkeleton = () => (
     </div>
 
     <Skeleton h={46} radius={999} style={{ marginTop: 14 }} />
-    <Skeleton h={186} radius="var(--rad)" style={{ marginTop: 14 }} />
+    {/* The "Your Gold card" label, then the card it names. */}
+    <Skeleton w={104} h={10} style={{ marginTop: 16 }} />
+    <Skeleton h={186} radius="var(--rad)" style={{ marginTop: 10 }} />
 
-    <div className="grid grid-cols-2 gap-[9px] mt-3.5">
-      <Skeleton h={40} radius={999} />
-      <Skeleton h={40} radius={999} />
-    </div>
-
-    <div className="grid grid-cols-3 gap-2 mt-3.5">
-      <Skeleton h={58} />
-      <Skeleton h={58} />
-      <Skeleton h={58} />
+    {/* One row of four: Pay, History, Earned, Redeemed. 93px is the tiles'
+        own height — 42px of icon or figure, a caption, and their padding. */}
+    <div className="grid grid-cols-4 gap-2 mt-3.5">
+      <Skeleton h={93} />
+      <Skeleton h={93} />
+      <Skeleton h={93} />
+      <Skeleton h={93} />
     </div>
 
     <Skeleton h={192} radius="var(--rad)" style={{ marginTop: 16 }} />
 
+    {/* Privileges: a label and one wide card, as the row opens on. */}
     <Skeleton w={110} h={10} style={{ marginTop: 24 }} />
-    <div className="grid grid-cols-2 gap-2 mt-2.5">
-      <Skeleton h={92} />
-      <Skeleton h={92} />
-      <Skeleton h={92} />
-      <Skeleton h={92} />
-    </div>
+    <Skeleton h={204} radius="var(--rad)" style={{ marginTop: 10 }} />
 
     <Skeleton w={130} h={10} style={{ marginTop: 24 }} />
     <div className="flex flex-nowrap gap-2.5 mt-2.5 overflow-hidden">

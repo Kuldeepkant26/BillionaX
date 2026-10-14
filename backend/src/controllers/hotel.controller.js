@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
-import { ROLES, CONTENT_KINDS, SUPPORT_PARTIES } from "../config/constants.js";
+import { ROLES, CONTENT_KINDS, SUPPORT_PARTIES, INVOICE_KINDS } from "../config/constants.js";
 import * as coinService from "../services/coin.service.js";
 import * as contentService from "../services/content.service.js";
 import * as reportService from "../services/report.service.js";
@@ -20,6 +20,25 @@ const hotelIdFor = (req) => {
   if (!req.hotelId) throw new ApiError(400, "A hotelId is required");
   return req.hotelId;
 };
+
+/**
+ * Whether this caller may see what the hotel pays the platform.
+ *
+ * The Coins routes are `adminOnly` in hotel.routes.js: front-desk staff send
+ * bills and look up guests, and the property's purchase history is not theirs
+ * to read. /transactions and /invoices are open to staff for the guest side of
+ * things, so everything coin-purchase that rides on those two routes has to
+ * re-ask the question the route guard no longer asks for it.
+ *
+ * An allow-list, so a role added later is refused until someone decides
+ * otherwise.
+ */
+const seesHotelFinances = (req) =>
+  [ROLES.HOTEL_ADMIN, ROLES.MAIN_ADMIN].includes(req.user?.role);
+
+/** The invoice kinds this caller may open. `undefined` is every kind. */
+const invoiceKindsFor = (req) =>
+  seesHotelFinances(req) ? undefined : [INVOICE_KINDS.GUEST_BILL];
 
 export const dashboard = asyncHandler(async (req, res) => {
   const data = await reportService.hotelDashboard(hotelIdFor(req));
@@ -110,7 +129,27 @@ export const listTransactions = asyncHandler(async (req, res) => {
   // or paged view must not gain rows the filter excludes.
   const wantsBills = !type && !outlet && !minCoins && !from && !to && Number(page) === 1;
 
-  const [data, bills] = await Promise.all([
+  /**
+   * Coin purchases ride along as well — what this hotel bought from the
+   * platform, each with its invoice.
+   *
+   * Not behind the same switch as bills, on two counts:
+   *
+   *  - Type, outlet and coin-size filters describe a LEDGER row and nothing
+   *    else, so a view filtered by them must not gain purchases. The date
+   *    range is different: a purchase has a date, and "October" should include
+   *    October's purchases.
+   *  - They are placed page by page rather than only on the first one. A hotel
+   *    buys inventory every few weeks while a page of ledger rows spans hours,
+   *    so first-page-only would park every purchase the hotel ever made at the
+   *    foot of page 1, under rows it is weeks older than. See
+   *    coinService.purchaseRangeForPage.
+   *
+   * Managers only — see seesHotelFinances.
+   */
+  const wantsPurchases = !type && !outlet && !minCoins && seesHotelFinances(req);
+
+  const [{ nextAt, ...data }, bills] = await Promise.all([
     reportService.listTransactions({
       hotelId: hotelIdFor(req),
       type,
@@ -120,6 +159,7 @@ export const listTransactions = asyncHandler(async (req, res) => {
       to,
       page: Number(page),
       limit: Number(limit),
+      peekNext: wantsPurchases,
     }),
     wantsBills
       ? billService.listBillHistory({ hotelId: hotelIdFor(req), limit: Number(limit) })
@@ -144,9 +184,27 @@ export const listTransactions = asyncHandler(async (req, res) => {
       .map((t) => (t.idempotencyKey || "").startsWith("bill:") && t.idempotencyKey.slice(5))
       .filter(Boolean),
   ];
-  const invoices = await invoiceService.invoiceIdsForBills(billIds);
 
-  res.status(200).json(new ApiResponse(200, { ...data, bills: bills.items, invoices }));
+  // The purchases need the ledger page first — its rows are what bound their
+  // window — but nothing here waits on the bill invoices, so the two go out
+  // together.
+  const [invoices, purchases] = await Promise.all([
+    invoiceService.invoiceIdsForBills(billIds),
+    wantsPurchases
+      ? coinService.purchasesForLedgerPage({
+          hotelId: hotelIdFor(req),
+          page: Number(page),
+          items: data.items,
+          nextAt,
+          from,
+          to,
+        })
+      : [],
+  ]);
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, { ...data, bills: bills.items, purchases, invoices }));
 });
 
 /* -------------------------------------------------------------- invoices -- */
@@ -158,10 +216,17 @@ export const listTransactions = asyncHandler(async (req, res) => {
  * another property's invoice reads as "not found" rather than "forbidden" —
  * the same tenancy rule the bill-cancel path follows, and for the same reason:
  * a differing 403 would confirm the document exists.
+ *
+ * The kind is scoped the same way and for the same reason. These two routes
+ * are open to front-desk staff so the desk can hand a guest a copy of their
+ * bill; a coin-purchase invoice is the hotel's own paperwork with the
+ * platform, and staff asking for one get "not found" like any other id that
+ * is not theirs to see.
  */
 export const getInvoice = asyncHandler(async (req, res) => {
   const data = await invoiceService.getInvoiceHtml(req.params.invoiceId, {
     hotelId: hotelIdFor(req),
+    kinds: invoiceKindsFor(req),
   });
   res.status(200).json(new ApiResponse(200, data));
 });
@@ -171,6 +236,7 @@ export const listInvoices = asyncHandler(async (req, res) => {
   const data = await invoiceService.listInvoices({
     hotelId: hotelIdFor(req),
     kind,
+    kinds: invoiceKindsFor(req),
     from,
     to,
     q,

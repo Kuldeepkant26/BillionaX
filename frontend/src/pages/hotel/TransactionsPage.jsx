@@ -13,6 +13,7 @@ import {
 } from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
 import { InvoiceButton, InvoiceModal } from "../../features/panel/InvoiceModal.jsx";
+import { mergeFeeds, purchaseRows } from "../../features/panel/transactionFeed.js";
 import { formatCoins, formatCurrency, formatDateTime, formatPaise } from "../../utils/format.js";
 
 const TYPES = ["", "EARN", "REDEEM", "WELCOME", "ADJUSTMENT"];
@@ -40,6 +41,18 @@ const TONE = { EARN: "ok", WELCOME: "ok", REDEEM: "acc", ADJUSTMENT: undefined }
 const BILL_TONE = { PAID: "ok", CANCELLED: undefined, EXPIRED: undefined };
 const BILL_LABEL = { PAID: "BILL PAID", CANCELLED: "CANCELLED", EXPIRED: "EXPIRED" };
 
+/**
+ * Coin purchases shown alongside the ledger too.
+ *
+ * The hotel buying inventory from the platform is a coin movement, but not one
+ * the ledger can hold — its rows are guest balances. The server sends the
+ * purchases that fall within the page in hand (any page, not only the first,
+ * and under a date filter but not a type or outlet one), each with the invoice
+ * issued for it. Managers only: staff are sent none, so for them this table is
+ * exactly what it was.
+ */
+const PURCHASE_LABEL = "PURCHASE";
+
 const TransactionsPage = () => {
   const list = usePaginatedList(listTransactions, {
     limit: 25,
@@ -47,22 +60,20 @@ const TransactionsPage = () => {
   });
 
   /**
-   * The ledger plus the bills it cannot represent, newest first.
+   * The ledger plus the bills and coin purchases it cannot represent, newest
+   * first.
    *
    * A coin-paid bill is already a REDEEM row, so `hasLedgerRow` drops it here
-   * rather than letting it appear twice. Bills are wrapped in `__bill` so one
-   * renderRow can tell the two shapes apart — they share no field layout.
+   * rather than letting it appear twice. Bills are wrapped in `__bill` and
+   * purchases in `__purchase` so one renderRow can tell the three shapes apart
+   * — they share no field layout.
    */
   const rows = useMemo(() => {
     const bills = (list.data?.bills || [])
       .filter((b) => !b.hasLedgerRow)
       .map((b) => ({ _id: `bill:${b.id}`, createdAt: b.at, __bill: b }));
 
-    if (!bills.length) return list.items;
-
-    return [...list.items, ...bills].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-    );
+    return mergeFeeds(list.items, bills, purchaseRows(list.data?.purchases));
   }, [list.items, list.data]);
 
   const [invoiceId, setInvoiceId] = useState(null);
@@ -156,6 +167,42 @@ const TransactionsPage = () => {
                   : "Redemptions will appear here.",
               }}
               renderRow={(row) => {
+                if (row.__purchase) {
+                  const purchase = row.__purchase;
+                  return (
+                    <tr key={row._id}>
+                      {/* No guest on this row: the other party is the
+                          platform, and the row says what it is instead. */}
+                      <td>
+                        <b>Coin purchase</b>
+                      </td>
+                      <td>
+                        <Badge>{PURCHASE_LABEL}</Badge>
+                      </td>
+                      <td>{formatDateTime(purchase.at)}</td>
+                      <td>—</td>
+                      {/* What the hotel was billed — the figure on the
+                          invoice. Rupees, like the ledger's own amounts. */}
+                      <td className="num">{formatCurrency(purchase.amountPaid)}</td>
+                      <td className="num">+{formatCoins(purchase.coins)}</td>
+                      {/* "Collected" is cash taken from a guest. Nothing was. */}
+                      <td className="num">—</td>
+                      <td>
+                        {/* Issuing is best-effort after the sale, so a
+                            purchase can genuinely have no invoice. */}
+                        {purchase.invoice ? (
+                          <InvoiceButton
+                            onClick={() => setInvoiceId(purchase.invoice.id)}
+                            title={`View invoice ${purchase.invoice.number}`}
+                          />
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  );
+                }
+
                 if (row.__bill) {
                   const bill = row.__bill;
                   return (

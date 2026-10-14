@@ -10,7 +10,7 @@ import { getSettings } from "./settings.service.js";
 import { joinHotel, refreshTier } from "./membership.service.js";
 import { normalizePhone } from "./otp.service.js";
 import { pushLedgerEvent } from "./notification.service.js";
-import { issueInvoiceForPurchase } from "./invoice.service.js";
+import { issueInvoiceForPurchase, invoiceIdsForPurchases } from "./invoice.service.js";
 import { emitToGuest, emitToHotel } from "../realtime/emitter.js";
 import { logger } from "../utils/logger.js";
 
@@ -595,4 +595,127 @@ export const listPurchases = async ({ hotelId, status, from, to, page = 1, limit
   ]);
 
   return { purchases, total, page, limit };
+};
+
+/* ------------------------------------------------------------------ *
+ * Coin purchases in a transactions view
+ *
+ * WHY THIS IS A SECOND FEED AND NOT LEDGER ROWS. CoinTransaction is the
+ * GUEST coin ledger: every row has a guestId and a balanceAfter, and
+ * `sum(coins) === membership.balance` is the check the model documents. A
+ * hotel buying inventory from the platform has no guest and moves no
+ * membership balance, so it cannot be written there — the same reason a
+ * cancelled bill cannot (see billService.listBillHistory). The purchases
+ * collection already holds these facts; this reads them, and the panels lay
+ * them over the ledger for display.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Most purchases one page of a transactions view will carry.
+ *
+ * A window normally holds none or one: hotels buy inventory every few weeks
+ * and a page of ledger rows spans hours. The cap only bites in the degenerate
+ * case of many purchases and almost no ledger rows, and there the Coins page
+ * and the Invoices tab remain the complete, properly paged lists.
+ */
+const PURCHASE_FEED_CAP = 100;
+
+/**
+ * The slice of time whose coin purchases belong on one page of ledger rows,
+ * as a Mongo range over createdAt. `null` means the page carries none.
+ *
+ * The ledger is paged; purchases are laid over it. Each purchase has to land
+ * on exactly ONE page — the one whose rows surround it in time — or it either
+ * repeats on every page or sits at the foot of page 1 below rows it is weeks
+ * older than. So each page owns the half-open stretch of time from its own
+ * first row down to the next page's first row:
+ *
+ *   - Newer than this page's first row belongs to an EARLIER page. Page 1 has
+ *     no earlier page, so it also takes everything newer than the ledger — a
+ *     purchase made a minute ago, with no guest activity since, is on top.
+ *   - Older than the next page's first row (`nextAt`) belongs to a LATER
+ *     page. The last page has no later page, so it takes everything older.
+ *
+ * `$gt` below and `$lte` above: a purchase stamped exactly on a boundary row
+ * falls on the later page only, never both.
+ *
+ * `from`/`to` are the view's date filter, applied with the SAME expressions
+ * reportService.listTransactions uses — the two feeds must cut at the same
+ * instants or a filtered page shows purchases from days its ledger rows are
+ * not from. They only ever bind on the open ends: inside the list the ledger
+ * rows are already within the filter, and so are the boundaries taken from
+ * them.
+ */
+export const purchaseRangeForPage = ({ page = 1, items = [], nextAt = null, from, to } = {}) => {
+  // A page past the end of the ledger has no rows to anchor a window to, and
+  // page 1 has already taken everything newer.
+  if (page > 1 && !items.length) return null;
+
+  const range = {};
+
+  if (page > 1) range.$lte = items[0].createdAt;
+  else if (to) range.$lte = new Date(to);
+
+  if (nextAt) range.$gt = nextAt;
+  else if (from) range.$gte = new Date(from);
+
+  return range;
+};
+
+/**
+ * Completed coin purchases inside a time range, newest first, each with the
+ * invoice issued for it (null if issuing failed — that is logged, not thrown,
+ * so a purchase with no invoice is a real state the table must show honestly).
+ *
+ * `hotelId` omitted is the main admin's network-wide view.
+ *
+ * `amountPaid` is RUPEES, as it is on CoinPurchase and as every figure on the
+ * coin ledger beside it is. It is NOT the invoice's paise — see the unit note
+ * in invoiceService.issueInvoiceForPurchase.
+ */
+export const listPurchaseHistory = async ({ hotelId, range = {} } = {}) => {
+  // VOID is excluded: a voided sale moved no inventory, so it is not a coin
+  // movement and has no place in a list of them.
+  const query = { status: PURCHASE_STATUS.COMPLETED };
+  if (hotelId) query.hotelId = hotelId;
+  if (Object.keys(range).length) query.createdAt = range;
+
+  const purchases = await CoinPurchase.find(query)
+    .sort({ createdAt: -1 })
+    .limit(PURCHASE_FEED_CAP)
+    .populate("hotelId", "name")
+    .lean();
+
+  // One query for the whole set, not one per row.
+  const invoices = await invoiceIdsForPurchases(purchases.map((p) => String(p._id)));
+
+  return {
+    items: purchases.map((p) => ({
+      id: String(p._id),
+      hotelName: p.hotelId?.name || null,
+      coins: p.coins,
+      amountPaid: p.amountPaid,
+      paymentRef: p.paymentRef || null,
+      invoice: invoices[String(p._id)] || null,
+      // Named `at` like the bill feed's rows, so the panels sort every feed
+      // on one field.
+      at: p.createdAt,
+    })),
+  };
+};
+
+/**
+ * The purchases to show beside one page of ledger rows.
+ *
+ * Takes the page reportService.listTransactions returned (called with
+ * `peekNext`, which is where `nextAt` comes from) and resolves the window and
+ * the rows in one step, so the two controllers that need this cannot each get
+ * the boundary logic slightly differently.
+ */
+export const purchasesForLedgerPage = async ({ hotelId, page, items, nextAt, from, to }) => {
+  const range = purchaseRangeForPage({ page, items, nextAt, from, to });
+  if (!range) return [];
+
+  const { items: purchases } = await listPurchaseHistory({ hotelId, range });
+  return purchases;
 };

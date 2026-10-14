@@ -13,7 +13,7 @@ import { OfferArt } from "../../features/guest/OfferArt.jsx";
 import { PrivilegeCards } from "../../features/guest/PrivilegeCards.jsx";
 import { Empty, ErrorState } from "../../components/common/index.jsx";
 import { HomeSkeleton } from "../../features/guest/GuestSkeletons.jsx";
-import { endsIn, formatCoins, greeting } from "../../utils/format.js";
+import { endsIn, formatCoins, formatCoinsCompact, greeting, tierName } from "../../utils/format.js";
 import { avatarUrl } from "../../utils/upload.js";
 import styles from "./GuestHomePage.module.css";
 
@@ -30,10 +30,37 @@ const hotelHeading = (hotel) => {
   return `${name} · ${city}`;
 };
 
-// Shared by the three stat tiles below — identical styling, so the strings
-// live once rather than being repeated per tile.
-const statLabel = "block no-underline text-[9px] text-muted tracking-[0.08em] uppercase";
-const statValue = "block font-display text-base font-semibold mt-1";
+/*
+ * Past this many coins the full figure no longer fits a quarter-width tile:
+ * "1,00,000" is two characters wider than "99,999", and on a 360px phone
+ * there is not that much room. The tile switches to the short form ("1.2L")
+ * and keeps the exact number for anyone who cannot see it.
+ */
+const COMPACT_FROM = 100_000;
+
+/**
+ * A lifetime figure, as a tile in the quick-actions row.
+ *
+ * The number sits where an action tile has its icon and the label where an
+ * action has its caption, so the four tiles read as one row. It is a <div>,
+ * not a button: nothing happens when it is pressed, and it should not look
+ * or announce as though something would.
+ */
+const CoinStat = ({ label, value }) => {
+  const full = formatCoins(value);
+  const compact = Math.round(value || 0) >= COMPACT_FROM;
+
+  return (
+    <div className={styles.stat}>
+      <b className={styles.statValue} aria-hidden={compact || undefined}>
+        {compact ? formatCoinsCompact(value) : full}
+      </b>
+      {/* "1.2L" read aloud is noise. A screen reader gets the real number. */}
+      {compact && <span className="sr-only">{full}</span>}
+      <span className={styles.statLabel}>{label}</span>
+    </div>
+  );
+};
 
 const GuestHomePage = () => {
   const user = useAppStore((s) => s.user);
@@ -128,9 +155,24 @@ const GuestHomePage = () => {
         onSelect={setActiveHotel}
       />
 
+      {/* Names the card by the tier it was issued at — "Your Gold card". The
+          tier is the one thing on this screen a guest works towards, and the
+          card art alone only says it to someone who already knows which
+          colour is which. A section label like the ones further down, with
+          the tier itself picked out in ink.
+
+          Waits for the active membership: for the moment before one is
+          matched the card below draws its Silver fallback, and a label
+          saying "Silver" then would be a guess. */}
+      {active?.tier && (
+        <span className="kicker mt-4">
+          Your <span className="text-ink">{tierName(active.tier)}</span> card
+        </span>
+      )}
+
       {/* The card and the brand panel rotate in this slot — see CardCarousel
           for why the card leads and holds longer. */}
-      <div className="mt-3.5">
+      <div className={active?.tier ? "mt-2.5" : "mt-3.5"}>
         <CardCarousel
           membership={active}
           guestName={user?.name}
@@ -139,7 +181,11 @@ const GuestHomePage = () => {
       </div>
 
       {/*
-        Icon-led actions, the way a payments app opens.
+        One row: the two things a guest does from here, then the two figures
+        they check. Offers and You used to sit in it as well, but both are a
+        tab in the bar at the foot of every screen — a second door to the same
+        room, which is why Pay was taken out of the bar in the first place.
+
         No balance guard on Pay: a guest with zero coins still has bills to
         settle, and the old "must hold coins" rule would lock them out of the
         payment screen entirely.
@@ -189,60 +235,8 @@ const GuestHomePage = () => {
           <b>History</b>
         </button>
 
-        <button
-          type="button"
-          className={styles.action}
-          onClick={() => navigate(ROUTES.APP_OFFERS)}
-        >
-          <span className={styles.actionIcon}>
-            <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none">
-              <path
-                d="M12 3.2l2.6 5.4 5.9.8-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.4l5.9-.8z"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <b>Offers</b>
-        </button>
-
-        <button
-          type="button"
-          className={styles.action}
-          onClick={() => navigate(ROUTES.APP_PROFILE)}
-        >
-          <span className={styles.actionIcon}>
-            <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none">
-              <circle cx="12" cy="9" r="3.6" stroke="currentColor" strokeWidth="1.7" />
-              <path
-                d="M5 19.2c.8-3.5 3.6-5.4 7-5.4s6.2 1.9 7 5.4"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
-          <b>You</b>
-        </button>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 mt-3.5">
-        <span className="bg-card border border-hairline rounded-token-sm px-2.5 py-[11px] text-center">
-          <u className={statLabel}>Earned</u>
-          <b className={statValue}>{formatCoins(active?.lifetimeEarned)}</b>
-        </span>
-        <span className="bg-card border border-hairline rounded-token-sm px-2.5 py-[11px] text-center">
-          <u className={statLabel}>Redeemed</u>
-          <b className={statValue}>{formatCoins(active?.lifetimeRedeemed)}</b>
-        </span>
-        {/* "Max" again, and truthfully so: cap is now the best rate this guest
-            can actually reach here, not the tier fallback that a well-set
-            outlet could quietly exceed. */}
-        <span className="bg-card border border-hairline rounded-token-sm px-2.5 py-[11px] text-center">
-          <u className={statLabel}>Max discount</u>
-          <b className={statValue}>{cap ? `${cap}%` : "—"}</b>
-        </span>
+        <CoinStat label="Earned" value={active?.lifetimeEarned} />
+        <CoinStat label="Redeemed" value={active?.lifetimeRedeemed} />
       </div>
 
       {/* The hotel's gallery. Falls back to stock photography until they

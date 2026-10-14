@@ -180,7 +180,19 @@ export const hotelTransactions = asyncHandler(async (req, res) => {
 export const listTransactions = asyncHandler(async (req, res) => {
   const { type, hotelId, outlet, minCoins, minBillAmount, from, to, page = 1, limit = 25 } =
     req.query;
-  const data = await reportService.listTransactions({
+
+  /**
+   * Hotels buying coin inventory from the platform ride along with the ledger,
+   * each with the invoice issued for it — see the hotel controller's copy for
+   * why they are a second feed and why they are placed page by page.
+   *
+   * The hotel and date filters apply to a purchase as they do to a ledger row.
+   * The other four describe a ledger row and nothing else, so a view filtered
+   * by any of them must not gain purchases.
+   */
+  const wantsPurchases = !type && !outlet && !minCoins && !minBillAmount;
+
+  const { nextAt, ...data } = await reportService.listTransactions({
     type,
     hotelId,
     outlet,
@@ -190,6 +202,7 @@ export const listTransactions = asyncHandler(async (req, res) => {
     to,
     page: Number(page),
     limit: Number(limit),
+    peekNext: wantsPurchases,
   });
 
   /**
@@ -200,9 +213,22 @@ export const listTransactions = asyncHandler(async (req, res) => {
   const billIds = data.items
     .map((t) => (t.idempotencyKey || "").startsWith("bill:") && t.idempotencyKey.slice(5))
     .filter(Boolean);
-  const invoices = await invoiceService.invoiceIdsForBills(billIds);
 
-  res.status(200).json(new ApiResponse(200, { ...data, invoices }));
+  const [invoices, purchases] = await Promise.all([
+    invoiceService.invoiceIdsForBills(billIds),
+    wantsPurchases
+      ? coinService.purchasesForLedgerPage({
+          hotelId,
+          page: Number(page),
+          items: data.items,
+          nextAt,
+          from,
+          to,
+        })
+      : [],
+  ]);
+
+  res.status(200).json(new ApiResponse(200, { ...data, invoices, purchases }));
 });
 
 export const listGuests = asyncHandler(async (req, res) => {
