@@ -128,9 +128,10 @@
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-/* Pay is the primary action and wears the accent, so the eye lands on it
-   first without the other three needing to shout. */
-.actionPay {
+/* The two actions — Pay and History — wear the accent, so the eye tells the
+   buttons apart from the two figure tiles beside them at a glance. They used
+   to differ (only Pay was filled), which read as History being disabled. */
+.actionAccent {
   background: var(--acc);
   color: var(--acc-fg);
 }
@@ -139,7 +140,7 @@
   background: var(--acc-soft);
   color: var(--acc);
 }
-.action:hover .actionPay {
+.action:hover .actionAccent {
   background: var(--acc);
   color: var(--acc-fg);
 }

@@ -192,7 +192,7 @@ const GuestHomePage = () => {
       */}
       <div className={styles.actions}>
         <button type="button" className={styles.action} onClick={() => navigate(ROUTES.APP_PAY)}>
-          <span className={`${styles.actionIcon} ${styles.actionPay}`}>
+          <span className={`${styles.actionIcon} ${styles.actionAccent}`}>
             <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true">
               <path
                 d="M3 8.5A2.5 2.5 0 0 1 5.5 6h13A2.5 2.5 0 0 1 21 8.5v7a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 15.5z"
@@ -220,7 +220,7 @@ const GuestHomePage = () => {
           className={styles.action}
           onClick={() => navigate(ROUTES.APP_HISTORY)}
         >
-          <span className={styles.actionIcon}>
+          <span className={`${styles.actionIcon} ${styles.actionAccent}`}>
             <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none">
               <circle cx="12" cy="12" r="8.4" stroke="currentColor" strokeWidth="1.7" />
               <path
@@ -243,9 +243,10 @@ const GuestHomePage = () => {
           upload their own, so this is never an empty frame. */}
       <HotelShowcase slides={contentData?.content} hotelName={active?.hotelId?.name} />
 
-      {/* The explainer, using this guest's own rate and cap — see HowItWorks
-          for why nothing here is defaulted to a marketing figure. */}
-      <HowItWorks rate={earnRate} cap={cap} />
+      {/* The "Member Privileges" explainer, using this guest's own tier, rate
+          and cap — see HowItWorks for why nothing here is defaulted to a
+          marketing figure. */}
+      <HowItWorks rate={earnRate} cap={cap} tier={active?.tier} />
 
       {/* Already filtered to this guest's tier by the API — anything they are
           not entitled to never reaches the payload. Renders nothing when the

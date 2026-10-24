@@ -83,8 +83,21 @@ describe("the row under the card", () => {
   });
 
   it("still feeds the cap to the explainer that quotes it", () => {
-    // Only the TILE went. HowItWorks still says "benefits worth up to 30%".
-    assert.match(jsx, /<HowItWorks rate=\{earnRate\} cap=\{cap\} \/>/);
+    // Only the TILE went. HowItWorks still says "benefits worth up to 30%" —
+    // and, since the Member Privileges redesign, names the guest's tier too.
+    const tag = /<HowItWorks\b[^>]*\/>/.exec(jsx)?.[0] || "";
+    assert.match(tag, /rate=\{earnRate\}/);
+    assert.match(tag, /cap=\{cap\}/);
+    assert.match(tag, /tier=\{active\?\.tier\}/);
+  });
+
+  it("colours the Pay and History icons alike", () => {
+    // History used to keep the neutral chip while Pay wore the accent, which
+    // read as History being disabled.
+    const accented = row.match(/\$\{styles\.actionIcon\} \$\{styles\.actionAccent\}/g) || [];
+    assert.equal(accented.length, 2);
+    assert.doesNotMatch(row, /className=\{styles\.actionIcon\}/);
+    assert.match(css, /\.actionAccent\s*\{[^}]*background:\s*var\(--acc\)/);
   });
 
   it("lays four columns that a long figure cannot widen", () => {
