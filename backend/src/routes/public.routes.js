@@ -7,6 +7,11 @@ import { Content } from "../models/content.model.js";
 import { CONTENT_KINDS } from "../config/constants.js";
 import { env } from "../config/env.js";
 import { getSettings } from "../services/settings.service.js";
+import { createEnquiry, notifyEnquiry } from "../services/enquiry.service.js";
+import { logger } from "../utils/logger.js";
+import { enquiryLimiter } from "../middlewares/rateLimiter.middleware.js";
+import { validate } from "../middlewares/validate.middleware.js";
+import { partnerEnquiryRules } from "../validators/common.validator.js";
 
 const router = Router();
 
@@ -31,6 +36,10 @@ router.get(
         // to be right on the FIRST paint or the nav visibly reshuffles under
         // the guest's thumb.
         feedEnabled: settings.feedEnabled,
+        // The landing page shows a membership card before anyone has signed
+        // in, and guests otherwise receive the design only with their
+        // memberships. A key, like the theme — the art lives in the frontend.
+        cardDesign: settings.cardDesign,
         // So the code input can size itself to the codes actually issued
         // rather than hardcoding a length the server is free to change.
         otpLength: env.otp.length,
@@ -62,6 +71,29 @@ router.get(
       .limit(6);
 
     res.status(200).json(new ApiResponse(200, { hotel: hotel.toPublicObject(), offers }));
+  })
+);
+
+/**
+ * A hotel asking to join the network, from the landing page's partner form.
+ *
+ * A filled `website` field is the honeypot (see partnerEnquiryRules): the bot
+ * gets the same 201 a person does, so it has no signal to adapt to, and
+ * nothing is saved.
+ */
+router.post(
+  "/enquiries",
+  enquiryLimiter,
+  partnerEnquiryRules,
+  validate,
+  asyncHandler(async (req, res) => {
+    if (req.body.website) {
+      return res.status(201).json(new ApiResponse(201, null, "Enquiry received"));
+    }
+    const enquiry = await createEnquiry(req.body);
+    res.status(201).json(new ApiResponse(201, null, "Enquiry received"));
+    // After the response, and not awaited — see notifyEnquiry.
+    notifyEnquiry(enquiry).catch((err) => logger.error(`[ENQUIRY] notify failed: ${err.message}`));
   })
 );
 

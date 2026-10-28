@@ -369,3 +369,24 @@ export const FONT_PRESET_VALUES = Object.values(FONT_PRESETS);
 
 /** The pairing the app shipped with. */
 export const DEFAULT_FONT_PRESET = FONT_PRESETS.EDITORIAL;
+
+/**
+ * Where a hotel's partnership enquiry from the landing page stands.
+ *
+ * Three states, not a boolean "handled": "we called them" and "this went
+ * nowhere" are different answers, and the inbox filters on the difference —
+ * a lead someone has spoken to still needs following up, a closed one does not.
+ */
+export const ENQUIRY_STATUS = Object.freeze({
+  NEW: "NEW",
+  CONTACTED: "CONTACTED",
+  CLOSED: "CLOSED",
+});
+
+export const ENQUIRY_STATUS_VALUES = Object.values(ENQUIRY_STATUS);
+
+/**
+ * The property sizes the enquiry form offers. Stored as the label itself —
+ * the bands are the answer, there is nothing to translate them into.
+ */
+export const ENQUIRY_ROOM_BANDS = Object.freeze(["1-25", "26-75", "76-150", "150+"]);

@@ -128,3 +128,11 @@ export const updateInvoiceTemplate = (payload) =>
  */
 export const previewInvoiceTemplate = (payload) =>
   api.post("/admin/invoices/template/preview", payload).then(unwrap);
+
+/* ---- partnership enquiries -------------------------------------------- */
+
+export const listEnquiries = (params) => api.get("/admin/enquiries", { params }).then(unwrap);
+/** { count } — enquiries still NEW, for the nav badge. */
+export const newEnquiryCount = () => api.get("/admin/enquiries/new-count").then(unwrap);
+export const updateEnquiry = (id, payload) =>
+  api.patch(`/admin/enquiries/${id}`, payload).then(unwrap);

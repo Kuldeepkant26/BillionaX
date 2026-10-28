@@ -13,6 +13,7 @@ import * as onboardingService from "../services/onboarding.service.js";
 import * as supportService from "../services/support.service.js";
 import * as invoiceService from "../services/invoice.service.js";
 import * as invoiceTemplateService from "../services/invoiceTemplate.service.js";
+import * as enquiryService from "../services/enquiry.service.js";
 
 export const dashboard = asyncHandler(async (req, res) => {
   const data = await reportService.adminDashboard();
@@ -501,4 +502,30 @@ export const createLinkedAccount = asyncHandler(async (req, res) => {
     force: Boolean(req.body.force),
   });
   res.status(200).json(new ApiResponse(200, data, "Payout account created"));
+});
+
+// ---- partnership enquiries ----
+
+export const listEnquiries = asyncHandler(async (req, res) => {
+  const { status, page = 1, limit = 25 } = req.query;
+  const data = await enquiryService.listEnquiries({
+    status,
+    page: Number(page),
+    limit: Number(limit),
+  });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const newEnquiryCount = asyncHandler(async (req, res) => {
+  const count = await enquiryService.countNewEnquiries();
+  res.status(200).json(new ApiResponse(200, { count }));
+});
+
+export const updateEnquiry = asyncHandler(async (req, res) => {
+  const enquiry = await enquiryService.updateEnquiryStatus({
+    enquiryId: req.params.enquiryId,
+    status: req.body.status,
+    actingUserId: req.user._id,
+  });
+  res.status(200).json(new ApiResponse(200, { enquiry }, "Enquiry updated"));
 });

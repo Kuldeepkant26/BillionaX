@@ -43,6 +43,7 @@ const PanelLayout = ({ brand, subtitle, nav, showHotel = false }) => {
   const supportUnread = useAppStore((s) => s.supportUnread);
   const guestChatsUnread = useAppStore((s) => s.guestChatsUnread);
   const distributionPending = useAppStore((s) => s.distributionPending);
+  const enquiriesNew = useAppStore((s) => s.enquiriesNew);
   const feedEnabled = useAppStore((s) => s.feedEnabled);
   const [open, setOpen] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
@@ -116,6 +117,7 @@ const PanelLayout = ({ brand, subtitle, nav, showHotel = false }) => {
     support: supportUnread,
     guestChats: guestChatsUnread,
     distribution: distributionPending,
+    enquiries: enquiriesNew,
   };
 
   return (

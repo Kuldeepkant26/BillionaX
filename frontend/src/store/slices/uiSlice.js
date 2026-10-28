@@ -16,6 +16,11 @@ export const createUiSlice = (set, get) => ({
   distributionPending: 0,
   setDistributionPending: (n) => set({ distributionPending: n ? 1 : 0 }),
 
+  // Partnership enquiries nobody has picked up yet — the admin panel's
+  // Enquiries badge. Not persisted, for the same reason as the one above.
+  enquiriesNew: 0,
+  setEnquiriesNew: (n) => set({ enquiriesNew: Number(n) || 0 }),
+
   toast: (message, variant = "info") => {
     const id = ++toastId;
     set({ toasts: [...get().toasts, { id, message, variant }] });

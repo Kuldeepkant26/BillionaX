@@ -2,6 +2,7 @@ import PanelLayout from "./PanelLayout.jsx";
 import { ROUTES } from "../../constants/routePaths.js";
 import { useAdminSupportBadge } from "../../hooks/useAdminSupportBadge.js";
 import { useDistributionBadge } from "../../hooks/useDistributionBadge.js";
+import { useEnquiryBadge } from "../../hooks/useEnquiryBadge.js";
 
 const NAV = [
   {
@@ -30,6 +31,15 @@ const NAV = [
     // A speech bubble with three dots, drawn filled like every icon here —
     // PanelLayout renders these with no stroke.
     icon: "M10 3c-4 0-7.2 2.5-7.2 5.6 0 1.8 1 3.4 2.7 4.5L4.4 17l3.6-2a9.9 9.9 0 0 0 2 .2c4 0 7.2-2.5 7.2-5.6S14 3 10 3zM6.6 9.8a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4zm3.4 0a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4zm3.4 0a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4z",
+  },
+  {
+    // With the other queues: every row here is a hotel that is not one yet.
+    // `badge` counts the enquiries nobody has picked up — see useEnquiryBadge.
+    to: ROUTES.ADMIN_ENQUIRIES,
+    label: "Enquiries",
+    badge: "enquiries",
+    // An envelope, filled like every icon here.
+    icon: "M3.5 4.5h13a1.5 1.5 0 0 1 1.5 1.5v.4l-8 5-8-5V6a1.5 1.5 0 0 1 1.5-1.5zM2 8.2l8 5 8-5V14a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 2 14z",
   },
   {
     to: ROUTES.ADMIN_FEED,
@@ -87,6 +97,8 @@ const AdminPanelLayout = () => {
   // Same reason it lives here and not in PanelLayout: only the main admin
   // distributes, and the endpoint would 403 for hotel staff.
   useDistributionBadge();
+  // Same reasoning: enquiries are the main admin's queue alone.
+  useEnquiryBadge();
 
   return <PanelLayout brand="Billionax" subtitle="Super admin" nav={NAV} />;
 };

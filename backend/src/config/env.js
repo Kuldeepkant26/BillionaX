@@ -66,6 +66,9 @@ export const env = {
     fromAddress: process.env.EMAIL_FROM,
     fromName: process.env.EMAIL_FROM_NAME || "BillionaX",
     timeoutMs: toInt(process.env.EMAIL_TIMEOUT_MS, 10_000),
+    // Where the landing page's hotel enquiries are emailed, comma-separated.
+    // Unset, they go to every active main admin — see enquiry.service.js.
+    enquiryTo: process.env.ENQUIRY_EMAIL_TO || "",
   },
 
   /**

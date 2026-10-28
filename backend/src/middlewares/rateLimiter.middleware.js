@@ -47,3 +47,14 @@ export const feedUploadLimiter = build({
   max: 60,
   message: "Too many uploads, please wait a few minutes",
 });
+
+/**
+ * Partnership enquiries from the landing page. Unauthenticated and writes a
+ * row each time, so it is capped per address — a real hotel sends one, maybe
+ * a corrected second.
+ */
+export const enquiryLimiter = build({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: "Too many enquiries from this connection, please try again later",
+});

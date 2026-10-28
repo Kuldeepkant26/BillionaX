@@ -1,157 +1,104 @@
-.wrap {
-  padding-top: 24px;
+/*
+ * The landing page's CSS-only pieces: the scroll reveal, the hero light, the
+ * product shot's tilt and the footer wordmark. Layout and type are utilities
+ * in the JSX.
+ */
+
+/*
+ * Scroll reveal.
+ *
+ * Nothing is hidden until the page has set data-reveal-ready (see the layout
+ * effect in LandingPage.jsx), so without JS — or without IntersectionObserver
+ * — every section simply shows. Under reduced motion nothing moves or fades.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .root[data-reveal-ready] [data-reveal] {
+    transition:
+      opacity 0.9s cubic-bezier(0.2, 0.7, 0.2, 1),
+      transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+
+  .root[data-reveal-ready] [data-reveal]:not([data-shown]) {
+    opacity: 0;
+    transform: translateY(26px);
+  }
 }
 
-.logo {
-  display: block;
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  background: var(--hero);
-  position: relative;
-  margin-bottom: 24px;
+/*
+ * A pool of the network accent behind the headline. On the no-accent preset
+ * the accent is ink, which makes this a faint grey wash — still light, never
+ * a colour the admin did not choose.
+ */
+.heroGlow {
+  position: absolute;
+  z-index: -1;
+  inset: -140px 0 auto;
+  height: 820px;
+  pointer-events: none;
+  background:
+    radial-gradient(42% 46% at 50% 18%, color-mix(in oklab, var(--acc) 13%, transparent), transparent 72%),
+    radial-gradient(70% 60% at 50% 0%, color-mix(in oklab, var(--acc) 6%, transparent), transparent 70%);
 }
-.logo::after {
+
+/* A soft spill of the same light under the product shot, so the frame sits
+   on something rather than floating on flat white. */
+.stage {
+  isolation: isolate;
+}
+.stage::before {
   content: "";
   position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 16px;
-  height: 16px;
-  border-radius: 5px;
-  background: var(--acc2);
-}
-
-/*
- * The brand plate: the two-line promise, the explainer, and the value figure.
- *
- * This replaced the old "Your stay, rewarded" headline rather than sitting
- * below it — both said the same thing in different words, and stacking them
- * opened the page with two competing headlines and two value props.
- */
-
-.title {
-  font-size: 30px;
-  line-height: 1.12;
-  margin: 0;
-}
-/* "Luxury for everyone" sits in the muted ink and "Privileges for members"
-   in the full-strength foreground, so the second line lands as the promise
-   that actually applies to the reader once they join. */
-.title em {
-  display: block;
-  font-style: normal;
-  color: var(--dim);
-}
-.title b {
-  display: block;
-  font-weight: inherit;
-  color: var(--fg);
-}
-
-.sub {
-  color: var(--dim);
-  font-size: 13.5px;
-  line-height: 1.6;
-  margin: 14px 0 0;
-}
-
-/*
- * The value figure, framed rather than rotated.
- *
- * A bordered plate holds attention better than anything that moves, and it
- * stays put while the number is read — a ₹25,000 claim that times out after
- * four seconds is the worst possible way to state a ₹25,000 claim.
- *
- * --soft rather than --card for the ground: on the landing page there is no
- * card layer to sit against, so the plate needs its own tint to read as a
- * distinct surface rather than an outlined hole in the page.
- */
-.value {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin: 22px 0 10px;
-  padding: 15px 16px;
-  background: var(--soft);
-  border: 1px solid var(--line);
-  border-radius: var(--rad-sm);
-  /* The one accent stripe on the screen. Inline-start so it holds its edge
-     if the app is ever rendered right-to-left. */
-  border-inline-start: 3px solid var(--acc);
-}
-
-.value b {
-  font-family: var(--font-display);
-  font-size: 25px;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: -0.5px;
-  color: var(--fg);
-  font-variant-numeric: tabular-nums;
-}
-
-/* "per year*" trails the figure on the same baseline rather than taking its
-   own line — the amount and its period are one statement. */
-.value b span {
-  font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--dim);
-  margin-inline-start: 7px;
-}
-
-.note {
-  margin: 0 0 26px;
-  font-size: 10.5px;
-  line-height: 1.5;
-  color: var(--dim);
-  opacity: 0.85;
-}
-
-.steps {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin-bottom: 28px;
-}
-
-.step {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-}
-.step b {
-  width: 28px;
-  height: 28px;
+  z-index: -1;
+  inset: 12% 8% -4%;
   border-radius: 50%;
-  background: var(--soft);
-  color: var(--acc);
-  display: grid;
-  place-items: center;
-  font-size: 12px;
-  font-weight: 700;
-  flex: none;
-}
-.step span {
-  font-size: 12.5px;
-  color: var(--dim);
-  line-height: 1.45;
+  background: color-mix(in oklab, var(--acc) 16%, transparent);
+  filter: blur(90px);
+  pointer-events: none;
 }
 
-.staff {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 22px;
-  font-size: 11.5px;
-  color: var(--dim);
+/*
+ * The product shot leans back and settles flat as it scrolls up the screen.
+ *
+ * Scroll-driven, so it costs no JS and no scroll listener — and it is an
+ * enhancement only: a browser without animation-timeline shows the frame
+ * flat, which is the finished state anyway.
+ */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .tilt {
+      transform-origin: 50% 0;
+      animation: settle linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 42%;
+    }
+  }
 }
-.staff a {
-  color: var(--dim);
-  text-decoration: underline;
+
+@keyframes settle {
+  from {
+    transform: perspective(1800px) rotateX(12deg) scale(0.95);
+  }
+  to {
+    transform: none;
+  }
 }
-.staff a:hover {
-  color: var(--fg);
+
+/*
+ * The oversized wordmark the footer ends on, fading into the ground. The SVG
+ * scales with the width; the text sits on its bottom edge.
+ */
+.giant {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+  padding: 0 12px;
+  user-select: none;
+  pointer-events: none;
+}
+.giant text {
+  font-family: var(--font-ui);
+  font-size: 148px;
+  font-weight: 500;
 }

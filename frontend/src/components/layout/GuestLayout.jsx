@@ -81,6 +81,10 @@ const GuestLayout = () => {
   const feedEnabled = useAppStore((s) => s.feedEnabled);
   const { pathname } = useLocation();
   const showNav = isAuthenticated && pathname.startsWith("/app");
+  // The landing page is the public website, not a phone screen: it takes the
+  // full window and lays itself out. It stays under this shell for the theme
+  // root and the 404 handling every other guest route shares.
+  const fullBleed = pathname === ROUTES.HOME;
 
   // Five tabs by default, six when the admin has switched the feed on.
   const items = NAV.filter((item) => !item.optional || feedEnabled);
@@ -93,65 +97,69 @@ const GuestLayout = () => {
 
   return (
     <div className="theme-root" data-theme={guestTheme} data-accent={accent} data-font={font} style={accentStyle}>
-      {/* The guest app is used on a phone at a reception desk, so it is designed
-          mobile-first and simply centres itself on larger screens. */}
-      <div className="w-full max-w-[460px] mx-auto min-h-[100svh] flex flex-col relative bg-canvas">
-        <main className={`flex-1 px-[18px] pt-5 ${showNav ? "pb-24" : "pb-7"}`}>
-          <Outlet />
-        </main>
+      {fullBleed ? (
+        <Outlet />
+      ) : (
+        // The guest app is used on a phone at a reception desk, so it is designed
+        // mobile-first and simply centres itself on larger screens.
+        <div className="w-full max-w-[460px] mx-auto min-h-[100svh] flex flex-col relative bg-canvas">
+          <main className={`flex-1 px-[18px] pt-5 ${showNav ? "pb-24" : "pb-7"}`}>
+            <Outlet />
+          </main>
 
-        {showNav && (
-          <nav
-            className={`fixed bottom-3.5 left-1/2 -translate-x-1/2 w-[min(432px,calc(100vw-28px))] h-[58px] rounded-full flex items-center px-1.5 z-[60] ${
-              crowded ? `justify-start overflow-x-auto ${styles.scroller}` : "justify-around"
-            } ${styles.nav}`}
-            aria-label="Main"
-          >
-            {items.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  // Padding tightened from 14px so five tabs fit a 360px phone
-                  // without wrapping. shrink-0 matters only in the scrolling
-                  // six-tab case: without it flex would compress the tabs back
-                  // to fit and there would be nothing to scroll.
-                  `flex flex-col shrink-0 items-center gap-[3px] px-[9px] py-[7px] rounded-full text-muted transition-[color,background] duration-150 ${
-                    styles.navItem
-                  } ${isActive ? styles.on : ""}`
-                }
-              >
-                <span className="relative grid place-items-center">
-                  <svg viewBox="0 0 20 20" aria-hidden="true">
-                    <path d={item.icon} />
-                  </svg>
-                  {item.badge && unread > 0 && (
-                    <b
-                      className="absolute -top-1 -right-[7px] min-w-[15px] h-[15px] px-1 rounded-full bg-[var(--bad)] text-white text-[9px] font-bold leading-[15px] text-center tabular-nums"
-                      aria-label={`${unread} unread`}
-                    >
-                      {unread > 9 ? "9+" : unread}
-                    </b>
-                  )}
-                  {/* A plain dot, not a count, unlike Alerts. A guest may now
-                      have several threads behind this tab — the platform and
-                      one per hotel — so a number here would sum conversations
-                      rather than describe one. The fact that somebody has
-                      replied is the whole signal; the Help screen says who. */}
-                  {item.supportBadge && helpUnread > 0 && (
-                    <b
-                      className="absolute -top-0.5 -right-1.25 w-2 h-2 rounded-full bg-bad"
-                      aria-label="New reply from support"
-                    />
-                  )}
-                </span>
-                <i className="not-italic text-[10px]">{item.label}</i>
-              </NavLink>
-            ))}
-          </nav>
-        )}
-      </div>
+          {showNav && (
+            <nav
+              className={`fixed bottom-3.5 left-1/2 -translate-x-1/2 w-[min(432px,calc(100vw-28px))] h-[58px] rounded-full flex items-center px-1.5 z-[60] ${
+                crowded ? `justify-start overflow-x-auto ${styles.scroller}` : "justify-around"
+              } ${styles.nav}`}
+              aria-label="Main"
+            >
+              {items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    // Padding tightened from 14px so five tabs fit a 360px phone
+                    // without wrapping. shrink-0 matters only in the scrolling
+                    // six-tab case: without it flex would compress the tabs back
+                    // to fit and there would be nothing to scroll.
+                    `flex flex-col shrink-0 items-center gap-[3px] px-[9px] py-[7px] rounded-full text-muted transition-[color,background] duration-150 ${
+                      styles.navItem
+                    } ${isActive ? styles.on : ""}`
+                  }
+                >
+                  <span className="relative grid place-items-center">
+                    <svg viewBox="0 0 20 20" aria-hidden="true">
+                      <path d={item.icon} />
+                    </svg>
+                    {item.badge && unread > 0 && (
+                      <b
+                        className="absolute -top-1 -right-[7px] min-w-[15px] h-[15px] px-1 rounded-full bg-[var(--bad)] text-white text-[9px] font-bold leading-[15px] text-center tabular-nums"
+                        aria-label={`${unread} unread`}
+                      >
+                        {unread > 9 ? "9+" : unread}
+                      </b>
+                    )}
+                    {/* A plain dot, not a count, unlike Alerts. A guest may now
+                        have several threads behind this tab — the platform and
+                        one per hotel — so a number here would sum conversations
+                        rather than describe one. The fact that somebody has
+                        replied is the whole signal; the Help screen says who. */}
+                    {item.supportBadge && helpUnread > 0 && (
+                      <b
+                        className="absolute -top-0.5 -right-1.25 w-2 h-2 rounded-full bg-bad"
+                        aria-label="New reply from support"
+                      />
+                    )}
+                  </span>
+                  <i className="not-italic text-[10px]">{item.label}</i>
+                </NavLink>
+              ))}
+            </nav>
+          )}
+        </div>
+      )}
 
       <div id="modal-root" />
       {/* Over every guest screen, so a bill reaches them wherever they are. */}

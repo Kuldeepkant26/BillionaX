@@ -9,3 +9,5 @@ export const logout = () => api.post("/auth/logout").then(unwrap);
 export const me = () => api.get("/auth/me").then(unwrap);
 export const publicHotel = (slug) => api.get(`/public/hotels/${slug}`).then(unwrap);
 export const publicConfig = () => api.get("/public/config").then(unwrap);
+/** A hotel asking to join the network, from the landing page. */
+export const sendPartnerEnquiry = (payload) => api.post("/public/enquiries", payload).then(unwrap);

@@ -11,6 +11,8 @@ import {
   FONT_PRESET_VALUES,
   SUPPORT_PARTY_VALUES,
   INVOICE_KIND_VALUES,
+  ENQUIRY_STATUS_VALUES,
+  ENQUIRY_ROOM_BANDS,
 } from "../config/constants.js";
 
 export const objectIdParam = (name) =>
@@ -760,4 +762,50 @@ export const invoiceFilterRules = [
   query("from").optional().isISO8601(),
   query("to").optional().isISO8601(),
   query("q").optional().isString().trim().isLength({ max: 60 }),
+];
+
+/* ---- partnership enquiries -------------------------------------------- */
+
+/**
+ * The landing page's hotel enquiry form.
+ *
+ * The phone is looser than phoneRule: this is a business number, and a hotel
+ * may well give a landline or a number with its country code. It only has to
+ * be something a person can dial.
+ *
+ * `website` is a honeypot — the form hides it from people, so only a bot
+ * fills it in. It is accepted here and checked in the route, which answers a
+ * filled one with the same success a person gets and saves nothing.
+ */
+export const partnerEnquiryRules = [
+  body("name").isString().trim().isLength({ min: 2, max: 80 }).withMessage("Enter your name"),
+  body("hotelName")
+    .isString()
+    .trim()
+    .isLength({ min: 2, max: 120 })
+    .withMessage("Enter the hotel's name"),
+  body("email")
+    .isString()
+    .trim()
+    .toLowerCase()
+    .isEmail()
+    .withMessage("Enter a valid email address")
+    .isLength({ max: 120 }),
+  body("phone")
+    .isString()
+    .trim()
+    .matches(/^\+?[\d\s()-]{8,20}$/)
+    .withMessage("Enter a valid phone number"),
+  body("city").isString().trim().isLength({ min: 2, max: 60 }).withMessage("Enter the city"),
+  body("rooms").optional({ values: "falsy" }).isIn(ENQUIRY_ROOM_BANDS).withMessage("Pick a size"),
+  body("message").optional().isString().trim().isLength({ max: 1000 }),
+  body("website").optional().isString(),
+];
+
+export const enquiryFilterRules = [
+  query("status").optional({ values: "falsy" }).isIn(ENQUIRY_STATUS_VALUES),
+];
+
+export const enquiryUpdateRules = [
+  body("status").isIn(ENQUIRY_STATUS_VALUES).withMessage("Unknown status"),
 ];

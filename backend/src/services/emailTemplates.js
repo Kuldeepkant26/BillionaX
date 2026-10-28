@@ -87,3 +87,71 @@ export const rebateCreditedEmailTemplate = ({
   </div>
 </div>`,
 });
+
+/**
+ * A hotel's partnership enquiry from the landing page, sent to the Billionax
+ * team. Every field is what a stranger typed into a public form, so the HTML
+ * part escapes all of it.
+ */
+export const partnerEnquiryEmailTemplate = ({
+  name,
+  hotelName,
+  email,
+  phone,
+  city,
+  roomsLabel,
+  message,
+  receivedLabel,
+  inboxUrl,
+}) => {
+  const rows = [
+    ["Hotel", hotelName],
+    ["City", city],
+    ["Size", roomsLabel || "Not given"],
+    ["Contact", name],
+    ["Email", email],
+    ["Phone", phone],
+  ];
+
+  const text =
+    `New partnership enquiry from ${hotelName}, ${city}.\n\n` +
+    rows.map(([label, value]) => `${label}: ${value}`).join("\n") +
+    `\n\nMessage:\n${message || "(none)"}\n\n` +
+    `Received ${receivedLabel}. Reply to this email to answer ${name} directly.\n` +
+    `All enquiries: ${inboxUrl}\n`;
+
+  const html = `<div style="margin:0;padding:32px 16px;background:#f6f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:14px;padding:36px 32px;">
+    <div style="font-size:11px;letter-spacing:2.4px;color:${BRAND};font-weight:700;">BILLIONAX · PARTNER ENQUIRY</div>
+
+    <h1 style="margin:18px 0 6px;font-size:21px;line-height:1.3;color:#1a1418;font-weight:600;">
+      ${esc(hotelName)} wants to join
+    </h1>
+    <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#6b6169;">
+      Sent from the website on ${esc(receivedLabel)}. Reply to this email to answer ${esc(name)} directly.
+    </p>
+
+    <div style="background:#faf7f8;border:1px solid #ece4e8;border-radius:10px;padding:6px 18px;">
+      ${rows
+        .map(
+          ([label, value], i) => `<div style="padding:11px 0;${i ? "border-top:1px solid #ece4e8;" : ""}font-size:14px;line-height:1.5;">
+        <span style="display:inline-block;width:84px;color:#8b8189;">${label}</span>
+        <span style="color:#1a1418;font-weight:600;">${esc(value)}</span>
+      </div>`
+        )
+        .join("\n      ")}
+    </div>
+
+    <div style="margin-top:22px;font-size:11px;letter-spacing:1.6px;color:#8b8189;font-weight:700;">MESSAGE</div>
+    <p style="margin:8px 0 0;font-size:14px;line-height:1.65;color:#1a1418;white-space:pre-line;">${
+      message ? esc(message) : '<span style="color:#8b8189;">No message.</span>'
+    }</p>
+
+    <a href="${esc(inboxUrl)}" style="display:inline-block;margin-top:28px;padding:12px 22px;border-radius:999px;background:#1a1418;color:#ffffff;font-size:13px;font-weight:600;text-decoration:none;">
+      Open the Enquiries inbox
+    </a>
+  </div>
+</div>`;
+
+  return { text, html };
+};

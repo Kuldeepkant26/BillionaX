@@ -1,0 +1,22 @@
+/*
+ * The frame's cast shadow: a tight contact shadow plus a long, soft fall.
+ * Neutral black rather than var(--fg) — on the dark theme the foreground is
+ * cream, and a cream "shadow" reads as a glow. On a dark page the fall simply
+ * disappears and the hairline border carries the edge instead.
+ */
+.frame {
+  box-shadow:
+    0 1px 2px rgba(15, 13, 10, 0.05),
+    0 24px 48px -24px rgba(15, 13, 10, 0.22),
+    0 70px 120px -60px rgba(15, 13, 10, 0.32);
+}
+
+/*
+ * The tier chip. Gold is a material, not the network accent — so it is tinted
+ * from --warn, the one token that is a warm metal in both themes, and mixed
+ * against transparent so it sits on either ground.
+ */
+.tierTag {
+  background: color-mix(in oklab, var(--warn) 16%, transparent);
+  color: var(--warn);
+}

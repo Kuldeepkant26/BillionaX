@@ -70,6 +70,7 @@ const AdminDistributionPage = lazy(() => import("../pages/admin/AdminDistributio
 const AdminSettingsPage = lazy(() => import("../pages/admin/AdminSettingsPage.jsx"));
 const AdminPaymentsPage = lazy(() => import("../pages/admin/AdminPaymentsPage.jsx"));
 const AdminInvoicesPage = lazy(() => import("../pages/admin/AdminInvoicesPage.jsx"));
+const AdminEnquiriesPage = lazy(() => import("../pages/admin/AdminEnquiriesPage.jsx"));
 const AdminFeedPage = lazy(() => import("../pages/admin/AdminFeedPage.jsx"));
 const AdminSupportPage = lazy(() => import("../pages/admin/AdminSupportPage.jsx"));
 
@@ -314,6 +315,7 @@ const router = createBrowserRouter([
       { path: "distribution", element: lazyEl(<AdminDistributionPage />) },
       { path: "payments", element: lazyEl(<AdminPaymentsPage />) },
       { path: "invoices", element: lazyEl(<AdminInvoicesPage />) },
+      { path: "enquiries", element: lazyEl(<AdminEnquiriesPage />) },
       { path: "settings", element: lazyEl(<AdminSettingsPage />) },
     ],
   },

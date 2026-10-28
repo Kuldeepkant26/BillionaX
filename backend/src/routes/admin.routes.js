@@ -28,6 +28,8 @@ import {
   searchRule,
   invoiceTemplateRules,
   invoiceFilterRules,
+  enquiryFilterRules,
+  enquiryUpdateRules,
 } from "../validators/common.validator.js";
 
 const router = Router();
@@ -161,6 +163,26 @@ router.post(
   objectIdParam("invoiceId"),
   validate,
   adminController.resendInvoice
+);
+
+/* ---- partnership enquiries -------------------------------------------- */
+
+// Registered before /enquiries/:enquiryId — "new-count" must not be read as an
+// id, the same ordering trap as /hotels/cities above.
+router.get("/enquiries/new-count", adminController.newEnquiryCount);
+router.get(
+  "/enquiries",
+  paginationRules,
+  enquiryFilterRules,
+  validate,
+  adminController.listEnquiries
+);
+router.patch(
+  "/enquiries/:enquiryId",
+  objectIdParam("enquiryId"),
+  enquiryUpdateRules,
+  validate,
+  adminController.updateEnquiry
 );
 
 /* ---- support inbox ---------------------------------------------------- */

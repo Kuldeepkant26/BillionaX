@@ -19,7 +19,7 @@ export const normalizeEmail = (raw = "") => String(raw).trim().toLowerCase();
  * text part is what shows in notification previews and in clients that refuse
  * HTML, and its absence is itself a mild spam signal.
  */
-export const sendEmail = async ({ to, subject, html, text }) => {
+export const sendEmail = async ({ to, subject, html, text, replyTo }) => {
   if (!isEmailConfigured) {
     throw new Error("BREVO_API_KEY is not configured");
   }
@@ -30,6 +30,9 @@ export const sendEmail = async ({ to, subject, html, text }) => {
     subject,
     htmlContent: html,
     textContent: text,
+    // So "Reply" in the inbox answers the person the email is about — the
+    // enquiry notice uses it to reply straight to the hotel.
+    ...(replyTo?.email ? { replyTo: { email: normalizeEmail(replyTo.email), name: replyTo.name } } : {}),
   };
 
   let response;

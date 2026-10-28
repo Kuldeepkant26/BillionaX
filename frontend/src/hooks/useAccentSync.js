@@ -17,6 +17,7 @@ export const useAccentSync = () => {
   const setAccent = useAppStore((s) => s.setAccent);
   const setFont = useAppStore((s) => s.setFont);
   const setFeedEnabled = useAppStore((s) => s.setFeedEnabled);
+  const setCardDesign = useAppStore((s) => s.setCardDesign);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,6 +31,9 @@ export const useAccentSync = () => {
         // meaningful value here, and `if (data.feedEnabled)` would make the
         // switch impossible to turn OFF.
         if (data && "feedEnabled" in data) setFeedEnabled(data.feedEnabled);
+        // So the landing page draws the card the network actually issues,
+        // before anyone has signed in and received it with their memberships.
+        if (data?.cardDesign) setCardDesign(data.cardDesign);
       })
       .catch(() => {
         // The persisted (or default) accent already painted the app; a failed
