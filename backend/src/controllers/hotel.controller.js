@@ -12,6 +12,7 @@ import * as membershipService from "../services/membership.service.js";
 import * as uploadService from "../services/upload.service.js";
 import * as videoService from "../services/video.service.js";
 import * as billService from "../services/bill.service.js";
+import * as paymentAccountService from "../services/paymentAccount.service.js";
 import * as supportService from "../services/support.service.js";
 import * as invoiceService from "../services/invoice.service.js";
 
@@ -615,8 +616,87 @@ export const createBill = asyncHandler(async (req, res) => {
     staffId: req.user._id,
     lineItems: req.body.lineItems,
     taxPercent: req.body.taxPercent,
+    paymentAccountId: req.body.paymentAccountId || null,
   });
   res.status(201).json(new ApiResponse(201, { bill }, "Bill sent"));
+});
+
+/**
+ * Confirms a guest's UPI payment reached the hotel, and settles the bill.
+ *
+ * Open to both hotel roles at the route; the service then allows exactly one
+ * person — the staff member who sent the bill — because the rule depends on
+ * the bill's own staffId, which a route guard cannot see.
+ */
+export const confirmBill = asyncHandler(async (req, res) => {
+  const data = await billService.confirmBillByStaff({
+    billId: req.params.billId,
+    hotelId: hotelIdFor(req),
+    staffId: req.user._id,
+    expectedPayablePaise: req.body.expectedPayablePaise,
+  });
+  res.status(200).json(new ApiResponse(200, data, "Payment confirmed"));
+});
+
+/* ---- payment accounts: where guests pay their bills -------------------- */
+
+/** Both roles: the bill composer's "Pay to" dropdown needs the list. */
+export const listPaymentAccounts = asyncHandler(async (req, res) => {
+  const data = await paymentAccountService.listPaymentAccounts({ hotelId: hotelIdFor(req) });
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+export const createPaymentAccount = asyncHandler(async (req, res) => {
+  const account = await paymentAccountService.createPaymentAccount({
+    hotelId: hotelIdFor(req),
+    actor: req.user,
+    input: req.body,
+  });
+  res.status(201).json(new ApiResponse(201, { account }, "Payment account added"));
+});
+
+export const updatePaymentAccount = asyncHandler(async (req, res) => {
+  const account = await paymentAccountService.updatePaymentAccount({
+    hotelId: hotelIdFor(req),
+    accountId: req.params.accountId,
+    actor: req.user,
+    input: req.body,
+  });
+  res.status(200).json(new ApiResponse(200, { account }, "Payment account saved"));
+});
+
+export const deletePaymentAccount = asyncHandler(async (req, res) => {
+  const data = await paymentAccountService.deletePaymentAccount({
+    hotelId: hotelIdFor(req),
+    accountId: req.params.accountId,
+    actor: req.user,
+  });
+  res.status(200).json(new ApiResponse(200, data, "Payment account removed"));
+});
+
+export const setDefaultPaymentAccount = asyncHandler(async (req, res) => {
+  const account = await paymentAccountService.setDefaultPaymentAccount({
+    hotelId: hotelIdFor(req),
+    accountId: req.params.accountId,
+    actor: req.user,
+  });
+  res.status(200).json(new ApiResponse(200, { account }, "Default account changed"));
+});
+
+/**
+ * One-shot signature for a payment QR image. A fresh public_id per upload, for
+ * the reason createContentUpload gives: the old image is deleted explicitly
+ * once the new one is saved, and reusing an id would let the CDN keep serving
+ * the previous QR — which, here, pays a different account.
+ */
+export const createPaymentQrUpload = asyncHandler(async (req, res) => {
+  const data = uploadService.createUploadSignature({
+    folder: "payment-qr",
+    publicId: `hotel_${hotelIdFor(req)}_${Date.now().toString(36)}${Math.random()
+      .toString(36)
+      .slice(2, 8)}`,
+  });
+  res.status(200).json(new ApiResponse(200, data));
 });
 
 /**
@@ -652,6 +732,9 @@ export const listBills = asyncHandler(async (req, res) => {
     outlet: req.query.outlet,
     from: req.query.from,
     to: req.query.to,
+    // `mine` narrows to the caller's own bills; the id comes from the token,
+    // never the query, so nobody can list a colleague's tray.
+    staffId: req.query.mine ? req.user._id : null,
     page: Number(req.query.page) || 1,
     limit: Number(req.query.limit) || 20,
   });

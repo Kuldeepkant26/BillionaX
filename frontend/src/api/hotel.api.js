@@ -122,6 +122,34 @@ export const getBill = (billId) => api.get(`/hotel/bills/${billId}`).then(unwrap
 export const cancelBill = (billId) =>
   api.post(`/hotel/bills/${billId}/cancel`).then(unwrap);
 
+/**
+ * Confirms the guest's UPI payment reached the hotel, and settles the bill.
+ *
+ * Only the staff member who sent the bill may; anyone else gets a 403. The
+ * amount is the one the confirm dialog showed — if the guest changed their
+ * coins since, the server answers 409 with the new figure rather than
+ * settling at an amount nobody checked.
+ */
+export const confirmBill = (billId, expectedPayablePaise) =>
+  api.post(`/hotel/bills/${billId}/confirm`, { expectedPayablePaise }).then(unwrap);
+
+/* ---- payment accounts: the UPI accounts guests pay into ----------------- */
+
+// Readable by staff (the composer's "Pay to" dropdown); every write is
+// manager-only on the server.
+export const listPaymentAccounts = () => api.get("/hotel/payment-accounts").then(unwrap);
+export const createPaymentAccount = (payload) =>
+  api.post("/hotel/payment-accounts", payload).then(unwrap);
+export const updatePaymentAccount = (id, payload) =>
+  api.patch(`/hotel/payment-accounts/${id}`, payload).then(unwrap);
+export const deletePaymentAccount = (id) =>
+  api.delete(`/hotel/payment-accounts/${id}`).then(unwrap);
+// `{}`, never null — see markRebateSeen.
+export const setDefaultPaymentAccount = (id) =>
+  api.post(`/hotel/payment-accounts/${id}/default`, {}).then(unwrap);
+export const createPaymentQrUpload = () =>
+  api.post("/hotel/payment-accounts/qr-upload", {}).then(unwrap);
+
 /* ---- support: this account's thread with the platform team ------------- */
 
 /*

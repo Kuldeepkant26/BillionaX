@@ -4,6 +4,8 @@ import { ROLES } from "../../store/slices/authSlice.js";
 import { useHotelSupportBadge } from "../../hooks/useHotelSupportBadge.js";
 import { useHotelGuestChatsBadge } from "../../hooks/useHotelGuestChatsBadge.js";
 import RebateNotice from "../../features/panel/distribution/RebateNotice.jsx";
+import { useBillTray } from "../../hooks/useBillRealtime.js";
+import { PaymentTray } from "../../features/panel/PaymentTray.jsx";
 
 // Hotel-admin-only nav items. MAIN_ADMIN never reaches this panel — they work
 // from the admin panel, which targets a specific hotel.
@@ -20,6 +22,9 @@ const NAV = [
   {
     to: ROUTES.HOTEL_BILL,
     label: "Bill a guest",
+    // Bills this user sent whose guest has opened the UPI details — the ones
+    // waiting on them to confirm. See useBillTray.
+    badge: "bills",
     icon: "M9 3a6 6 0 1 0 3.4 10.9l3.9 3.9 1.4-1.4-3.9-3.9A6 6 0 0 0 9 3zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z",
   },
   {
@@ -86,6 +91,16 @@ const NAV = [
     icon: "M2.6 3.4h6.2v6.2H2.6zm8.6 0h6.2v6.2h-6.2zM2.6 11.4h6.2v5.2H2.6zm8.6 0h6.2v5.2h-6.2z",
   },
   {
+    // Beside Services, and for the same reason it is not in Settings: a list
+    // a manager edits row by row. Manager-only — whoever edits these decides
+    // where guests' money goes.
+    to: ROUTES.HOTEL_PAYMENT_ACCOUNTS,
+    label: "Payment accounts",
+    roles: ADMIN,
+    // A card with a stripe, filled like every icon here.
+    icon: "M2.5 5a1.5 1.5 0 0 1 1.5-1.5h12A1.5 1.5 0 0 1 17.5 5v1.5h-15zm0 3.5h15V15a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 15zm2 4.5v1.5h4V13z",
+  },
+  {
     to: ROUTES.HOTEL_PRIVILEGES,
     label: "Privileges",
     roles: ADMIN,
@@ -128,6 +143,9 @@ const HotelPanelLayout = () => {
   // Mounted right beside it, and for the same reason: a badge hook that nothing
   // calls is a hook that silently never runs.
   useHotelGuestChatsBadge();
+  // The confirm tray's feed and the "Bill a guest" badge. Here, not on the
+  // Bill page, because a guest pays while staff are on any screen.
+  useBillTray();
 
   return (
     <>
@@ -135,6 +153,8 @@ const HotelPanelLayout = () => {
       {/* The month-end "coins received" announcement. Portalled to body, so
           it sits above the panel rather than inside its scroll. */}
       <RebateNotice />
+      {/* This user's own bills awaiting payment, floating over every page. */}
+      <PaymentTray />
     </>
   );
 };

@@ -6,6 +6,10 @@ import styles from "./BillCard.module.css";
 /**
  * One bill, with its coin slider and the two actions.
  *
+ * "Pay" opens the hotel's UPI details (see UpiPaySheet) and holds the chosen
+ * coins on the server. From then on the bill reads as "payment in progress"
+ * until the staff member who sent it confirms the money arrived.
+ *
  * Shared by the Pay screen and the popup rather than written twice: the amount
  * a guest is about to pay must not be able to differ between two renderings of
  * the same bill, and duplicating this arithmetic is exactly how that happens.
@@ -51,10 +55,21 @@ export const BillCard = ({
     return Math.min(Math.floor(capPaise / 100), Math.floor(effectiveBalance));
   }, [bill.totalPaise, bill.tierCapPercent, bill.coinAllowancePaise, effectiveBalance]);
 
-  const [coins, setCoins] = useState(0);
+  /*
+   * Once the guest has opened the payment details, the server is holding the
+   * coins they chose and the hotel is watching for that amount. The slider
+   * starts from what is held, so reopening the bill shows the same figure
+   * rather than silently offering to pay the full total.
+   */
+  const started = Boolean(bill.upiStartedAt);
+  const [coins, setCoins] = useState(started ? bill.coinsApplied || 0 : 0);
+  // A started bill may already have been paid in the guest's UPI app, so
+  // cancelling it takes a second, explicit tap.
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   const applied = Math.min(coins, capCoins);
   const payablePaise = Math.max(0, bill.totalPaise - applied * 100);
+  const changedCoins = started && applied !== (bill.coinsApplied || 0);
 
   return (
     <article className={`${styles.card} ${compact ? styles.compact : ""}`}>
@@ -146,10 +161,37 @@ export const BillCard = ({
         <p className={styles.coinsHint}>Coins can&rsquo;t be used on this bill.</p>
       )}
 
+      {started && (
+        <p className="notice-warn mt-3 text-[12px]" role="status">
+          {changedCoins ? (
+            <>
+              You&rsquo;re changing the coins on a bill you&rsquo;ve started paying. If you have
+              already paid <b>{formatPaise(bill.payablePaise)}</b>, leave this as it is.
+            </>
+          ) : (
+            <>
+              Payment in progress — waiting for {bill.hotel?.name || "the hotel"} to confirm{" "}
+              {bill.payRef ? <b>{bill.payRef}</b> : "your payment"}.
+            </>
+          )}
+        </p>
+      )}
+
       <div className={styles.actions}>
         <Button block onClick={() => onPay(applied)} disabled={busy}>
-          {busy ? "Processing…" : `Pay ${formatPaise(payablePaise)}`}
+          {busy
+            ? "Opening…"
+            : started && !changedCoins
+              ? "Show payment details"
+              : `Pay ${formatPaise(payablePaise)}`}
         </Button>
+
+        {confirmCancel && (
+          <p className="notice-warn mt-2 text-[12px]">
+            Already paid in your UPI app? Don&rsquo;t cancel — the hotel will confirm it. Only cancel
+            if you haven&rsquo;t paid.
+          </p>
+        )}
 
         <div className={styles.secondary}>
           {/* Dismissing and declining are deliberately different. A guest who
@@ -161,8 +203,13 @@ export const BillCard = ({
             </button>
           )}
           {onCancel && (
-            <button type="button" className={styles.decline} onClick={onCancel} disabled={busy}>
-              Cancel bill
+            <button
+              type="button"
+              className={styles.decline}
+              onClick={() => (started && !confirmCancel ? setConfirmCancel(true) : onCancel())}
+              disabled={busy}
+            >
+              {confirmCancel ? "Yes, cancel bill" : "Cancel bill"}
             </button>
           )}
         </div>

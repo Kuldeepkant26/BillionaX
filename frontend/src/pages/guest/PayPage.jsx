@@ -1,7 +1,7 @@
 import { useAppStore } from "../../store/useAppStore.js";
 import { useBillPayment } from "../../hooks/useBillPayment.js";
 import { BillCard } from "../../features/guest/BillCard.jsx";
-import { CheckoutSheet } from "../../features/guest/CheckoutSheet.jsx";
+import { UpiPaySheet } from "../../features/guest/UpiPaySheet.jsx";
 import { formatCoins, formatPaise } from "../../utils/format.js";
 import styles from "./PayPage.module.css";
 
@@ -20,7 +20,7 @@ const PayPage = () => {
   const pendingBills = useAppStore((s) => s.pendingBills);
   const memberships = useAppStore((s) => s.memberships);
   const activeHotelId = useAppStore((s) => s.activeHotelId);
-  const { busy, checkout, start, finish, abandon, decline } = useBillPayment();
+  const { busy, payment, start, settled, close, decline } = useBillPayment();
 
   const balanceFor = (hotelId) =>
     memberships.find((m) => String(m.hotelId?._id) === String(hotelId))?.balance || 0;
@@ -96,17 +96,17 @@ const PayPage = () => {
           </div>
 
           <p className={styles.footnote}>
-            Paid in the app — nothing to show at the desk. Coins come off before the amount you
-            are charged.
+            Pay the hotel straight from your UPI app — the bill clears once they confirm it
+            arrived. Coins come off before the amount you pay.
           </p>
         </>
       )}
 
-      <CheckoutSheet
-        open={Boolean(checkout)}
-        amountPaise={checkout?.payablePaise || 0}
-        onDone={finish}
-        onClose={abandon}
+      <UpiPaySheet
+        payment={payment}
+        hotelName={payment?.bill?.hotel?.name}
+        onSettled={settled}
+        onClose={close}
       />
     </div>
   );

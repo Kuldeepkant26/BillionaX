@@ -275,7 +275,7 @@ const LandingPage = () => {
               className="m-0 font-display text-[clamp(2.1rem,6.4vw,5rem)] font-semibold uppercase leading-[1] text-ink"
               data-reveal=""
             >
-              <span className="block tracking-[-0.015em] text-muted">Luxury for everyone.</span>
+              <span className="block tracking-[-0.015em] text-muted">Luxury beyond limits.</span>
               <span className="block tracking-[-0.015em]">Privileges for members.</span>
             </h1>
 
@@ -492,7 +492,7 @@ const LandingPage = () => {
             <div className="max-w-[340px]">
               <Wordmark />
               <p className="m-0 mt-7 font-display text-[21px] leading-snug">
-                Luxury for everyone.
+                Luxury beyond limits.
                 <br />
                 Privileges for members.
               </p>

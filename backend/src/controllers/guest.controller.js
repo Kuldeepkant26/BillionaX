@@ -467,13 +467,15 @@ export const payBill = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, data));
 });
 
-/** Confirms a payment and settles the bill. */
+/**
+ * Settles a bill that coins cover entirely. A bill with money left to pay is
+ * refused by the service: the hotel confirms those once the UPI payment
+ * reaches them.
+ */
 export const confirmBill = asyncHandler(async (req, res) => {
   const data = await billService.markBillPaid({
     billId: req.params.billId,
     guestId: req.user._id,
-    providerPaymentId: req.body.providerPaymentId,
-    signature: req.body.signature,
   });
   res.status(200).json(new ApiResponse(200, data, "Payment complete"));
 });

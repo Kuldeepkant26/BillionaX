@@ -158,7 +158,49 @@ const billSchema = new mongoose.Schema(
       index: true,
     },
 
-    /* ---- payment provider ---- */
+    /* ---- direct UPI ---- */
+
+    /**
+     * A short code — BX-4F2A9C — that rides in the UPI payment's note.
+     *
+     * Guests pay the hotel's UPI account directly, so the only thing tying a
+     * credit in the hotel's UPI app to THIS bill is what the guest's app wrote
+     * in the note. Two guests paying ₹1,200 into the same account in the same
+     * minute are otherwise indistinguishable.
+     */
+    payRef: { type: String, trim: true },
+
+    /** The account staff chose when sending the bill. Resolved live at payment. */
+    paymentAccountId: { type: mongoose.Schema.Types.ObjectId },
+
+    /**
+     * Where the guest was told to pay, copied from the account each time they
+     * open the payment details. The record of the instruction actually shown —
+     * it outlives the account being edited or deleted, which is when it is
+     * needed.
+     */
+    payTo: {
+      accountId: { type: mongoose.Schema.Types.ObjectId },
+      label: { type: String, trim: true },
+      vpa: { type: String, trim: true },
+      payeeName: { type: String, trim: true },
+    },
+
+    /** When the guest first opened the payment details. Drives the expiry extension. */
+    upiStartedAt: { type: Date },
+
+    /**
+     * Coins held against this bill on the guest's membership (reservedCoins
+     * there). Equal to coinsApplied while PENDING and started; zeroed by every
+     * path that ends the bill, in the same transaction that releases or spends
+     * the hold.
+     */
+    coinsReserved: { type: Number, default: 0, min: 0 },
+
+    /** The staff member who confirmed the money arrived. Always the bill's sender. */
+    confirmedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+
+    /* ---- payment provider (unused by bills since direct UPI) ---- */
 
     razorpayOrderId: { type: String, index: true },
     razorpayPaymentId: { type: String },
@@ -198,6 +240,9 @@ billSchema.index({ guestId: 1, status: 1, createdAt: -1 });
 
 // The expiry sweep's only query.
 billSchema.index({ status: 1, expiresAt: 1 });
+
+// The confirm tray: one staff member's own bills awaiting confirmation.
+billSchema.index({ hotelId: 1, staffId: 1, status: 1, createdAt: -1 });
 
 /** Whether a guest can still act on this bill. Mirrors voucher's isUsable. */
 billSchema.virtual("isPayable").get(function isPayable() {

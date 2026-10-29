@@ -2,6 +2,8 @@ import { useCallback, useState } from "react";
 import { getBill, listBills } from "../../api/hotel.api.js";
 import { useAsync } from "../../hooks/useAsync.js";
 import { usePaginatedList } from "../../hooks/usePaginatedList.js";
+import { useHotelBillSettled } from "../../hooks/useBillRealtime.js";
+import { invalidateCache } from "../../hooks/asyncCache.js";
 import {
   Badge,
   Empty,
@@ -237,6 +239,22 @@ export const BillHistory = () => {
     limit: 10,
     filters: { status: "", outlet: "", from: "", to: "" },
   });
+
+  /*
+   * Live, like the pane above it. This list used to load once and never
+   * again, so a bill confirmed a moment ago stayed missing until a reload —
+   * while the "Awaiting payment" pane right above it had already dropped it.
+   * Re-reads the CURRENT page and filters; rows stay on screen meanwhile, so
+   * there is no skeleton flash.
+   */
+  const { run: reloadHistory } = list;
+  const onSettled = useCallback(() => {
+    // A bill's detail is cached as immutable, but one opened while still
+    // pending changes exactly here — drop it so it reopens with its new status.
+    invalidateCache("hotel.bill");
+    reloadHistory();
+  }, [reloadHistory]);
+  useHotelBillSettled(onSettled);
 
   /**
    * The preset dropdown owns from/to, so the two can never disagree.

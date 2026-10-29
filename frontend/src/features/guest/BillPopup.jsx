@@ -1,7 +1,7 @@
 import { useAppStore } from "../../store/useAppStore.js";
 import { useBillPayment } from "../../hooks/useBillPayment.js";
 import { BillCard } from "./BillCard.jsx";
-import { CheckoutSheet } from "./CheckoutSheet.jsx";
+import { UpiPaySheet } from "./UpiPaySheet.jsx";
 import styles from "./BillPopup.module.css";
 
 /**
@@ -22,38 +22,46 @@ export const BillPopup = () => {
   const memberships = useAppStore((s) => s.memberships);
   const dismissPopup = useAppStore((s) => s.dismissPopup);
 
-  const { busy, checkout, start, finish, abandon, decline } = useBillPayment({
-    onSettled: dismissPopup,
-  });
+  /*
+   * No onSettled here. Every way a bill ends — paid, declined, voided —
+   * already runs removeBill, which advances the popup to the next waiting
+   * bill. Dismissing on top of that skipped the bill it had just advanced to.
+   */
+  const { busy, payment, start, settled, close, decline } = useBillPayment();
 
-  if (!popupBill) return null;
-
-  const balance =
-    memberships.find((m) => String(m.hotelId?._id) === String(popupBill.hotelId))?.balance || 0;
+  const balance = popupBill
+    ? memberships.find((m) => String(m.hotelId?._id) === String(popupBill.hotelId))?.balance || 0
+    : 0;
 
   return (
     <>
-      <div className={styles.backdrop} role="dialog" aria-modal="true" aria-label="New bill">
-        <div className={styles.sheet}>
-          <p className={styles.kicker}>New bill</p>
+      {/* The card goes as soon as the bill leaves the list; the sheet below
+          must NOT go with it. The hotel confirming is exactly what removes the
+          bill, and the sheet has to outlive that to show the tick. */}
+      {popupBill && !payment && (
+        <div className={styles.backdrop} role="dialog" aria-modal="true" aria-label="New bill">
+          <div className={styles.sheet}>
+            <p className={styles.kicker}>New bill</p>
 
-          <BillCard
-            compact
-            bill={popupBill}
-            balance={balance}
-            busy={busy}
-            onPay={(coins) => start(popupBill, coins)}
-            onCancel={() => decline(popupBill)}
-            onDismiss={dismissPopup}
-          />
+            <BillCard
+              key={popupBill.id}
+              compact
+              bill={popupBill}
+              balance={balance}
+              busy={busy}
+              onPay={(coins) => start(popupBill, coins)}
+              onCancel={() => decline(popupBill)}
+              onDismiss={dismissPopup}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
-      <CheckoutSheet
-        open={Boolean(checkout)}
-        amountPaise={checkout?.payablePaise || 0}
-        onDone={finish}
-        onClose={abandon}
+      <UpiPaySheet
+        payment={payment}
+        hotelName={payment?.bill?.hotel?.name}
+        onSettled={settled}
+        onClose={close}
       />
     </>
   );

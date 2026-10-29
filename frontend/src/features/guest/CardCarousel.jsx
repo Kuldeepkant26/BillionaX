@@ -31,7 +31,7 @@ const SHOW_MS = { card: 9000, brand: 5000 };
    that applies network-wide, not a property's content. */
 const BRAND = {
   wordmark: "Billionax",
-  lines: ["Luxury for everyone.", "Privileges for members."],
+  lines: ["Luxury beyond limits.", "Privileges for members."],
   body:
     "Earn Billionax Coins on every stay. Redeem exclusive privileges across dining, wellness, upgrades and luxury experiences.",
   /* Split rather than one string: the figure is set in the display face and

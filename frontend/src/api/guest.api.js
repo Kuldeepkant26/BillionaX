@@ -56,13 +56,19 @@ export const listBills = (params) => api.get("/guest/bills", { params }).then(un
 
 export const getBill = (billId) => api.get(`/guest/bills/${billId}`).then(unwrap);
 
-/** Opens a payment, applying the coins the guest chose. */
+/**
+ * Opens the UPI payment details, holding the coins the guest chose. Safe to
+ * call again — reopening the details or changing the coins adjusts the hold.
+ * Returns `{ bill, upi, settlesWithoutPayment }`.
+ */
 export const payBill = (billId, coins) =>
   api.post(`/guest/bills/${billId}/pay`, { coins }).then(unwrap);
 
-/** Confirms a completed payment and settles the bill. */
-export const confirmBill = (billId, payload) =>
-  api.post(`/guest/bills/${billId}/confirm`, payload).then(unwrap);
+/**
+ * Settles a bill that coins cover entirely. Anything with money left to pay
+ * is confirmed by the hotel, and the server refuses it here.
+ */
+export const confirmBill = (billId) => api.post(`/guest/bills/${billId}/confirm`, {}).then(unwrap);
 
 export const cancelBill = (billId) =>
   api.post(`/guest/bills/${billId}/cancel`).then(unwrap);

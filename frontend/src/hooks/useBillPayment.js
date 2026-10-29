@@ -7,24 +7,32 @@ import { invalidateCache } from "./asyncCache.js";
  * Paying or declining one bill.
  *
  * Shared by the Pay screen and the popup so the two cannot drift: the sequence
- * — open an order, run checkout, confirm — has to be identical wherever the
- * guest happens to be standing when the bill arrives.
+ * has to be identical wherever the guest happens to be standing when the bill
+ * arrives.
  *
- * The provider is invisible from here. In demo mode `startBillPayment` returns
- * a demo order and the sheet simulates authorisation; with real credentials the
- * same call returns a live order. This hook does not branch on which, which is
- * what keeps a demo indistinguishable from the real thing.
+ * DIRECT UPI. `start` holds the coins the guest chose and returns the hotel's
+ * UPI details; the guest then pays from their own UPI app, and the bill
+ * settles when the staff member who sent it confirms the money arrived. There
+ * is deliberately no "I've paid" call here — the guest cannot settle a bill
+ * that has money on it, and the sheet simply waits for the hotel's bill:paid.
+ *
+ * The one exception is a bill coins cover entirely: nothing for the desk to
+ * receive, so the guest settles it straight away.
  */
 export const useBillPayment = ({ onSettled } = {}) => {
   const toastError = useAppStore((s) => s.toastError);
   const toastSuccess = useAppStore((s) => s.toastSuccess);
   const removeBill = useAppStore((s) => s.removeBill);
+  const updateBill = useAppStore((s) => s.updateBill);
 
   const [busy, setBusy] = useState(false);
-  // The open order: what the checkout sheet is showing, and what confirm needs.
-  const [checkout, setCheckout] = useState(null);
+  // The open payment: what the UPI sheet is showing. { billId, bill, upi }
+  const [payment, setPayment] = useState(null);
 
-  /** Prices the coins and opens an order. */
+  /**
+   * Holds the coins and opens the UPI details. Called again to reopen them or
+   * to change the coins — the server adjusts the hold rather than adding to it.
+   */
   const start = useCallback(
     async (bill, coins) => {
       if (busy) return;
@@ -32,64 +40,49 @@ export const useBillPayment = ({ onSettled } = {}) => {
 
       try {
         const res = await payBill(bill.id, coins || 0);
+        // The server has now fixed the coins and the amount; the card shows
+        // "payment in progress" from this copy.
+        updateBill(res.bill);
 
-        // A bill covered entirely by coins has nothing to charge, so it settles
-        // without a checkout at all.
         if (res.settlesWithoutPayment) {
-          await confirmBill(bill.id, {});
+          await confirmBill(bill.id);
           removeBill(bill.id);
           toastSuccess("Paid with coins");
+          // The payment moved the guest's coin balance and added a
+          // transaction, so every cached guest screen showing either is now
+          // wrong.
+          invalidateCache("guest.memberships");
+          invalidateCache("guest.transactions");
           onSettled?.(bill.id);
           return;
         }
 
-        setCheckout({ billId: bill.id, order: res.order, payablePaise: res.bill.payablePaise });
+        setPayment({ billId: bill.id, bill: res.bill, upi: res.upi });
       } catch (err) {
-        toastError(err.message || "Could not start that payment");
+        toastError(err.message || "Could not open that payment");
       } finally {
         setBusy(false);
       }
     },
-    [busy, onSettled, removeBill, toastError, toastSuccess]
+    [busy, onSettled, removeBill, toastError, toastSuccess, updateBill]
   );
 
   /**
-   * Called once the gateway reports success.
-   *
-   * A failure here leaves the bill PENDING on purpose — the guest can simply
-   * try again rather than needing staff to reissue it.
+   * The sheet saw the hotel confirm. The bill itself was already dropped by
+   * useBillRealtime on the same bill:paid; this tidies up after the tick.
    */
-  const finish = useCallback(async () => {
-    if (!checkout) return;
-    setBusy(true);
+  const settled = useCallback(() => {
+    const billId = payment?.billId;
+    setPayment(null);
+    invalidateCache("guest.memberships");
+    invalidateCache("guest.transactions");
+    if (billId) onSettled?.(billId);
+  }, [payment, onSettled]);
 
-    try {
-      await confirmBill(checkout.billId, {
-        providerPaymentId: checkout.order?.providerPaymentId || `${checkout.order?.providerOrderId}_pay`,
-        signature: checkout.order?.signature || "demo",
-      });
+  /** Closes the sheet. The bill stays pending, with its coins still held. */
+  const close = useCallback(() => setPayment(null), []);
 
-      removeBill(checkout.billId);
-      setCheckout(null);
-      toastSuccess("Payment complete");
-      // The payment moved the guest's coin balance and added a transaction,
-      // so every cached guest screen showing either is now wrong. Dropping
-      // them means Home and History refetch on the next visit instead of
-      // showing the pre-payment balance.
-      invalidateCache("guest.memberships");
-      invalidateCache("guest.transactions");
-      onSettled?.(checkout.billId);
-    } catch (err) {
-      setCheckout(null);
-      toastError(err.message || "That payment could not be confirmed");
-    } finally {
-      setBusy(false);
-    }
-  }, [checkout, onSettled, removeBill, toastError, toastSuccess]);
-
-  const abandon = useCallback(() => setCheckout(null), []);
-
-  /** Declines the bill outright. Staff are told immediately. */
+  /** Declines the bill outright. Staff are told immediately, and any held coins come back. */
   const decline = useCallback(
     async (bill) => {
       setBusy(true);
@@ -109,5 +102,5 @@ export const useBillPayment = ({ onSettled } = {}) => {
     [onSettled, removeBill, toastError]
   );
 
-  return { busy, checkout, start, finish, abandon, decline };
+  return { busy, payment, start, settled, close, decline };
 };

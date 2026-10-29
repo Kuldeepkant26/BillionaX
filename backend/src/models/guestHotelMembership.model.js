@@ -13,6 +13,21 @@ const membershipSchema = new mongoose.Schema(
 
     balance: { type: Number, default: 0, min: 0 },
 
+    /**
+     * Coins promised to bills the guest has started paying but the hotel has
+     * not confirmed yet. Spendable = balance − reservedCoins.
+     *
+     * A hold rather than a debit: `balance` only ever moves together with a
+     * ledger row, which is what keeps sum(coins) === balance true. A UPI bill
+     * is confirmed by staff minutes after the guest pays, and without this a
+     * guest could put the same coins on two bills — the second confirmation
+     * would then fail AFTER the money had already reached the hotel.
+     *
+     * Always equal to the sum of coinsReserved over this membership's PENDING
+     * bills; scripts/reconcile.js checks it.
+     */
+    reservedCoins: { type: Number, default: 0, min: 0 },
+
     // Tier is derived from nights stayed, never from coins held — a guest
     // cannot buy their way up a tier. See resolveTierByNights.
     tier: { type: String, enum: TIER_VALUES, default: TIERS.SILVER },

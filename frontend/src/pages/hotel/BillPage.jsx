@@ -1,8 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   cancelBill,
   createBill,
   listBills,
+  listPaymentAccounts,
   listServices,
   revealGuestEmail,
   searchGuests,
@@ -22,6 +24,8 @@ import {
 } from "../../components/common/index.jsx";
 import { PageHead } from "../../features/panel/PageHead.jsx";
 import { BillHistory } from "../../features/panel/BillHistory.jsx";
+import { ConfirmPaymentDialog } from "../../features/panel/ConfirmPaymentDialog.jsx";
+import { ROUTES } from "../../constants/routePaths.js";
 import { formatCoins, formatPaise, initials, rupeesToPaise, timeAgo } from "../../utils/format.js";
 import styles from "./BillPage.module.css";
 
@@ -106,6 +110,8 @@ const GuestCard = ({ guest, selected, onSelect }) => {
 const BillPage = () => {
   const toastError = useAppStore((s) => s.toastError);
   const toastSuccess = useAppStore((s) => s.toastSuccess);
+  const myId = useAppStore((s) => s.user?.id);
+  const isManager = useAppStore((s) => s.user?.role === "HOTEL_ADMIN");
 
   const [q, setQ] = useState("");
   const debouncedQ = useDebounced(q, 350);
@@ -117,6 +123,10 @@ const BillPage = () => {
   // The bill currently being voided, so only its own row shows a busy state
   // rather than every button in the list going dead at once.
   const [cancelling, setCancelling] = useState(null);
+  // The bill whose payment is being confirmed — the dialog's subject.
+  const [confirming, setConfirming] = useState(null);
+  // The UPI account picked for this bill; "" means the hotel's default.
+  const [accountId, setAccountId] = useState("");
 
   // The hotel's own bills, so staff watch them settle. This is the initial
   // read and the reconnect path; the socket subscription below is what keeps
@@ -129,6 +139,15 @@ const BillPage = () => {
   // The outlets this hotel bills to, for the per-line picker. Read once: the
   // list changes when a manager edits it, not while a bill is being composed.
   const { data: servicesData } = useAsync(() => listServices({ limit: 100 }), []);
+
+  // Where guests pay. Read once, like services: a manager edits these on
+  // their own page, not while a bill is being composed. The server falls back
+  // to the default if the pick was removed in the meantime — and says so.
+  const { data: accountsData, loading: accountsLoading } = useAsync(listPaymentAccounts, []);
+  const accounts = accountsData?.items || [];
+  const defaultAccount = accounts.find((a) => a.isDefault) || accounts[0] || null;
+  const payTo = accounts.find((a) => a.id === accountId) || defaultAccount;
+  const noAccounts = !accountsLoading && accountsData && !accounts.length;
 
   const services = useMemo(
     () => (servicesData?.items || []).filter((s) => s.isActive),
@@ -248,6 +267,7 @@ const BillPage = () => {
     try {
       await createBill({
         guestId: guest.guestId,
+        paymentAccountId: payTo?.id,
         taxPercent: Number(taxPercent) || 0,
         lineItems: usableLines.map((line) => ({
           description: line.description.trim(),
@@ -306,6 +326,18 @@ const BillPage = () => {
         title="Bill a guest"
         subtitle="Find the guest, itemise what they owe, and send it to their phone."
       />
+
+      {/* Said before staff build a whole bill, not after they press Send. */}
+      {noAccounts && (
+        <p className="notice-warn mb-4 text-[12.5px]">
+          This hotel has no UPI account for guests to pay into yet, so bills can&rsquo;t be sent.{" "}
+          {isManager ? (
+            <Link to={ROUTES.HOTEL_PAYMENT_ACCOUNTS}>Add one under Payment accounts</Link>
+          ) : (
+            "Ask a manager to add one under Payment accounts."
+          )}
+        </p>
+      )}
 
       {/*
         A numbered two-step layout rather than two equal cards. Staff do this
@@ -573,7 +605,29 @@ const BillPage = () => {
                 </p>
               )}
 
-              <Button block onClick={send} disabled={!usableLines.length || sending}>
+              {/* Only when there is a choice to make. With one account the
+                  answer is obvious, and a one-option dropdown is noise at a
+                  busy desk. */}
+              {accounts.length > 1 && (
+                <div className={styles.meta}>
+                  <Field label="Guest pays into" hint={payTo ? payTo.vpa : undefined}>
+                    <Select
+                      value={payTo?.id || ""}
+                      onChange={(e) => setAccountId(e.target.value)}
+                      aria-label="UPI account for this bill"
+                    >
+                      {accounts.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.label}
+                          {a.isDefault ? " (default)" : ""}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
+              )}
+
+              <Button block onClick={send} disabled={!usableLines.length || sending || noAccounts}>
                 {sending ? "Sending…" : `Send bill · ${formatPaise(totals.totalPaise)}`}
               </Button>
             </>
@@ -589,7 +643,10 @@ const BillPage = () => {
           </span>
           <div>
             <b>Awaiting payment</b>
-            <i>Updates the moment a guest pays or cancels.</i>
+            <i>
+              Confirm each one once the money shows in your UPI app. Only the person who sent a
+              bill can confirm it.
+            </i>
           </div>
         </header>
 
@@ -608,12 +665,34 @@ const BillPage = () => {
                 <span className={styles.billBody}>
                   <b>{bill.guestName}</b>
                   <i>
-                    {bill.lineItems.length} item{bill.lineItems.length === 1 ? "" : "s"} ·{" "}
-                    {timeAgo(bill.createdAt)}
+                    {[
+                      bill.payRef,
+                      bill.payTo?.label,
+                      bill.staffId === myId ? "sent by you" : bill.staffName && `sent by ${bill.staffName}`,
+                      timeAgo(bill.createdAt),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </i>
                 </span>
-                <span className={styles.billAmount}>{formatPaise(bill.totalPaise)}</span>
-                <Badge tone={STATUS_TONE[bill.status]}>{bill.status}</Badge>
+                {/* What is actually owed once the guest has picked their
+                    coins — the figure staff look for in their UPI app. */}
+                <span className={styles.billAmount}>{formatPaise(bill.payablePaise)}</span>
+                {bill.upiStartedAt ? (
+                  <Badge tone="ok">Paying now</Badge>
+                ) : (
+                  <Badge tone={STATUS_TONE[bill.status]}>{bill.status}</Badge>
+                )}
+                {bill.staffId === myId && (
+                  <button
+                    type="button"
+                    className={styles.confirmBtn}
+                    onClick={() => setConfirming(bill)}
+                    title="Confirm the payment reached you"
+                  >
+                    Confirm
+                  </button>
+                )}
                 <button
                   type="button"
                   className={styles.voidBtn}
@@ -658,6 +737,12 @@ const BillPage = () => {
 
         <BillHistory />
       </section>
+
+      <ConfirmPaymentDialog
+        bill={confirming}
+        onClose={() => setConfirming(null)}
+        onConfirmed={() => reloadBills()}
+      />
     </div>
   );
 };

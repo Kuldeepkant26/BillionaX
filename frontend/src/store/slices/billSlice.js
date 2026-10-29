@@ -61,6 +61,22 @@ export const createBillSlice = (set, get) => ({
     });
   },
 
+  /**
+   * A fresher copy of a bill already in the list — the guest opened its
+   * payment details, so the coins held and the amount owed are now fixed on
+   * the server. Ignored for a bill no longer pending, so a late response
+   * cannot resurrect one that was just settled.
+   */
+  updateBill: (bill) => {
+    const { pendingBills, popupBill } = get();
+    if (!pendingBills.some((b) => b.id === bill.id)) return;
+
+    set({
+      pendingBills: pendingBills.map((b) => (b.id === bill.id ? { ...b, ...bill } : b)),
+      popupBill: popupBill?.id === bill.id ? { ...popupBill, ...bill } : popupBill,
+    });
+  },
+
   /** Closes the popup without touching the bill itself. */
   dismissPopup: () => {
     const { pendingBills, popupBill } = get();
@@ -81,5 +97,20 @@ export const createBillSlice = (set, get) => ({
     });
   },
 
-  clearBills: () => set({ pendingBills: [], popupBill: null }),
+  clearBills: () => set({ pendingBills: [], popupBill: null, trayBills: [] }),
+
+  /* ---- hotel panel ---- */
+
+  /**
+   * The signed-in staff member's OWN pending bills — the confirm tray.
+   *
+   * Only theirs, because only the person who sent a bill may confirm its
+   * payment. Kept in the store rather than in the tray so the nav badge can
+   * count the ones whose guest has started paying. Not persisted, for the
+   * same reason pendingBills is not.
+   */
+  trayBills: [],
+  setTrayBills: (trayBills) => set({ trayBills }),
+  /** Drops one bill after this user confirmed or voided it, ahead of the socket refresh. */
+  dropTrayBill: (billId) => set({ trayBills: get().trayBills.filter((b) => b.id !== billId) }),
 });

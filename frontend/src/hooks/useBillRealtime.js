@@ -3,6 +3,9 @@ import { useEffect } from "react";
 import { useAppStore } from "../store/useAppStore.js";
 import { connectSocket, getSocket } from "../realtime/socket.js";
 import { listBills } from "../api/guest.api.js";
+import { listBills as listHotelBills } from "../api/hotel.api.js";
+import { chime } from "../utils/chime.js";
+import { formatPaise } from "../utils/format.js";
 import { invalidateCache } from "./asyncCache.js";
 
 /**
@@ -53,9 +56,13 @@ export const useBillRealtime = () => {
      */
     const settled = () => invalidateCache("guest.transactions");
 
-    const onPaid = ({ billId }) => {
+    const onPaid = ({ billId, byHotel }) => {
       removeBill(billId);
       settled();
+      // The hotel confirming a UPI payment can land long after the guest
+      // closed the payment sheet, so the toast is what tells them. Their own
+      // coins-only settlement echoes here too, without the flag.
+      if (byHotel) toast("Payment confirmed by the hotel", "success");
     };
 
     const onCancelled = ({ billId, byStaff }) => {
@@ -130,6 +137,9 @@ export const useHotelBillRealtime = (onChange) => {
     socket.on("bill:paid", onPaid);
     socket.on("bill:cancelled", onCancelled);
     socket.on("bill:expired", refresh);
+    // A guest opened the UPI details: the row gains its "paying now" state and
+    // the amount after coins. The chime is the tray's job, not this list's.
+    socket.on("bill:payment-started", refresh);
 
     return () => {
       socket.off("connect", refresh);
@@ -137,8 +147,136 @@ export const useHotelBillRealtime = (onChange) => {
       socket.off("bill:paid", onPaid);
       socket.off("bill:cancelled", onCancelled);
       socket.off("bill:expired", refresh);
+      socket.off("bill:payment-started", refresh);
     };
   }, [isAuthenticated, onChange]);
+};
+
+/**
+ * Calls `onSettled` whenever a bill at this hotel reaches history — paid,
+ * cancelled or expired — and on reconnect, to catch any missed while offline.
+ *
+ * Silent on purpose. useHotelBillRealtime already toasts these events for the
+ * page; a second subscriber that toasted too would announce every payment
+ * twice. This one only refreshes.
+ *
+ * Coalesced: the expiry sweep flips every lapsed bill in the same second and
+ * emits once per bill, and ten refetches of the same page in a row would be
+ * nine too many.
+ */
+export const useHotelBillSettled = (onSettled) => {
+  const isAuthenticated = useAppStore((s) => s.isAuthenticated);
+
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+
+    const socket = connectSocket();
+    if (!socket) return undefined;
+
+    let timer = null;
+    const refresh = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => onSettled?.(), 250);
+    };
+
+    socket.on("connect", refresh);
+    socket.on("bill:paid", refresh);
+    socket.on("bill:cancelled", refresh);
+    socket.on("bill:expired", refresh);
+
+    return () => {
+      clearTimeout(timer);
+      socket.off("connect", refresh);
+      socket.off("bill:paid", refresh);
+      socket.off("bill:cancelled", refresh);
+      socket.off("bill:expired", refresh);
+    };
+  }, [isAuthenticated, onSettled]);
+};
+
+/**
+ * Feeds the confirm tray: this staff member's OWN pending bills, kept live.
+ *
+ * Mounted once in HotelPanelLayout so the tray and its nav badge work on every
+ * page — a guest pays while staff are on Members as often as on the Bill page.
+ *
+ * The same self-healing shape as useBillRealtime: the server list is re-read
+ * on mount, on reconnect, on tab focus and on every bill event, so a push
+ * missed while the laptop slept costs nothing. Only bill:payment-started for
+ * one of THIS user's bills chimes — a colleague's guest paying is not theirs
+ * to confirm.
+ */
+export const useBillTray = () => {
+  const isAuthenticated = useAppStore((s) => s.isAuthenticated);
+  const role = useAppStore((s) => s.user?.role);
+  const myId = useAppStore((s) => s.user?.id);
+  const setTrayBills = useAppStore((s) => s.setTrayBills);
+  const toast = useAppStore((s) => s.toast);
+
+  const enabled = isAuthenticated && (role === "HOTEL_ADMIN" || role === "HOTEL_STAFF");
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+
+    let live = true;
+    // A ticket per request, so a slow response cannot overwrite a newer one.
+    let seq = 0;
+
+    const refresh = () => {
+      const ticket = ++seq;
+      listHotelBills({ status: "PENDING", mine: true, limit: 20 })
+        .then((res) => live && ticket === seq && setTrayBills(res.items || []))
+        .catch(() => {
+          // The last known list stays; the next event or focus retries.
+        });
+    };
+
+    refresh();
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    const socket = connectSocket();
+    if (!socket) {
+      return () => {
+        live = false;
+        document.removeEventListener("visibilitychange", onVisible);
+      };
+    }
+
+    const onStarted = (payload) => {
+      if (myId && String(payload?.staffId) === String(myId)) {
+        chime();
+        toast(
+          `Guest is paying ${formatPaise(payload.payablePaise)}${
+            payload.payRef ? ` · ${payload.payRef}` : ""
+          } — check your UPI app`,
+          "info"
+        );
+      }
+      refresh();
+    };
+
+    socket.on("connect", refresh);
+    socket.on("bill:new", refresh);
+    socket.on("bill:paid", refresh);
+    socket.on("bill:cancelled", refresh);
+    socket.on("bill:expired", refresh);
+    socket.on("bill:payment-started", onStarted);
+
+    return () => {
+      live = false;
+      document.removeEventListener("visibilitychange", onVisible);
+      socket.off("connect", refresh);
+      socket.off("bill:new", refresh);
+      socket.off("bill:paid", refresh);
+      socket.off("bill:cancelled", refresh);
+      socket.off("bill:expired", refresh);
+      socket.off("bill:payment-started", onStarted);
+    };
+  }, [enabled, myId]);
 };
 
 /** The live socket, for callers that need to check connectivity. */

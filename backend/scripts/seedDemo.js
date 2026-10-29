@@ -34,6 +34,7 @@ import * as hotelService from "../src/services/hotel.service.js";
 import * as coinService from "../src/services/coin.service.js";
 import * as contentService from "../src/services/content.service.js";
 import * as billService from "../src/services/bill.service.js";
+import * as paymentAccountService from "../src/services/paymentAccount.service.js";
 import { joinHotel } from "../src/services/membership.service.js";
 
 const HELP = `
@@ -338,6 +339,16 @@ const seed = async (keeper) => {
       role: ROLES.HOTEL_STAFF,
     });
 
+    // A hotel with no UPI account cannot send a bill, and the redemptions
+    // below go through the real bill flow. A placeholder ID — the demo never
+    // moves money.
+    await paymentAccountService.createPaymentAccount({
+      hotelId: hotel._id,
+      actor: keeper,
+      input: { label: "Front desk", vpa: `${spec.slug}@okdemo`, payeeName: spec.name },
+      notify: false,
+    });
+
     // MUST precede any guest: joinHotel draws the welcome credit from this
     // same inventory, and an underfunded hotel grants 0 coins.
     await coinService.recordPurchase({
@@ -451,11 +462,11 @@ const seed = async (keeper) => {
         coinsRequested: coins,
       });
 
-      const paid = await billService.markBillPaid({
+      // Confirmed by whoever sent it — the only person the bill flow allows.
+      const paid = await billService.confirmBillByStaff({
         billId: bill.id,
-        guestId: guests[gi]._id,
-        providerPaymentId: `seed_${bill.id}`,
-        signature: "seed",
+        hotelId: hotels[hi]._id,
+        staffId: keeper._id,
       });
 
       const membership = await GuestHotelMembership.findOne({

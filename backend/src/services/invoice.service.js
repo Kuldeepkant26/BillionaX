@@ -150,11 +150,19 @@ export const issueInvoiceForBill = async (billId) => {
     coinsDiscountPaise: bill.coinsDiscountPaise || 0,
     amountPaidPaise: bill.payablePaise,
 
-    paymentRef: bill.razorpayPaymentId || "",
-    // A bill fully covered by coins never opened an order, so there is no
-    // gateway payment behind it — saying "Card" there would be a lie on a
-    // financial document.
-    paymentMethod: bill.payablePaise === 0 ? "Coins" : "Online",
+    // The BX- reference from the guest's UPI note — what the hotel's own UPI
+    // statement shows against this payment. Older bills paid through the
+    // gateway keep their gateway id.
+    paymentRef: bill.payRef || bill.razorpayPaymentId || "",
+    // A bill fully covered by coins never moved money, so there is no payment
+    // method behind it — saying "UPI" there would be a lie on a financial
+    // document. A UPI bill names the account it was paid into.
+    paymentMethod:
+      bill.payablePaise === 0
+        ? "Coins"
+        : bill.payTo?.vpa
+          ? `UPI · ${bill.payTo.label || bill.payTo.vpa}`
+          : "Online",
     isDemo: Boolean(bill.isDemo),
 
     branding: {

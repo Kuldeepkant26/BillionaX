@@ -59,6 +59,8 @@ export const billFilterRules = [
   query("status").optional({ values: "falsy" }).toArray(),
   query("status.*").isIn(BILL_STATUS_VALUES).withMessage("Unknown bill status"),
   query("outlet").optional({ values: "falsy" }).isIn(OUTLETS),
+  // Only bills the signed-in user sent — the confirm tray's list.
+  query("mine").optional({ values: "falsy" }).isBoolean().toBoolean(),
   ...dateRangeRules,
 ];
 
@@ -161,6 +163,44 @@ export const createBillRules = [
   // asking for a second, coarser label meant staff saying the same thing twice
   // — with two answers that could disagree. The QUERY filters above still
   // accept one, because they read bills raised before that changed.
+
+  // Which UPI account the guest pays. Omitted means the hotel's default; that
+  // it belongs to THIS hotel is checked in the service, which can see the tenant.
+  body("paymentAccountId").optional({ values: "falsy" }).isMongoId().withMessage("Unknown payment account"),
+];
+
+/**
+ * Staff confirming a UPI payment arrived. The amount is required: it is what
+ * the confirm dialog showed, and the service refuses to settle at any other.
+ */
+export const confirmBillRules = [
+  body("expectedPayablePaise")
+    .isInt({ min: 0 })
+    .withMessage("Confirm the amount you received")
+    .toInt(),
+];
+
+/**
+ * A UPI account. Shape only here; the VPA format, the QR's own payee and the
+ * image's origin are all checked in paymentAccount.service.js, which also
+ * checks them in COMBINATION on an edit.
+ */
+const paymentAccountFieldRules = [
+  body("payeeName").optional({ values: "null" }).isString().trim().isLength({ max: 50 }),
+  body("qrImageUrl").optional({ values: "null" }).isString().trim().isLength({ max: 500 }),
+  body("qrPayload").optional({ values: "null" }).isString().trim().isLength({ max: 1000 }),
+];
+
+export const paymentAccountRules = [
+  body("label").isString().trim().isLength({ min: 1, max: 40 }).withMessage("Name the account (40 characters max)"),
+  body("vpa").isString().trim().isLength({ min: 3, max: 320 }).withMessage("Enter the UPI ID"),
+  ...paymentAccountFieldRules,
+];
+
+export const paymentAccountUpdateRules = [
+  body("label").optional().isString().trim().isLength({ min: 1, max: 40 }).withMessage("Name the account (40 characters max)"),
+  body("vpa").optional().isString().trim().isLength({ min: 3, max: 320 }).withMessage("Enter the UPI ID"),
+  ...paymentAccountFieldRules,
 ];
 
 /** Guest search on the bill screen. Two characters minimum, capped at 64. */
@@ -181,8 +221,6 @@ export const guestSearchRules = [
  */
 export const payBillRules = [
   body("coins").optional({ values: "falsy" }).isInt({ min: 0 }).toInt(),
-  body("providerPaymentId").optional().isString().trim(),
-  body("signature").optional().isString().trim(),
 ];
 
 export const joinHotelRules = [

@@ -30,6 +30,9 @@ import {
   monthlyReportRules,
   serviceRules,
   supportMessageRules,
+  confirmBillRules,
+  paymentAccountRules,
+  paymentAccountUpdateRules,
 } from "../validators/common.validator.js";
 
 const router = Router();
@@ -65,6 +68,54 @@ router.post(
   objectIdParam("billId"),
   validate,
   hotelController.cancelBill
+);
+// Confirming a UPI payment is open to both roles at the route, but the
+// service lets exactly one person through: the staff member who sent the
+// bill. Same reason as voiding above — the rule hangs on the bill's staffId.
+router.post(
+  "/bills/:billId/confirm",
+  objectIdParam("billId"),
+  confirmBillRules,
+  validate,
+  hotelController.confirmBill
+);
+
+/* ---- payment accounts: where guests pay ---- */
+
+// The GET is open to staff, like /services: the composer's "Pay to" dropdown
+// needs it. Every write is adminOnly — whoever edits these decides where the
+// next guest's money goes. The upload route is registered before /:accountId
+// so "qr-upload" is never read as an id.
+router.get("/payment-accounts", hotelController.listPaymentAccounts);
+router.post("/payment-accounts/qr-upload", adminOnly, hotelController.createPaymentQrUpload);
+router.post(
+  "/payment-accounts",
+  adminOnly,
+  paymentAccountRules,
+  validate,
+  hotelController.createPaymentAccount
+);
+router.patch(
+  "/payment-accounts/:accountId",
+  adminOnly,
+  objectIdParam("accountId"),
+  paymentAccountUpdateRules,
+  validate,
+  hotelController.updatePaymentAccount
+);
+router.delete(
+  "/payment-accounts/:accountId",
+  adminOnly,
+  objectIdParam("accountId"),
+  validate,
+  hotelController.deletePaymentAccount
+);
+router.post(
+  "/payment-accounts/:accountId/default",
+  adminOnly,
+  objectIdParam("accountId"),
+  validate,
+  hotelController.setDefaultPaymentAccount
 );
 
 router.get("/transactions", paginationRules, txFilterRules, validate, hotelController.listTransactions);

@@ -534,6 +534,27 @@
   opacity: 0.55;
 }
 
+/*
+ * Confirm, beside Cancel on the sender's own bills. Filled with the accent so
+ * it reads as THE action on a row whose guest has paid — the opposite of the
+ * void button's deliberate quiet.
+ */
+.confirmBtn {
+  flex: none;
+  cursor: pointer;
+  padding: 4px 11px;
+  border: 1px solid var(--acc);
+  border-radius: 999px;
+  background: var(--acc);
+  color: var(--acc-fg);
+  font-size: 11px;
+  font-weight: 650;
+  transition: opacity 0.15s;
+}
+.confirmBtn:hover {
+  opacity: 0.88;
+}
+
 .billAmount {
   font-size: 13px;
   font-weight: 650;

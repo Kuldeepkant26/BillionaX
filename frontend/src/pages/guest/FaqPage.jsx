@@ -101,7 +101,7 @@ const FaqPage = () => {
             "Most people dream of luxury experiences but receive little recognition for their loyalty.",
             "Billionax was built to bridge the gap between aspiration and access.",
             "We believe luxury shouldn't be reserved for a select few people with elite status. It should be earned through meaningful experiences.",
-            { lead: "Luxury for everyone.\nPrivileges for members." },
+            { lead: "Luxury beyond limits.\nPrivileges for members." },
           ],
         },
         {

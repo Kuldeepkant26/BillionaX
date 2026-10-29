@@ -155,3 +155,62 @@ export const partnerEnquiryEmailTemplate = ({
 
   return { text, html };
 };
+
+/**
+ * A hotel's UPI payment accounts changed.
+ *
+ * Sent to every manager of the hotel on any add, edit, delete or default
+ * change. Guests pay these accounts directly, so whoever edits one decides
+ * where the next guest's money goes — this email is how a manager finds out
+ * that somebody did, while it can still be undone.
+ *
+ * `rows` is [label, before, after] with before/after already formatted; a
+ * missing side renders as a dash.
+ */
+export const paymentAccountChangedEmailTemplate = ({
+  hotelName,
+  actionLabel,
+  actorName,
+  whenLabel,
+  rows,
+}) => {
+  const dash = (value) => (value == null || value === "" ? "—" : value);
+
+  const text =
+    `${actionLabel} at ${hotelName}.\n\n` +
+    `Changed by ${actorName} on ${whenLabel}.\n\n` +
+    rows.map(([label, before, after]) => `${label}: ${dash(before)} → ${dash(after)}`).join("\n") +
+    `\n\nGuests pay these accounts directly. If you did not expect this change, ` +
+    `review Payment accounts in the hotel panel straight away.\n`;
+
+  const html = `<div style="margin:0;padding:32px 16px;background:#f6f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <div style="max-width:500px;margin:0 auto;background:#ffffff;border-radius:14px;padding:36px 32px;">
+    <div style="font-size:11px;letter-spacing:2.4px;color:${BRAND};font-weight:700;">BILLIONAX · SECURITY</div>
+
+    <h1 style="margin:18px 0 6px;font-size:21px;line-height:1.3;color:#1a1418;font-weight:600;">
+      ${esc(actionLabel)}
+    </h1>
+    <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#6b6169;">
+      At ${esc(hotelName)}, by ${esc(actorName)} on ${esc(whenLabel)}.
+    </p>
+
+    <div style="background:#faf7f8;border:1px solid #ece4e8;border-radius:10px;padding:6px 18px;">
+      ${rows
+        .map(
+          ([label, before, after], i) => `<div style="padding:11px 0;${i ? "border-top:1px solid #ece4e8;" : ""}font-size:14px;line-height:1.5;">
+        <div style="color:#8b8189;font-size:12px;">${esc(label)}</div>
+        <div style="color:#1a1418;font-weight:600;">${esc(dash(before))} &rarr; ${esc(dash(after))}</div>
+      </div>`
+        )
+        .join("\n      ")}
+    </div>
+
+    <p style="margin:22px 0 0;font-size:13px;line-height:1.6;color:#6b6169;">
+      Guests pay these accounts directly. If you did not expect this change,
+      review <b style="color:#1a1418;">Payment accounts</b> in the hotel panel straight away.
+    </p>
+  </div>
+</div>`;
+
+  return { text, html };
+};

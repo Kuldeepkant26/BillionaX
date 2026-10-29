@@ -44,6 +44,8 @@ const PanelLayout = ({ brand, subtitle, nav, showHotel = false }) => {
   const guestChatsUnread = useAppStore((s) => s.guestChatsUnread);
   const distributionPending = useAppStore((s) => s.distributionPending);
   const enquiriesNew = useAppStore((s) => s.enquiriesNew);
+  // A count, not the list, so the shell re-renders only when it changes.
+  const billsAwaiting = useAppStore((s) => s.trayBills.filter((b) => b.upiStartedAt).length);
   const feedEnabled = useAppStore((s) => s.feedEnabled);
   const [open, setOpen] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
@@ -118,6 +120,7 @@ const PanelLayout = ({ brand, subtitle, nav, showHotel = false }) => {
     guestChats: guestChatsUnread,
     distribution: distributionPending,
     enquiries: enquiriesNew,
+    bills: billsAwaiting,
   };
 
   return (

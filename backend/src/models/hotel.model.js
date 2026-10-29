@@ -1,6 +1,34 @@
 import mongoose from "mongoose";
 import { TIERS } from "../config/constants.js";
 
+/**
+ * A UPI account the hotel takes bill payments into.
+ *
+ * Guests pay the hotel DIRECTLY — the money never passes through the platform —
+ * so this is the single most sensitive thing a hotel can edit: whoever changes
+ * `vpa` decides where the next guest's money goes. Writes are manager-only and
+ * every change is emailed to the hotel's managers; see
+ * paymentAccount.service.js.
+ *
+ * `qrPayload` is the `upi://pay?...` string decoded from the uploaded QR in the
+ * browser. It is kept so the guest's amount-locked link can be built from the
+ * hotel's OWN merchant parameters (mc, mode, …) rather than from the bare VPA,
+ * which some UPI apps treat with more suspicion.
+ */
+const paymentAccountSchema = new mongoose.Schema(
+  {
+    label: { type: String, required: true, trim: true, maxlength: 40 },
+    vpa: { type: String, required: true, trim: true, lowercase: true, maxlength: 320 },
+    payeeName: { type: String, trim: true, maxlength: 50 },
+    qrImageUrl: { type: String, trim: true },
+    qrPayload: { type: String, trim: true, maxlength: 1000 },
+    isDefault: { type: Boolean, default: false },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  },
+  { timestamps: true }
+);
+
 const hotelSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 120 },
@@ -112,6 +140,14 @@ const hotelSchema = new mongoose.Schema(
       index: true,
     },
     linkedAccountNote: { type: String, trim: true },
+
+    /**
+     * Where guests pay their bills. `select: false`, like qrToken: the Hotel
+     * document is read and populated all over the app, and none of those reads
+     * should start carrying payout details by accident. Callers that need them
+     * ask with `.select("+paymentAccounts")`.
+     */
+    paymentAccounts: { type: [paymentAccountSchema], default: [], select: false },
 
     isActive: { type: Boolean, default: true },
   },
