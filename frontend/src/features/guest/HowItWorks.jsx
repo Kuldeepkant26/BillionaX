@@ -1,11 +1,9 @@
 import { tierName } from "../../utils/format.js";
-import lounge from "../../assets/member-lounge.jpg";
-import styles from "./HowItWorks.module.css";
 
 /*
  * The four glyphs, inline rather than an icon package: four paths cost less
  * than a dependency. Fine single-weight outlines on a 24-box in currentColor,
- * matching the engraved line art of the client's design, so the ring decides
+ * matching the engraved line art of the client's design, so the disc decides
  * their colour and they follow the active accent.
  */
 
@@ -55,13 +53,14 @@ const GiftIcon = () => (
 );
 
 /**
- * "Member Privileges" — the client's banner explaining the programme in four
- * stages, beneath the gallery on the guest home screen.
+ * "Member Privileges" — the programme in four stages, between the gallery and
+ * the privilege cards on the guest home screen.
  *
- * The client's design is a wide desktop banner; the guest shell is never wider
- * than 460px, so it is set at phone scale: the photograph and the copy across
- * the top, and the four stages as a 2x2 block rather than one row of columns
- * too narrow to hold a sentence.
+ * Deliberately plain: no card, no photograph, just a heading and a 2x2 list
+ * on the page's own ground. Both neighbours are full-bleed imagery, and a
+ * third photo card between them (the client's original banner) made the
+ * screen one long run of pictures and cost half a phone's height. The icon
+ * sits beside its text rather than above it for the same reason.
  *
  * Every number shown is the guest's OWN — the rate their current tier earns at
  * this hotel, and the best share that tier can redeem. A guest reading this
@@ -70,14 +69,10 @@ const GiftIcon = () => (
  * than no number at all. `rate`, `cap` and `tier` are therefore optional
  * rather than defaulted: anything a hotel has not configured gets the plain
  * wording, never an invented figure.
- *
- * Imagery, like the membership and privilege cards, so it keeps its own dark
- * ground in both guest themes; its gold is the network accent, lifted to read
- * on black.
  */
 export const HowItWorks = ({ rate, cap, tier }) => {
   const level = tier ? tierName(tier) : null;
-  const programme = level ? `Billionax ${level}` : "Billionax";
+  const figure = (value) => <b className="font-semibold text-ink">{value}%</b>;
 
   const steps = [
     {
@@ -90,9 +85,11 @@ export const HowItWorks = ({ rate, cap, tier }) => {
       key: "earn",
       icon: <CoinsIcon />,
       title: "Earn",
-      caption: rate
-        ? `Earn ${rate}% back in Billionax Coins`
-        : "Earn Billionax Coins with every experience",
+      caption: rate ? (
+        <>Earn {figure(rate)} back in Billionax Coins</>
+      ) : (
+        "Earn Billionax Coins with every experience"
+      ),
     },
     {
       key: "unlock",
@@ -106,43 +103,49 @@ export const HowItWorks = ({ rate, cap, tier }) => {
       title: "Elevate",
       // "Up to" is accurate because `cap` is the guest's best REACHABLE rate —
       // the highest their tier gets at any of this hotel's services.
-      caption: cap ? "Enjoy benefits worth up to" : "Enjoy benefits on every extra",
-      figure: cap ? `${cap}%` : null,
+      caption: cap ? (
+        // Held together so the figure never wraps away from "up to".
+        <>
+          Enjoy benefits worth <span className="whitespace-nowrap">up to {figure(cap)}</span>
+        </>
+      ) : (
+        "Enjoy benefits on every extra"
+      ),
     },
   ];
 
   return (
-    <section className={styles.banner} aria-labelledby="member-privileges-heading">
-      <img className={styles.photo} src={lounge} alt="" loading="lazy" decoding="async" />
-      <span className={styles.scrim} aria-hidden="true" />
+    <section className="mt-6" aria-labelledby="member-privileges-heading">
+      <span className="kicker">
+        {level ? `Billionax ${level}` : "Billionax"}
+        {level && <sup className="ml-px text-[0.7em]">™</sup>}
+      </span>
+      {/* Tracking on the inner span: fonts.css sets letter-spacing on
+          `[data-font="LUXE"] h2`, which outranks a utility on the h2. */}
+      <h2
+        id="member-privileges-heading"
+        className="mt-1 font-display text-[21px] font-normal leading-[1.15] text-ink"
+      >
+        <span className="tracking-[-0.01em]">Member Privileges</span>
+      </h2>
 
-      <header className={styles.hero}>
-        <span className={styles.eyebrow}>
-          <span>
-            {programme}
-            {level && <sup>™</sup>}
-          </span>
-        </span>
-        <h2 id="member-privileges-heading" className={styles.title}>
-          <span>Member Privileges</span>
-        </h2>
-        {/* Two sentences on their own lines, as in the reference — run
-            together they wrapped to leave "a lifestyle." orphaned. */}
-        <p className={styles.lede}>
-          <span>Curated exclusively for {programme} Members.</span>
-          <span>More than benefits — it&rsquo;s a lifestyle.</span>
-        </p>
-      </header>
-
-      <ol className={styles.steps}>
+      <ol className="m-0 mt-3.5 grid list-none grid-cols-2 gap-x-4 gap-y-3.5 p-0">
         {steps.map((step) => (
-          <li key={step.key} className={styles.step}>
-            <span className={styles.ringRow}>
-              <span className={styles.ring}>{step.icon}</span>
+          <li key={step.key} className="flex min-w-0 items-start gap-2.5">
+            <span className="grid size-9 flex-none place-items-center rounded-full bg-[var(--acc-soft)] text-accent [&>svg]:size-[19px]">
+              {step.icon}
             </span>
-            <b className={styles.stepTitle}>{step.title}</b>
-            <p className={styles.caption}>{step.caption}</p>
-            {step.figure && <b className={styles.figure}>{step.figure}</b>}
+            <span className="min-w-0 pt-px">
+              <b className="block text-[10.5px] font-semibold uppercase leading-[1.3] tracking-[0.12em] text-ink">
+                {step.title}
+              </b>
+              {/* font-size-adjust holds the lowercase at one x-height under
+                  every font preset — Inter's is a quarter taller than the
+                  default face's. */}
+              <span className="mt-0.5 block text-[11.5px] leading-[1.4] text-muted [font-size-adjust:0.5] wrap-anywhere text-pretty">
+                {step.caption}
+              </span>
+            </span>
           </li>
         ))}
       </ol>

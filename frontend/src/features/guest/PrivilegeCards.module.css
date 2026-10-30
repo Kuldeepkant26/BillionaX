@@ -5,9 +5,9 @@
  * an eyebrow and rule, a serif title, a short description and a "View
  * details" call to action down the left, a glass category chip top right.
  *
- * Kept as a module rather than utilities, like HowItWorks: the card is mostly
- * gradients, pseudo-elements, two colour tones and a container query, none of
- * which a utility expresses. The JSX puts no Tailwind class on anything inside
+ * Kept as a module rather than utilities: the card is mostly gradients,
+ * pseudo-elements, two colour tones and a container query, none of which a
+ * utility expresses. The JSX puts no Tailwind class on anything inside
  * the card, deliberately — this file is unlayered, so it would silently beat
  * any utility setting the same property, and a class that "does nothing" is
  * the hardest kind of bug to see.
