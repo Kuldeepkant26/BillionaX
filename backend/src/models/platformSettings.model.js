@@ -59,6 +59,14 @@ const platformSettingsSchema = new mongoose.Schema(
      */
     feedEnabled: { type: Boolean, default: false },
 
+    /**
+     * Where the landing page's hotel enquiries are emailed, chosen by the main
+     * admin in Platform rules. Empty sends them to every active main admin
+     * (see enquiry.service.js), so a network that never set it still gets its
+     * leads. settingsRules lower-cases, de-duplicates and checks each address.
+     */
+    enquiryEmails: { type: [String], default: [] },
+
     // Which membership-card art every guest sees. Network-wide by design:
     // the card is the product's face, so it stays consistent across hotels
     // rather than becoming a per-property choice.

@@ -5,6 +5,7 @@ import { env } from "../config/env.js";
 import { ApiError } from "../utils/ApiError.js";
 import { logger } from "../utils/logger.js";
 import { emailEnabled, sendEmail } from "./email.service.js";
+import { getSettings } from "./settings.service.js";
 import { partnerEnquiryEmailTemplate } from "./emailTemplates.js";
 
 const ROOM_LABELS = {
@@ -14,23 +15,22 @@ const ROOM_LABELS = {
   "150+": "More than 150 rooms",
 };
 
-/** ENQUIRY_EMAIL_TO as a clean, de-duplicated list of addresses. */
+/** A list (or comma-separated string) of addresses, cleaned and de-duplicated. */
 export const parseRecipients = (raw = "") => [
   ...new Set(
-    String(raw)
-      .split(",")
-      .map((a) => a.trim().toLowerCase())
+    (Array.isArray(raw) ? raw : String(raw ?? "").split(","))
+      .map((a) => String(a).trim().toLowerCase())
       .filter((a) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a))
   ),
 ];
 
 /**
- * Who hears about a new enquiry: the configured list, or — when none is set —
- * every active main admin, so a deployment that never set the variable still
- * gets its leads rather than silently dropping them.
+ * Who hears about a new enquiry: the addresses the main admin set in Platform
+ * rules, or — when none are set — every active main admin, so a network that
+ * never opened the setting still gets its leads rather than dropping them.
  */
 const enquiryRecipients = async () => {
-  const configured = parseRecipients(env.email.enquiryTo);
+  const configured = parseRecipients((await getSettings()).enquiryEmails);
   if (configured.length) return configured;
 
   const admins = await User.find({ role: ROLES.MAIN_ADMIN, isActive: true }).select("email").lean();
@@ -50,7 +50,7 @@ export const notifyEnquiry = async (enquiry) => {
 
   const recipients = await enquiryRecipients();
   if (!recipients.length) {
-    logger.warn("[ENQUIRY] no recipient to email — set ENQUIRY_EMAIL_TO");
+    logger.warn("[ENQUIRY] no recipient to email — set one in Platform rules");
     return;
   }
 

@@ -33,6 +33,7 @@ import {
   makePayRef,
   parseUpiPayload,
 } from "../src/utils/upi.util.js";
+import { UPI_APPS, mobilePlatform, upiAppLink } from "../../frontend/src/utils/upiApps.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (rel) => readFileSync(join(here, rel), "utf8");
@@ -299,5 +300,70 @@ describe("the bill history pane refreshes itself", () => {
 
   it("does not toast, so a payment is not announced twice on the bill page", () => {
     assert.doesNotMatch(fnBody(billRealtime, "useHotelBillSettled"), /toast/);
+  });
+});
+
+describe("the guest picks which UPI app opens", () => {
+  // A bare upi:// link opened WhatsApp: every UPI app claims the scheme, and
+  // iOS (or an Android "Always") picks one without asking.
+  const { link } = buildUpiLink({
+    vpa: "frontdesk@okhdfc",
+    payeeName: "Taj Palace",
+    amountPaise: 118000,
+    payRef: "BX-4F2A9C",
+  });
+  const payment = [...params(link)].join("&");
+  const byId = Object.fromEntries(UPI_APPS.map((app) => [app.id, app]));
+
+  it("offers Google Pay, PhonePe and Paytm, each pinned to a different app", () => {
+    assert.deepEqual(Object.keys(byId), ["gpay", "phonepe", "paytm"]);
+    assert.equal(byId.gpay.android, "com.google.android.apps.nbu.paisa.user");
+    assert.equal(byId.phonepe.android, "com.phonepe.app");
+    assert.equal(byId.paytm.android, "net.one97.paytm");
+  });
+
+  it("on Android, names the app's package so no other app can take the link", () => {
+    for (const app of UPI_APPS) {
+      const href = upiAppLink(app, link, "android");
+      assert.ok(href.startsWith("intent://pay?"), app.id);
+      assert.ok(href.endsWith(`#Intent;scheme=upi;package=${app.android};end`), app.id);
+      const query = href.slice("intent://pay?".length, href.indexOf("#Intent"));
+      assert.equal([...new URLSearchParams(query)].join("&"), payment, `${app.id} changed the payment`);
+    }
+  });
+
+  it("on iPhone, uses each app's own scheme, never upi://", () => {
+    assert.ok(upiAppLink(byId.gpay, link, "ios").startsWith("tez://upi/pay?"));
+    assert.ok(upiAppLink(byId.phonepe, link, "ios").startsWith("phonepe://pay?"));
+    assert.ok(upiAppLink(byId.paytm, link, "ios").startsWith("paytmmp://upi/pay?"));
+    for (const app of UPI_APPS) {
+      assert.equal([...params(upiAppLink(app, link, "ios"))].join("&"), payment, `${app.id} changed the payment`);
+    }
+  });
+
+  it("builds nothing from a link that is not upi://pay, or on a laptop", () => {
+    assert.equal(upiAppLink(byId.gpay, "https://example.com/?pa=x@y", "android"), null);
+    assert.equal(upiAppLink(byId.gpay, null, "ios"), null);
+    assert.equal(upiAppLink(byId.gpay, link, null), null);
+  });
+
+  it("tells Android, iPhone and an iPad on the desktop site apart from a laptop", () => {
+    const android = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/131.0 Mobile Safari/537.36";
+    const iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148";
+    const mac = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.1 Safari/605.1.15";
+    assert.equal(mobilePlatform({ userAgent: android }), "android");
+    assert.equal(mobilePlatform({ userAgent: iphone }), "ios");
+    assert.equal(mobilePlatform({ userAgent: mac, maxTouchPoints: 5 }), "ios");
+    assert.equal(mobilePlatform({ userAgent: mac, maxTouchPoints: 0 }), null);
+    assert.equal(mobilePlatform(undefined), null);
+  });
+
+  it("is what the pay sheet actually renders", () => {
+    const sheet = read("../../frontend/src/features/guest/UpiPaySheet.jsx")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    assert.match(sheet, /import \{[^}]*upiAppLink[^}]*\} from "..\/..\/utils\/upiApps.js"/);
+    assert.match(sheet, /upiAppLink\(app, upi\.link, platform\)/, "app links built but not rendered");
+    assert.doesNotMatch(sheet, /Pay with UPI app/, "the single bare-link button is back");
   });
 });

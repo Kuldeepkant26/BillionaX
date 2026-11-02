@@ -466,6 +466,22 @@ export const settingsRules = [
   // toBoolean() would turn a typo'd "yes" into false and silently hide the
   // feed, so the value has to already BE a boolean to be accepted.
   body("feedEnabled").optional().isBoolean({ strict: true }),
+  // One error on the field naming the bad address, rather than a wildcard
+  // rule's "enquiryEmails[2]" that the form has nowhere to show. Lower-cased
+  // but not normalizeEmail()'d — that strips the dots from Gmail addresses.
+  body("enquiryEmails")
+    .optional()
+    .isArray({ max: 5 })
+    .withMessage("Up to 5 addresses")
+    .bail()
+    .customSanitizer((list) => [
+      ...new Set(list.map((a) => String(a).trim().toLowerCase()).filter(Boolean)),
+    ])
+    .custom((list) => {
+      const bad = list.find((a) => !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(a));
+      if (bad) throw new Error(`“${bad}” is not an email address`);
+      return true;
+    }),
 ];
 
 /**

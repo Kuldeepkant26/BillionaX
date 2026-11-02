@@ -279,10 +279,31 @@ const LandingPage = () => {
               <span className="block tracking-[-0.015em]">Privileges for members.</span>
             </h1>
 
+            {/* The welcome screen's promise, in its type — kicker, roman line,
+                italic accent line — so a guest who scans in later meets the
+                same words they read here. Roman weight and sentence case keep
+                it a step below the uppercase headline. */}
+            <div className="mt-14 sm:mt-16" data-reveal="" style={{ "--reveal-delay": "120ms" }}>
+              <span className="flex items-center justify-center gap-4 text-[11.5px] font-semibold uppercase tracking-[0.3em] text-accent">
+                <span className="h-px w-8 bg-current opacity-60 sm:w-12" aria-hidden="true" />
+                More than a stay
+                <span className="h-px w-8 bg-current opacity-60 sm:w-12" aria-hidden="true" />
+              </span>
+              <h2 className="m-0 mt-5 font-display text-[clamp(2.25rem,5vw,3.75rem)] font-normal leading-[1.04] text-ink">
+                <span className="tracking-[-0.015em]">
+                  It&rsquo;s a world of
+                  <em className="block italic text-accent">privileges.</em>
+                </span>
+              </h2>
+              <p className="mx-auto mb-0 mt-6 max-w-[600px] text-balance text-[clamp(1.05rem,1.6vw,1.3rem)] leading-relaxed text-ink">
+                Unlock exclusive experiences, earn Billionax Coins and make every stay more rewarding.
+              </p>
+            </div>
+
             <p
-              className="mx-auto mb-0 mt-7 max-w-[720px] text-[clamp(1rem,1.5vw,1.2rem)] leading-relaxed text-muted"
+              className="mx-auto mb-0 mt-4 max-w-[720px] text-balance text-[clamp(1rem,1.5vw,1.2rem)] leading-relaxed text-muted"
               data-reveal=""
-              style={{ "--reveal-delay": "160ms" }}
+              style={{ "--reveal-delay": "180ms" }}
             >
               Earn Billionax Coins every time you stay, and use them to take money off your bill — dining,
               wellness, upgrades and more. One membership, recognised across participating hotels.
@@ -431,13 +452,14 @@ const LandingPage = () => {
                         Get started
                       </Link>
                     ) : (
-                      // Not a button: Gold and Platinum cannot be bought,
-                      // only stayed into, and a button would promise otherwise.
+                      // Not a button: Gold and Platinum are not open yet (the
+                      // client's call), and a button would promise otherwise.
                       <span className="flex h-[52px] items-center justify-center gap-2 rounded-full border border-dashed border-hairline text-[12px] font-semibold uppercase tracking-[0.18em] text-muted">
                         <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d="M10 16V4m-5 5 5-5 5 5" />
+                          <circle cx="10" cy="10" r="7" />
+                          <path d="M10 6.5V10l2.5 1.5" />
                         </svg>
-                        Earned by staying
+                        Coming soon
                       </span>
                     )}
                   </div>

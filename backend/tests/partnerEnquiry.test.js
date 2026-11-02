@@ -20,7 +20,8 @@ import {
   ENQUIRY_ROOM_BANDS,
 } from "../src/config/constants.js";
 import { PartnerEnquiry } from "../src/models/partnerEnquiry.model.js";
-import { partnerEnquiryRules } from "../src/validators/common.validator.js";
+import { partnerEnquiryRules, settingsRules } from "../src/validators/common.validator.js";
+import { PlatformSettings } from "../src/models/platformSettings.model.js";
 import publicRoutes from "../src/routes/public.routes.js";
 import { errorHandler } from "../src/middlewares/errorHandler.js";
 import { parseRecipients } from "../src/services/enquiry.service.js";
@@ -173,6 +174,42 @@ describe("POST /public/enquiries", () => {
   });
 });
 
+describe("enquiry recipients in Platform rules", () => {
+  const run = async (enquiryEmails) => {
+    const req = { body: { enquiryEmails } };
+    const errors = [];
+    for (const rule of settingsRules) errors.push(...(await rule.run(req)).array());
+    return { errors: errors.map((e) => `${e.path}: ${e.msg}`), value: req.body.enquiryEmails };
+  };
+
+  it("defaults to none, which means every main admin", () => {
+    assert.deepEqual([...new PlatformSettings({}).enquiryEmails], []);
+  });
+
+  it("stores addresses lower-cased and once each, keeping Gmail dots", async () => {
+    const { errors, value } = await run([" Partners@Billionax.com ", "partners@billionax.com", "kuldeep.kant@gmail.com", ""]);
+    assert.deepEqual(errors, []);
+    assert.deepEqual(value, ["partners@billionax.com", "kuldeep.kant@gmail.com"]);
+  });
+
+  it("accepts an empty list, to fall back to the admins", async () => {
+    const { errors, value } = await run([]);
+    assert.deepEqual(errors, []);
+    assert.deepEqual(value, []);
+  });
+
+  it("names the address it refuses, on the field itself", async () => {
+    const { errors } = await run(["partners@billionax.com", "partners@billionax"]);
+    assert.deepEqual(errors, ["enquiryEmails: “partners@billionax” is not an email address"]);
+  });
+
+  it("refuses a string or more than five addresses", async () => {
+    assert.deepEqual((await run("partners@billionax.com")).errors, ["enquiryEmails: Up to 5 addresses"]);
+    const six = Array.from({ length: 6 }, (_, i) => `p${i}@billionax.com`);
+    assert.deepEqual((await run(six)).errors, ["enquiryEmails: Up to 5 addresses"]);
+  });
+});
+
 describe("admin enquiry routes", () => {
   it("registers new-count before the :enquiryId param", () => {
     const src = readFileSync(join(here, "../src/routes/admin.routes.js"), "utf8");
@@ -184,12 +221,17 @@ describe("admin enquiry routes", () => {
 });
 
 describe("enquiry email", () => {
-  it("reads ENQUIRY_EMAIL_TO as a clean list", () => {
+  it("cleans a recipient list, given as a list or a string", () => {
     assert.deepEqual(
       parseRecipients(" Partners@Billionax.com, owner@billionax.com ,,partners@billionax.com, not-an-address"),
       ["partners@billionax.com", "owner@billionax.com"]
     );
+    assert.deepEqual(
+      parseRecipients(["Partners@Billionax.com", "partners@billionax.com", ""]),
+      ["partners@billionax.com"]
+    );
     assert.deepEqual(parseRecipients(""), []);
+    assert.deepEqual(parseRecipients([]), []);
     assert.deepEqual(parseRecipients(undefined), []);
   });
 

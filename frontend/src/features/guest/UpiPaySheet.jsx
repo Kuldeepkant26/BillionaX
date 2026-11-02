@@ -4,6 +4,7 @@ import { getBill } from "../../api/guest.api.js";
 import { connectSocket } from "../../realtime/socket.js";
 import { useAppStore } from "../../store/useAppStore.js";
 import { formatPaise } from "../../utils/format.js";
+import { UPI_APPS, mobilePlatform, upiAppLink } from "../../utils/upiApps.js";
 import { QrCode } from "../panel/QrCode.jsx";
 import styles from "./UpiPaySheet.module.css";
 
@@ -12,18 +13,17 @@ import styles from "./UpiPaySheet.module.css";
  * and the reference that ties the two together.
  *
  * The guest is almost always on the SAME phone that would have to scan a QR,
- * so the lead action on a phone is "Pay with UPI app": a upi:// link that opens
- * GPay, PhonePe or Paytm with the payee, amount and note already filled in.
- * The QR is for a second device, or to save and scan from the gallery, which
- * every Indian UPI app supports.
+ * so the lead action on a phone is a row of app buttons — Google Pay, PhonePe,
+ * Paytm — each opening THAT app with the payee, amount and note filled in.
+ * utils/upiApps.js explains why one plain upi:// link was not enough: it
+ * opened WhatsApp. "Other UPI app" keeps that plain link for BHIM and bank
+ * apps. The QR is for a second device, or to save and scan from the gallery,
+ * which every Indian UPI app supports.
  *
  * There is no "I've paid" button. Only the hotel can see the money arrive, so
  * the sheet waits for the staff member's confirmation (bill:paid) and turns
  * into a tick when it lands.
  */
-
-// A upi:// link does nothing on a laptop, so it is only offered on a phone.
-const isPhone = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
 
 const CopyRow = ({ label, value, copyValue, hint, onCopy }) => (
   <div className="flex items-center justify-between gap-3 py-2.5 border-t border-hairline first:border-t-0">
@@ -53,8 +53,15 @@ const Sheet = ({ payment, hotelName, onSettled, onClose }) => {
   const paidRef = useRef(false);
 
   const { upi } = payment;
-  const phone = isPhone();
+  // Null on a laptop, where a UPI link opens nothing, so no app buttons show.
+  const platform = mobilePlatform();
   const payee = upi.payeeName || hotelName;
+  const appLinks =
+    platform && upi.amountLocked
+      ? UPI_APPS.map((app) => ({ app, href: upiAppLink(app, upi.link, platform) })).filter(
+          (x) => x.href
+        )
+      : [];
 
   // The hotel confirmed: show the tick, then let the caller tidy up.
   useEffect(() => {
@@ -167,10 +174,27 @@ const Sheet = ({ payment, hotelName, onSettled, onClose }) => {
               {upi.label ? ` · ${upi.label}` : ""}
             </p>
 
-            {phone && upi.amountLocked && (
-              <a href={upi.link} className="btn btn-block mt-4 no-underline">
-                Pay with UPI app
-              </a>
+            {appLinks.length > 0 && (
+              <div className="mt-4">
+                <p className="m-0 mb-2 text-center text-[11.5px] text-muted">Pay with</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {appLinks.map(({ app, href }) => (
+                    <a
+                      key={app.id}
+                      href={href}
+                      className="flex items-center justify-center min-h-11 px-1.5 rounded-full bg-accent text-accent-fg text-[13px] font-semibold whitespace-nowrap no-underline transition-transform active:scale-[0.98]"
+                    >
+                      {app.name}
+                    </a>
+                  ))}
+                </div>
+                <a
+                  href={upi.link}
+                  className="block w-fit mx-auto mt-1 px-3 py-2 text-xs font-semibold text-muted no-underline hover:text-ink"
+                >
+                  Other UPI app
+                </a>
+              </div>
             )}
 
             <div className="mt-4 flex flex-col items-center gap-2">
@@ -186,7 +210,7 @@ const Sheet = ({ payment, hotelName, onSettled, onClose }) => {
                 )
               )}
               <span className="text-[11.5px] text-muted">
-                {phone ? "Or scan it from another phone" : "Scan with any UPI app"}
+                {platform ? "Or scan it from another phone" : "Scan with any UPI app"}
               </span>
               {upi.amountLocked && (
                 <button type="button" className="btn btn-ghost btn-sm" onClick={saveQr}>

@@ -43,6 +43,8 @@ const toForm = (s) => ({
   // with String() — which is why this must be a real boolean rather than
   // undefined on an older payload, or the form reads dirty on arrival.
   feedEnabled: Boolean(s.feedEnabled),
+  // A list on the server, one editable line here.
+  enquiryEmails: (s.enquiryEmails || []).join(", "),
 });
 
 const AdminSettingsPage = () => {
@@ -124,6 +126,8 @@ const RulesForm = ({ settings, reload }) => {
         themePreset: form.themePreset,
         themeCustomColor: form.themeCustomColor,
         fontPreset: form.fontPreset,
+        // Addresses hold no spaces, so a pasted "a@x.com b@y.com" splits too.
+        enquiryEmails: form.enquiryEmails.split(/[\s,;]+/).filter(Boolean),
       });
       toastSuccess("Settings saved");
       run();
@@ -278,6 +282,27 @@ const RulesForm = ({ settings, reload }) => {
           checked={form.feedEnabled}
           onChange={(feedEnabled) => setForm((f) => ({ ...f, feedEnabled }))}
         />
+      </Card>
+
+      <Card title="Hotel enquiries" className="my-4">
+        <div className="max-w-[560px]">
+          <Field
+            label="Email enquiries to"
+            hint="Each enquiry from the partner form on the website is emailed here, and also listed under Enquiries. Separate several addresses with commas. Leave empty to email every main admin."
+            error={errors.enquiryEmails}
+          >
+            <Input
+              type="text"
+              inputMode="email"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="partners@billionax.com"
+              value={form.enquiryEmails}
+              onChange={change("enquiryEmails")}
+              error={errors.enquiryEmails}
+            />
+          </Field>
+        </div>
       </Card>
 
       <Card title="Dashboard & app theme" className="my-4">
