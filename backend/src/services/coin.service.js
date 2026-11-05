@@ -1,5 +1,6 @@
+import mongoose from "mongoose";
 import { ApiError } from "../utils/ApiError.js";
-import { ROLES, TX_TYPES, PURCHASE_STATUS } from "../config/constants.js";
+import { ROLES, TX_TYPES, PURCHASE_STATUS, PURCHASE_REVERSAL_HOURS } from "../config/constants.js";
 import { computeEarnedCoins, computeStayCoins } from "../utils/coinMath.js";
 import { Hotel } from "../models/hotel.model.js";
 import { User } from "../models/user.model.js";
@@ -10,7 +11,11 @@ import { getSettings } from "./settings.service.js";
 import { joinHotel, refreshTier } from "./membership.service.js";
 import { normalizePhone } from "./otp.service.js";
 import { pushLedgerEvent } from "./notification.service.js";
-import { issueInvoiceForPurchase, invoiceIdsForPurchases } from "./invoice.service.js";
+import {
+  issueInvoiceForPurchase,
+  invoiceIdsForPurchases,
+  voidInvoiceForPurchase,
+} from "./invoice.service.js";
 import { emitToGuest, emitToHotel } from "../realtime/emitter.js";
 import { logger } from "../utils/logger.js";
 
@@ -47,8 +52,9 @@ const replayResult = async (transaction) => {
 };
 
 /**
- * Coin packs a hotel can buy from the panel. Larger packs carry a discount, so
- * the price is not simply coins x coinValue.
+ * The coin price list a hotel orders from. Larger packs carry a discount, so
+ * the price is not simply coins x coinValue. Orders go to the platform team
+ * (see coinOrderContact in Platform rules) and are credited by recordPurchase.
  */
 export const COIN_PACKS = [
   { id: "starter", coins: 50_000, price: 50_000, label: "Starter" },
@@ -58,47 +64,9 @@ export const COIN_PACKS = [
 ];
 
 /**
- * A hotel buying coins for itself from the panel.
- *
- * The payment is simulated for now — `paymentMethod` and the generated
- * reference are recorded so the ledger shape is already correct when a real
- * gateway is wired in. Swapping this for Razorpay/Stripe means verifying the
- * gateway signature here before calling recordPurchase; nothing downstream
- * changes.
+ * Platform credits coin inventory to a hotel — the main admin's Add coins.
+ * Reversible for PURCHASE_REVERSAL_HOURS; see reversePurchase.
  */
-export const purchaseCoinPack = async ({ hotelId, packId, coins, price, paymentMethod, purchasedBy }) => {
-  const pack = COIN_PACKS.find((p) => p.id === packId);
-
-  // Custom amounts are allowed; packs are validated against the server-side
-  // price so a tampered client cannot buy 500k coins for ₹1.
-  const finalCoins = pack ? pack.coins : Number(coins);
-  const finalPrice = pack ? pack.price : Number(price);
-
-  if (!(finalCoins > 0)) throw new ApiError(400, "Choose how many coins to buy");
-  if (!(finalPrice >= 0)) throw new ApiError(400, "Invalid amount");
-
-  if (!pack) {
-    // Custom purchase: price must match the platform's coin value.
-    const settings = await getSettings();
-    const expected = Math.round((finalCoins * settings.coinValuePaise) / 100);
-    if (finalPrice !== expected) {
-      throw new ApiError(400, `Amount for ${finalCoins} coins should be ${expected}`);
-    }
-  }
-
-  const reference = `SIM-${Date.now().toString(36).toUpperCase()}`;
-
-  return recordPurchase({
-    hotelId,
-    coins: finalCoins,
-    amountPaid: finalPrice,
-    paymentRef: reference,
-    note: `Self-service purchase${pack ? ` (${pack.label} pack)` : ""} via ${paymentMethod || "card"} — simulated payment`,
-    recordedBy: purchasedBy,
-  });
-};
-
-/** Platform sells coin inventory to a hotel. Credits the hotel's balance. */
 export const recordPurchase = async ({ hotelId, coins, amountPaid, paymentRef, note, recordedBy }) => {
   const settings = await getSettings();
 
@@ -132,6 +100,93 @@ export const recordPurchase = async ({ hotelId, coins, amountPaid, paymentRef, n
   }
 
   return { purchase, coinInventory: hotel.coinInventory };
+};
+
+const countLabel = (n) => Number(n || 0).toLocaleString("en-IN");
+
+/**
+ * Reverses a coin credit — the main admin's Add coins — within
+ * PURCHASE_REVERSAL_HOURS of it being recorded.
+ *
+ * One transaction, so the three changes land together or not at all:
+ *  - The purchase flips COMPLETED -> VOID. The status filter is the mutex, so
+ *    two admins pressing Reverse at once cannot take the coins back twice, and
+ *    the window is in the same filter, so the server's clock decides, never
+ *    the panel's countdown.
+ *  - The hotel gives the coins back, guarded on still holding them. Coins
+ *    already allocated to guests cannot be clawed back from the guests, so a
+ *    hotel that has spent into the credit is refused: all of it or none.
+ *  - The purchase's invoice is marked void.
+ *
+ * The row is kept (VOID, with who and when), never deleted.
+ */
+export const reversePurchase = async ({ hotelId, purchaseId, reversedBy, reason }) => {
+  const cutoff = new Date(Date.now() - PURCHASE_REVERSAL_HOURS * 60 * 60 * 1000);
+  const voidedAt = new Date();
+  const session = await mongoose.startSession();
+  let result = null;
+
+  try {
+    await session.withTransaction(async () => {
+      result = null;
+
+      const purchase = await CoinPurchase.findOneAndUpdate(
+        { _id: purchaseId, hotelId, status: PURCHASE_STATUS.COMPLETED, createdAt: { $gte: cutoff } },
+        {
+          $set: {
+            status: PURCHASE_STATUS.VOID,
+            voidedAt,
+            voidedBy: reversedBy,
+            voidReason: reason || null,
+          },
+        },
+        { new: true, session }
+      );
+
+      if (!purchase) {
+        // Say which rule refused it, read inside the same transaction.
+        const existing = await CoinPurchase.findOne({ _id: purchaseId, hotelId })
+          .session(session)
+          .lean();
+        if (!existing) throw new ApiError(404, "Purchase not found");
+        if (existing.status === PURCHASE_STATUS.VOID) {
+          throw new ApiError(409, "This credit has already been reversed");
+        }
+        throw new ApiError(
+          409,
+          `A credit can only be reversed within ${PURCHASE_REVERSAL_HOURS} hours of adding it`
+        );
+      }
+
+      const hotel = await Hotel.findOneAndUpdate(
+        { _id: hotelId, coinInventory: { $gte: purchase.coins } },
+        { $inc: { coinInventory: -purchase.coins, totalCoinsPurchased: -purchase.coins } },
+        { new: true, session }
+      );
+
+      if (!hotel) {
+        const current = await Hotel.findById(hotelId).select("name coinInventory").session(session).lean();
+        throw new ApiError(
+          409,
+          `${current?.name || "The hotel"} has already used some of these coins — ${countLabel(
+            current?.coinInventory
+          )} left of the ${countLabel(purchase.coins)} added — so the credit can't be reversed`
+        );
+      }
+
+      await voidInvoiceForPurchase(purchase._id, { voidedAt, reason, session });
+      result = { purchase, coinInventory: hotel.coinInventory };
+    });
+  } finally {
+    await session.endSession();
+  }
+
+  logger.info(
+    `Coin credit ${purchaseId} reversed: ${result.purchase.coins} coins back from hotel ${hotelId} by ${reversedBy}`
+  );
+  emitToHotel(hotelId, "hotel:inventory", { coinInventory: result.coinInventory });
+
+  return result;
 };
 
 /**

@@ -15,6 +15,7 @@ import * as billService from "../services/bill.service.js";
 import * as paymentAccountService from "../services/paymentAccount.service.js";
 import * as supportService from "../services/support.service.js";
 import * as invoiceService from "../services/invoice.service.js";
+import * as settingsService from "../services/settings.service.js";
 
 /** Main admin must target a hotel explicitly; staff are pinned to their own. */
 const hotelIdFor = (req) => {
@@ -272,25 +273,23 @@ export const listPurchases = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, data));
 });
 
+/**
+ * The price list and where to send an order, together: the Order coins dialog
+ * needs both and nothing else does. There is no buy endpoint — a hotel orders
+ * through these channels and the main admin credits the coins (sellCoins).
+ */
 export const listPacks = asyncHandler(async (req, res) => {
-  res.status(200).json(new ApiResponse(200, { packs: coinService.COIN_PACKS }));
-});
-
-export const buyCoins = asyncHandler(async (req, res) => {
-  const { packId, coins, price, paymentMethod } = req.body;
-
-  const result = await coinService.purchaseCoinPack({
-    hotelId: hotelIdFor(req),
-    packId,
-    coins,
-    price,
-    paymentMethod,
-    purchasedBy: req.user._id,
-  });
-
-  res
-    .status(201)
-    .json(new ApiResponse(201, result, `${result.purchase.coins} coins added to your inventory`));
+  const contact = (await settingsService.getSettings()).coinOrderContact || {};
+  res.status(200).json(
+    new ApiResponse(200, {
+      packs: coinService.COIN_PACKS,
+      orderContact: {
+        whatsapp: contact.whatsapp || null,
+        phone: contact.phone || null,
+        email: contact.email || null,
+      },
+    })
+  );
 });
 
 export const creditMember = asyncHandler(async (req, res) => {

@@ -259,6 +259,15 @@ export const sellCoinsRules = [
   body("note").optional().isString().trim().isLength({ max: 500 }),
 ];
 
+export const reversePurchaseRules = [
+  body("reason")
+    .optional({ values: "falsy" })
+    .isString()
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage("A reason is 200 characters at most"),
+];
+
 export const contentRules = [
   body("title").isString().trim().isLength({ min: 2, max: 140 }).withMessage("Enter a title"),
   body("description").optional().isString().trim().isLength({ max: 2000 }),
@@ -432,6 +441,37 @@ export const feedCaptionRules = [
     .withMessage("A caption is 2200 characters at most"),
 ];
 
+/**
+ * A contact number as international digits without the "+", or null when
+ * blank — the form wa.me and tel: links both take.
+ *
+ * Unlike phoneRule this keeps landlines and foreign numbers: the coin-order
+ * line can be an office number. A bare 10-digit number, or one with the
+ * trunk 0 ("022 4000 1234"), is read as Indian and gets 91 in front; a
+ * number typed with "+" or "00" already carries its country code.
+ */
+export const toIntlDigits = (value) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  let digits = raw.replace(/\D/g, "");
+  if (raw.startsWith("+")) return digits;
+  if (digits.startsWith("00")) return digits.slice(2);
+  if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+  return digits.length === 10 ? `91${digits}` : digits;
+};
+
+const orderNumberRule = (field) =>
+  body(field)
+    .optional({ values: "null" })
+    .customSanitizer(toIntlDigits)
+    .custom((v) => {
+      // E.164: a country code that never starts with 0, 15 digits at most.
+      if (v !== null && !/^[1-9]\d{7,14}$/.test(v)) {
+        throw new Error("Enter the number with its country code, like +91 98765 43210");
+      }
+      return true;
+    });
+
 export const settingsRules = [
   body("welcomeCredit").optional().isInt({ min: 0 }).toInt(),
   body("defaultEarnRatePercent").optional().isFloat({ min: 0, max: 100 }).toFloat(),
@@ -482,6 +522,19 @@ export const settingsRules = [
       if (bad) throw new Error(`“${bad}” is not an email address`);
       return true;
     }),
+  // Sent whole by the form; a blank channel clears to null.
+  body("coinOrderContact").optional().isObject().withMessage("Invalid order contact"),
+  orderNumberRule("coinOrderContact.whatsapp"),
+  orderNumberRule("coinOrderContact.phone"),
+  body("coinOrderContact.email")
+    .optional({ values: "null" })
+    .customSanitizer((v) => String(v).trim().toLowerCase() || null)
+    .custom((v) => {
+      if (v !== null && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) {
+        throw new Error("Enter an email address");
+      }
+      return true;
+    }),
 ];
 
 /**
@@ -525,13 +578,6 @@ export const phoneRule = (field = "phone") =>
     })
     .matches(/^[6-9]\d{9}$/)
     .withMessage("Enter a valid 10-digit mobile number");
-
-export const buyCoinsRules = [
-  body("packId").optional().isString().trim(),
-  body("coins").optional().isInt({ min: 1 }).toInt(),
-  body("price").optional().isInt({ min: 0 }).toInt(),
-  body("paymentMethod").optional().isIn(["card", "upi", "netbanking"]),
-];
 
 export const creditMemberRules = [
   body("coins").isInt({ min: 1 }).withMessage("Enter how many coins to add").toInt(),

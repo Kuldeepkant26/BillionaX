@@ -145,6 +145,62 @@ export const isValidPhone = (value) => /^[6-9]\d{9}$/.test(String(value || ""));
 /** Reduces any input to the bare 10 digits, matching the API's normalisation. */
 export const normalizePhone = (value) => String(value || "").replace(/\D/g, "").slice(-10);
 
+const ONES = [
+  "", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+  "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen",
+];
+const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+
+const belowHundred = (n) =>
+  n < 20 ? ONES[n] : `${TENS[Math.floor(n / 10)]}${n % 10 ? `-${ONES[n % 10]}` : ""}`;
+
+const belowThousand = (n) =>
+  [n >= 100 ? `${ONES[Math.floor(n / 100)]} hundred` : "", belowHundred(n % 100)]
+    .filter(Boolean)
+    .join(" ");
+
+/**
+ * A whole number in words, the Indian way: 100000 → "One lakh",
+ * 2550000 → "Twenty-five lakh fifty thousand". Read beside a typed figure it
+ * is what catches an extra zero — "Ten lakh" does not look like "One lakh".
+ */
+export const numberInWords = (value) => {
+  let n = Math.floor(Math.abs(Number(value) || 0));
+  if (!n) return "Zero";
+
+  const crore = Math.floor(n / 1e7);
+  n %= 1e7;
+  const lakh = Math.floor(n / 1e5);
+  n %= 1e5;
+  const thousand = Math.floor(n / 1e3);
+
+  const words = [
+    crore ? `${numberInWords(crore).toLowerCase()} crore` : "",
+    lakh ? `${belowHundred(lakh)} lakh` : "",
+    thousand ? `${belowHundred(thousand)} thousand` : "",
+    belowThousand(n % 1e3),
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};
+
+/**
+ * International digits as the API stores them ("919876543210"), as people
+ * read them: "+91 98765 43210" for an Indian mobile, "+91 2240001234" for a
+ * landline (STD codes vary in length, so it is not grouped), and "+" and the
+ * digits otherwise. Empty for empty.
+ */
+export const formatIntlPhone = (digits) => {
+  const d = String(digits || "").replace(/\D/g, "");
+  if (!d) return "";
+  if (d.length === 12 && d.startsWith("91")) {
+    return /^91[6-9]/.test(d) ? `+91 ${d.slice(2, 7)} ${d.slice(7)}` : `+91 ${d.slice(2)}`;
+  }
+  return `+${d}`;
+};
+
 export const mmss = (seconds) => {
   const s = Math.max(0, Math.floor(seconds));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;

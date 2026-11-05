@@ -124,6 +124,14 @@ const invoiceSchema = new mongoose.Schema(
     paymentMethod: { type: String, trim: true },
 
     /**
+     * Cancelled: the coin credit behind this invoice was reversed. The document is
+     * NOT rewritten — it keeps its number in the series and every frozen
+     * figure, and is rendered with a VOID banner instead (getInvoiceHtml).
+     */
+    voidedAt: { type: Date, default: null },
+    voidReason: { type: String, trim: true, maxlength: 200 },
+
+    /**
      * Issued against a demo payment. Carried from the bill for the same reason
      * bill.isDemo exists: revenue reporting excludes these rows. Nothing
      * branches on it, and a demo invoice renders identically.

@@ -31,6 +31,11 @@ export const updateHotel = (id, payload) => api.patch(`/admin/hotels/${id}`, pay
 export const createHotelAdmin = (id, payload) =>
   api.post(`/admin/hotels/${id}/admins`, payload).then(unwrap);
 export const sellCoins = (id, payload) => api.post(`/admin/hotels/${id}/coins`, payload).then(unwrap);
+// Takes back a coin credit; refused by the server after PURCHASE_REVERSAL_HOURS.
+export const reversePurchase = (hotelId, purchaseId, reason) =>
+  api
+    .post(`/admin/hotels/${hotelId}/purchases/${purchaseId}/reverse`, { reason: reason || undefined })
+    .then(unwrap);
 export const hotelTransactions = (id, params) =>
   api.get(`/admin/hotels/${id}/transactions`, { params }).then(unwrap);
 

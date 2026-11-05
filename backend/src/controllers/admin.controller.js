@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
-import { ROLES, SUPPORT_PARTIES } from "../config/constants.js";
+import { ROLES, SUPPORT_PARTIES, PURCHASE_REVERSAL_HOURS } from "../config/constants.js";
 import * as hotelService from "../services/hotel.service.js";
 import * as coinService from "../services/coin.service.js";
 import * as reportService from "../services/report.service.js";
@@ -124,6 +124,8 @@ export const getHotel = asyncHandler(async (req, res) => {
       purchases: purchasePage.purchases,
       staffTotal: staffPage.total,
       purchaseTotal: purchasePage.total,
+      // The panel's Reverse countdown; the server re-checks the window itself.
+      reversalHours: PURCHASE_REVERSAL_HOURS,
       qr,
     })
   );
@@ -161,6 +163,22 @@ export const sellCoins = asyncHandler(async (req, res) => {
   res
     .status(201)
     .json(new ApiResponse(201, result, `${coins} coins added to the hotel's inventory`));
+});
+
+/** Takes back a coin credit within the reversal window. */
+export const reversePurchase = asyncHandler(async (req, res) => {
+  const result = await coinService.reversePurchase({
+    hotelId: req.params.hotelId,
+    purchaseId: req.params.purchaseId,
+    reversedBy: req.user._id,
+    reason: req.body.reason,
+  });
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, result, `${result.purchase.coins} coins taken back from the hotel's inventory`)
+    );
 });
 
 export const hotelTransactions = asyncHandler(async (req, res) => {

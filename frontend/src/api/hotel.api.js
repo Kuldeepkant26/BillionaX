@@ -26,8 +26,9 @@ export const recordStay = (membershipId, payload) =>
 
 export const coinBalance = () => api.get("/hotel/coins/balance").then(unwrap);
 export const listPurchases = () => api.get("/hotel/coins/purchases").then(unwrap);
+// The coin price list plus `orderContact` — where a hotel sends an order.
+// There is no buy call: the main admin credits ordered coins (Sell coins).
 export const listPacks = () => api.get("/hotel/coins/packs").then(unwrap);
-export const buyCoins = (payload) => api.post("/hotel/coins/buy", payload).then(unwrap);
 
 // All the list functions forward `params`: usePaginatedList calls
 // fetcher(params), so a signature that ignores its argument silently drops the

@@ -67,6 +67,21 @@ const platformSettingsSchema = new mongoose.Schema(
      */
     enquiryEmails: { type: [String], default: [] },
 
+    /**
+     * Where hotels send a coin order, set by the main admin in Platform rules.
+     *
+     * Hotels no longer buy coins in the panel: "Order coins" offers these as
+     * WhatsApp, Call and Email buttons, and the main admin credits the coins
+     * with Sell coins once paid. A blank channel is simply not offered.
+     * Numbers are stored as international digits with no "+" ("919876543210"),
+     * which is what wa.me and tel: both take — settingsRules normalises them.
+     */
+    coinOrderContact: {
+      whatsapp: { type: String, default: null },
+      phone: { type: String, default: null },
+      email: { type: String, default: null },
+    },
+
     // Which membership-card art every guest sees. Network-wide by design:
     // the card is the product's face, so it stays consistent across hotels
     // rather than becoming a per-property choice.

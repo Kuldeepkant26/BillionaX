@@ -20,6 +20,11 @@ const coinPurchaseSchema = new mongoose.Schema(
       enum: PURCHASE_STATUS_VALUES,
       default: PURCHASE_STATUS.COMPLETED,
     },
+
+    // Set when the main admin reverses the credit — see coinService.reversePurchase.
+    voidedAt: { type: Date, default: null },
+    voidedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    voidReason: { type: String, trim: true, maxlength: 200, default: null },
   },
   { timestamps: true }
 );

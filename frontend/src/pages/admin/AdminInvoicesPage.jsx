@@ -202,7 +202,14 @@ const InvoiceList = () => {
               renderRow={(inv) => (
                 <tr key={inv._id}>
                   <td>
-                    <b>{inv.number}</b>
+                    <b className={inv.voidedAt ? "line-through text-muted" : undefined}>{inv.number}</b>
+                    {/* Its coin credit was reversed. Kept in the series, never
+                        deleted; the preview carries a VOID banner. */}
+                    {inv.voidedAt && (
+                      <Badge tone="bad" className="ml-2">
+                        Void
+                      </Badge>
+                    )}
                   </td>
                   <td>
                     <Badge tone={inv.kind === "GUEST_BILL" ? "acc" : undefined}>
@@ -230,7 +237,7 @@ const InvoiceList = () => {
                         onClick={() => setInvoiceId(inv._id)}
                         title={`View invoice ${inv.number}`}
                       />
-                      {Boolean(inv.buyer?.email) && (
+                      {Boolean(inv.buyer?.email) && !inv.voidedAt && (
                         <Button
                           size="sm"
                           variant="ghost"

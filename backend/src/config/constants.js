@@ -104,6 +104,14 @@ export const PURCHASE_STATUS = Object.freeze({
 export const PURCHASE_STATUS_VALUES = Object.values(PURCHASE_STATUS);
 
 /**
+ * How long the main admin can reverse a coin credit (Add coins), counted from
+ * when it was recorded. Long enough to catch a typo'd amount or the wrong
+ * hotel the next morning; short enough that the hotel has not built its month
+ * around the coins. Enforced in coinService.reversePurchase.
+ */
+export const PURCHASE_REVERSAL_HOURS = 24;
+
+/**
  * What a given invoice is a receipt FOR.
  *
  * The two are different documents with different parties, not one document

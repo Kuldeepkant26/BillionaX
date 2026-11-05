@@ -17,7 +17,6 @@ import {
   offerRules,
   privilegeRules,
   hotelUserRules,
-  buyCoinsRules,
   creditMemberRules,
   recordStayRules,
   hotelSettingsRules,
@@ -162,7 +161,6 @@ router.get(
   hotelController.listPurchases
 );
 router.get("/coins/packs", adminOnly, hotelController.listPacks);
-router.post("/coins/buy", adminOnly, buyCoinsRules, validate, hotelController.buyCoins);
 
 router.post(
   "/members/:id/credit",

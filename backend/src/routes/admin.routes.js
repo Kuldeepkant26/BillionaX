@@ -10,6 +10,7 @@ import {
   hotelRules,
   hotelUserRules,
   sellCoinsRules,
+  reversePurchaseRules,
   settingsRules,
   adminUserRules,
   adminUpdateRules,
@@ -73,6 +74,14 @@ router.post(
   sellCoinsRules,
   validate,
   adminController.sellCoins
+);
+router.post(
+  "/hotels/:hotelId/purchases/:purchaseId/reverse",
+  objectIdParam("hotelId"),
+  objectIdParam("purchaseId"),
+  reversePurchaseRules,
+  validate,
+  adminController.reversePurchase
 );
 router.get(
   "/hotels/:hotelId/transactions",

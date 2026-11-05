@@ -24,6 +24,7 @@ import {
   resolveAccent,
 } from "../../theme/accentPresets.js";
 import { DEFAULT_FONT, resolveFont } from "../../theme/fontPresets.js";
+import { formatIntlPhone } from "../../utils/format.js";
 
 const toForm = (s) => ({
   welcomeCredit: s.welcomeCredit,
@@ -45,6 +46,10 @@ const toForm = (s) => ({
   feedEnabled: Boolean(s.feedEnabled),
   // A list on the server, one editable line here.
   enquiryEmails: (s.enquiryEmails || []).join(", "),
+  // Stored as bare international digits; shown the way people type them.
+  orderWhatsapp: formatIntlPhone(s.coinOrderContact?.whatsapp),
+  orderPhone: formatIntlPhone(s.coinOrderContact?.phone),
+  orderEmail: s.coinOrderContact?.email || "",
 });
 
 const AdminSettingsPage = () => {
@@ -128,6 +133,13 @@ const RulesForm = ({ settings, reload }) => {
         fontPreset: form.fontPreset,
         // Addresses hold no spaces, so a pasted "a@x.com b@y.com" splits too.
         enquiryEmails: form.enquiryEmails.split(/[\s,;]+/).filter(Boolean),
+        // Always all three: the server replaces the whole object, and an empty
+        // field clears that channel.
+        coinOrderContact: {
+          whatsapp: form.orderWhatsapp.trim() || null,
+          phone: form.orderPhone.trim() || null,
+          email: form.orderEmail.trim() || null,
+        },
       });
       toastSuccess("Settings saved");
       run();
@@ -300,6 +312,55 @@ const RulesForm = ({ settings, reload }) => {
               value={form.enquiryEmails}
               onChange={change("enquiryEmails")}
               error={errors.enquiryEmails}
+            />
+          </Field>
+        </div>
+      </Card>
+
+      <Card title="Coin orders" className="my-4">
+        <p className="text-xs text-muted leading-[1.5] mb-3.5">
+          Hotels order coins from Coins → Order coins, which offers these as WhatsApp, Call and
+          Email buttons with the order filled in. Leave a field empty to hide that option. Once a
+          hotel has paid, credit the coins with Sell coins on its page.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+          <Field
+            label="WhatsApp number"
+            hint="With country code. A 10-digit number is taken as +91."
+            error={errors["coinOrderContact.whatsapp"]}
+          >
+            <Input
+              type="tel"
+              autoComplete="off"
+              placeholder="+91 98765 43210"
+              value={form.orderWhatsapp}
+              onChange={change("orderWhatsapp")}
+              error={errors["coinOrderContact.whatsapp"]}
+            />
+          </Field>
+          <Field
+            label="Call number"
+            hint="Can be a landline, e.g. +91 22 4000 1234"
+            error={errors["coinOrderContact.phone"]}
+          >
+            <Input
+              type="tel"
+              autoComplete="off"
+              placeholder="+91 98765 43210"
+              value={form.orderPhone}
+              onChange={change("orderPhone")}
+              error={errors["coinOrderContact.phone"]}
+            />
+          </Field>
+          <Field label="Email" error={errors["coinOrderContact.email"]}>
+            <Input
+              type="email"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="coins@billionax.com"
+              value={form.orderEmail}
+              onChange={change("orderEmail")}
+              error={errors["coinOrderContact.email"]}
             />
           </Field>
         </div>

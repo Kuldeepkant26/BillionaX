@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   getHotel,
   sellCoins,
+  reversePurchase,
   createHotelAdmin,
   updateHotel,
   deleteHotel,
@@ -28,7 +29,67 @@ import { PageHead } from "../../features/panel/PageHead.jsx";
 import { HotelOnboarding } from "../../features/panel/HotelOnboarding.jsx";
 import { QrCode } from "../../features/panel/QrCode.jsx";
 import { ROUTES } from "../../constants/routePaths.js";
-import { formatCoins, formatCurrency, formatDate } from "../../utils/format.js";
+import {
+  formatCoins,
+  formatCurrency,
+  formatDate,
+  formatDateTime,
+  numberInWords,
+} from "../../utils/format.js";
+
+/**
+ * The coins a credit or a reversal is about, as large as the dialog allows,
+ * with the same number in words beneath. Side by side, the two are what make
+ * a stray zero visible before it is committed: "Ten lakh" does not read like
+ * "One lakh".
+ */
+const CoinFigure = ({ sign, coins, caption, tone = "acc" }) => (
+  <div
+    className={`rounded-token border-2 px-4 py-5 text-center ${
+      tone === "bad"
+        ? "border-bad bg-[color-mix(in_srgb,var(--bad)_7%,transparent)]"
+        : "border-accent bg-[var(--soft)]"
+    }`}
+  >
+    <span className="block text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted">{caption}</span>
+    <b
+      className={`block mt-2 font-display text-[40px] font-semibold leading-none tracking-[-1px] tabular-nums ${
+        tone === "bad" ? "text-bad" : "text-ink"
+      }`}
+    >
+      {sign}
+      {formatCoins(coins)}
+    </b>
+    <span className="block mt-2 text-[13px] font-semibold text-muted">
+      {numberInWords(coins)} coins
+    </span>
+  </div>
+);
+
+// The label/value rows under a CoinFigure — the same look as the hotel's
+// Order coins summary.
+const SUMMARY =
+  "bg-chip rounded-token-sm p-[13px] mt-3.5 [&>div]:flex [&>div]:justify-between [&>div]:gap-3 [&>div]:text-[12.5px] [&>div]:text-muted [&>div]:py-[5px] [&>div>b]:text-ink [&>div>b]:font-semibold [&>div>b]:text-right";
+
+/**
+ * A nudge, not a rule: packs run ₹0.85–₹1 a coin, so a figure far outside
+ * that is more likely a typo in one of the two fields than a real deal.
+ */
+const rateWarning = (coins, paid) => {
+  if (!(coins > 0)) return null;
+  if (paid === 0) return "No payment is recorded. Only add free coins on purpose.";
+  const perCoin = paid / coins;
+  if (perCoin > 1 || perCoin < 0.8) {
+    return `That is ₹${perCoin.toFixed(2)} per coin, outside the usual ₹0.85–₹1. Check the coins and the amount.`;
+  }
+  return null;
+};
+
+/** "17h left" / "42m left" for the Reverse countdown. */
+const timeLeft = (ms) => {
+  const minutes = Math.max(1, Math.floor(ms / 60_000));
+  return minutes >= 60 ? `${Math.floor(minutes / 60)}h left` : `${minutes}m left`;
+};
 
 const HotelDetailPage = () => {
   const { hotelId } = useParams();
@@ -48,6 +109,16 @@ const HotelDetailPage = () => {
     isActive: true,
   });
   const [sellForm, setSellForm] = useState({ coins: "", amountPaid: "", paymentRef: "" });
+  // Add coins is two steps: the form, then a review of exactly what will land.
+  const [sellStep, setSellStep] = useState("form");
+  const [reverseTarget, setReverseTarget] = useState(null);
+  const [reverseReason, setReverseReason] = useState("");
+  // Ticks the Reverse countdowns; the server re-checks the window regardless.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
   const [userForm, setUserForm] = useState({
     name: "",
     email: "",
@@ -79,17 +150,55 @@ const HotelDetailPage = () => {
         amountPaid: Number(sellForm.amountPaid),
         paymentRef: sellForm.paymentRef || undefined,
       });
-      toastSuccess(`${formatCoins(Number(sellForm.coins))} coins added`);
+      toastSuccess(`${formatCoins(Number(sellForm.coins))} coins added to ${hotel.name}`);
       setSellOpen(false);
       setSellForm({ coins: "", amountPaid: "", paymentRef: "" });
       run();
     } catch (err) {
       setErrors(err.fieldErrors || {});
       setMessage(err.message);
+      // Back to the fields, where a field error has somewhere to show.
+      setSellStep("form");
     } finally {
       setBusy(false);
     }
   };
+
+  const openAdd = () => {
+    setSellStep("form");
+    setErrors({});
+    setMessage("");
+    setSellOpen(true);
+  };
+
+  const openReverse = (purchase) => {
+    setReverseTarget(purchase);
+    setReverseReason("");
+    setMessage("");
+  };
+
+  const doReverse = async () => {
+    setBusy(true);
+    setMessage("");
+
+    try {
+      await reversePurchase(hotelId, reverseTarget._id, reverseReason.trim());
+      toastSuccess(`${formatCoins(reverseTarget.coins)} coins taken back from ${hotel.name}`);
+      setReverseTarget(null);
+      run();
+    } catch (err) {
+      // Usually the hotel has spent into the credit, or the window closed.
+      setMessage(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reversalMs = (data?.reversalHours ?? 24) * 60 * 60 * 1000;
+  const sellCoinsNum = Number(sellForm.coins) || 0;
+  const sellPaidNum = sellForm.amountPaid === "" ? null : Number(sellForm.amountPaid);
+  const canReview = sellCoinsNum > 0 && Number.isInteger(sellCoinsNum) && sellPaidNum !== null && sellPaidNum >= 0;
+  const reverseShort = reverseTarget && hotel.coinInventory < reverseTarget.coins;
 
   const doCreateUser = async () => {
     setBusy(true);
@@ -189,7 +298,7 @@ const HotelDetailPage = () => {
             <Button variant="ghost" onClick={() => setUserOpen(true)}>
               Add account
             </Button>
-            <Button onClick={() => setSellOpen(true)}>Sell coins</Button>
+            <Button onClick={openAdd}>Add coins</Button>
           </>
         }
       />
@@ -214,19 +323,38 @@ const HotelDetailPage = () => {
               { label: "Reference" },
               { label: "Coins", num: true },
               { label: "Paid", num: true },
+              { label: "" },
             ]}
             rows={data?.purchases || []}
-            empty={{ title: "No purchases yet", hint: "Record the first coin sale." }}
-            renderRow={(p) => (
-              <tr key={p._id}>
-                <td>{formatDate(p.createdAt)}</td>
-                <td>{p.paymentRef || "—"}</td>
-                <td className="num">
-                  <b>{formatCoins(p.coins)}</b>
-                </td>
-                <td className="num">{formatCurrency(p.amountPaid)}</td>
-              </tr>
-            )}
+            empty={{ title: "No purchases yet", hint: "Add this hotel's first coins." }}
+            renderRow={(p) => {
+              const void_ = p.status === "VOID";
+              const left = new Date(p.createdAt).getTime() + reversalMs - now;
+              return (
+                <tr key={p._id}>
+                  <td>{formatDate(p.createdAt)}</td>
+                  <td>{p.paymentRef || "—"}</td>
+                  <td className="num">
+                    <b className={void_ ? "line-through text-muted" : undefined}>{formatCoins(p.coins)}</b>
+                  </td>
+                  <td className={`num ${void_ ? "line-through text-muted" : ""}`}>
+                    {formatCurrency(p.amountPaid)}
+                  </td>
+                  <td className="text-right whitespace-nowrap">
+                    {void_ ? (
+                      <Badge tone="bad">Reversed</Badge>
+                    ) : left > 0 ? (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="text-[11px] text-muted">{timeLeft(left)}</span>
+                        <Button size="sm" variant="ghost" onClick={() => openReverse(p)}>
+                          Reverse
+                        </Button>
+                      </span>
+                    ) : null}
+                  </td>
+                </tr>
+              );
+            }}
           />
         </Card>
 
@@ -279,42 +407,174 @@ const HotelDetailPage = () => {
 
       <Modal
         open={sellOpen}
-        title="Sell coins to this hotel"
+        title={sellStep === "review" ? "Check before adding" : `Add coins to ${hotel.name}`}
         onClose={() => setSellOpen(false)}
         footer={
-          <Button block onClick={doSell} disabled={busy}>
-            {busy ? "Recording…" : "Record purchase"}
-          </Button>
+          sellStep === "review" ? (
+            <div className="flex items-center gap-[9px]">
+              <Button variant="ghost" block onClick={() => setSellStep("form")} disabled={busy}>
+                Back
+              </Button>
+              <Button block onClick={doSell} disabled={busy}>
+                {busy ? "Adding…" : `Add ${formatCoins(sellCoinsNum)} coins`}
+              </Button>
+            </div>
+          ) : (
+            <Button block onClick={() => setSellStep("review")} disabled={!canReview}>
+              {canReview ? "Review" : "Enter the coins and the amount paid"}
+            </Button>
+          )
         }
       >
         {alert}
-        <Field label="Coins" error={errors.coins}>
-          <Input
-            type="number"
-            value={sellForm.coins}
-            onChange={(e) => setSellForm((f) => ({ ...f, coins: e.target.value }))}
-            error={errors.coins}
-            placeholder="100000"
-          />
-        </Field>
-        <Field label="Amount paid (₹)" error={errors.amountPaid}>
-          <Input
-            type="number"
-            value={sellForm.amountPaid}
-            onChange={(e) => setSellForm((f) => ({ ...f, amountPaid: e.target.value }))}
-            error={errors.amountPaid}
-            placeholder="100000"
-          />
-        </Field>
-        <Field label="Payment reference" hint="UTR, cheque number, or a note" error={errors.paymentRef}>
-          <Input
-            value={sellForm.paymentRef}
-            onChange={(e) => setSellForm((f) => ({ ...f, paymentRef: e.target.value }))}
-          />
-        </Field>
-        <p className="hint">
-          This immediately credits the hotel's inventory. They can then allocate coins to guests.
-        </p>
+
+        {sellStep === "form" ? (
+          <>
+            <Field
+              label="Coins to add"
+              hint={sellCoinsNum > 0 ? `${numberInWords(sellCoinsNum)} coins` : undefined}
+              error={errors.coins}
+            >
+              <Input
+                type="number"
+                min={1}
+                value={sellForm.coins}
+                onChange={(e) => setSellForm((f) => ({ ...f, coins: e.target.value }))}
+                error={errors.coins}
+                placeholder="100000"
+                autoFocus
+              />
+            </Field>
+            <Field
+              label="Amount paid (₹)"
+              hint={sellPaidNum > 0 ? `${numberInWords(sellPaidNum)} rupees` : undefined}
+              error={errors.amountPaid}
+            >
+              <Input
+                type="number"
+                min={0}
+                value={sellForm.amountPaid}
+                onChange={(e) => setSellForm((f) => ({ ...f, amountPaid: e.target.value }))}
+                error={errors.amountPaid}
+                placeholder="95000"
+              />
+            </Field>
+            <Field label="Payment reference" hint="UTR, cheque number, or a note" error={errors.paymentRef}>
+              <Input
+                value={sellForm.paymentRef}
+                onChange={(e) => setSellForm((f) => ({ ...f, paymentRef: e.target.value }))}
+              />
+            </Field>
+          </>
+        ) : (
+          <>
+            <CoinFigure sign="+" coins={sellCoinsNum} caption={`Adding to ${hotel.name}`} />
+            <div className={SUMMARY}>
+              <div>
+                <span>Amount paid</span>
+                <b>
+                  {formatCurrency(sellPaidNum)}
+                  {sellPaidNum > 0 && (
+                    <span className="block text-[11px] font-normal text-muted">
+                      ₹{(sellPaidNum / sellCoinsNum).toFixed(2)} per coin
+                    </span>
+                  )}
+                </b>
+              </div>
+              <div>
+                <span>Reference</span>
+                <b>{sellForm.paymentRef.trim() || "—"}</b>
+              </div>
+              <div className="!pt-2.5 border-t border-hairline mt-[5px]">
+                <span>Inventory</span>
+                <b className="tabular-nums">
+                  {formatCoins(hotel.coinInventory)} → {formatCoins(hotel.coinInventory + sellCoinsNum)}
+                </b>
+              </div>
+            </div>
+            {rateWarning(sellCoinsNum, sellPaidNum) && (
+              <div className="notice-warn mt-3 text-[12px]">{rateWarning(sellCoinsNum, sellPaidNum)}</div>
+            )}
+            <p className="hint mt-3">
+              You can reverse this from Purchase history for {data?.reversalHours ?? 24} hours, as
+              long as {hotel.name} hasn&rsquo;t used the coins.
+            </p>
+          </>
+        )}
+      </Modal>
+
+      <Modal
+        open={Boolean(reverseTarget)}
+        title="Reverse this credit?"
+        onClose={() => !busy && setReverseTarget(null)}
+        footer={
+          <div className="flex items-center gap-[9px]">
+            <Button variant="ghost" block onClick={() => setReverseTarget(null)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button variant="danger" block onClick={doReverse} disabled={busy || reverseShort}>
+              {busy ? "Reversing…" : `Reverse ${formatCoins(reverseTarget?.coins)} coins`}
+            </Button>
+          </div>
+        }
+      >
+        {alert}
+        {reverseTarget && (
+          <>
+            <CoinFigure
+              sign="−"
+              coins={reverseTarget.coins}
+              caption={`Taking back from ${hotel.name}`}
+              tone="bad"
+            />
+            <div className={SUMMARY}>
+              <div>
+                <span>Added</span>
+                <b>{formatDateTime(reverseTarget.createdAt)}</b>
+              </div>
+              <div>
+                <span>Amount paid</span>
+                <b>{formatCurrency(reverseTarget.amountPaid)}</b>
+              </div>
+              <div>
+                <span>Reference</span>
+                <b>{reverseTarget.paymentRef || "—"}</b>
+              </div>
+              <div className="!pt-2.5 border-t border-hairline mt-[5px]">
+                <span>Inventory</span>
+                <b className="tabular-nums">
+                  {formatCoins(hotel.coinInventory)} →{" "}
+                  {reverseShort ? "—" : formatCoins(hotel.coinInventory - reverseTarget.coins)}
+                </b>
+              </div>
+            </div>
+
+            {reverseShort ? (
+              <div className="notice-bad mt-3 text-[12px]">
+                {hotel.name} has already used some of these coins — {formatCoins(hotel.coinInventory)}{" "}
+                left of the {formatCoins(reverseTarget.coins)} added — so this credit can&rsquo;t be
+                reversed.
+              </div>
+            ) : (
+              <>
+                <div className="mt-3.5">
+                  <Field label="Reason (optional)">
+                    <Input
+                      value={reverseReason}
+                      maxLength={200}
+                      onChange={(e) => setReverseReason(e.target.value)}
+                      placeholder="Wrong amount entered"
+                    />
+                  </Field>
+                </div>
+                <p className="hint">
+                  The coins leave {hotel.name}&rsquo;s inventory and this credit&rsquo;s invoice is
+                  marked void. This can&rsquo;t be undone.
+                </p>
+              </>
+            )}
+          </>
+        )}
       </Modal>
 
       <Modal

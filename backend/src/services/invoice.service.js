@@ -303,6 +303,8 @@ export const deliverInvoice = async (invoice, template) => {
 /** Re-sends an invoice from the panel. The one path an admin can retry on. */
 export const resendInvoice = async (invoiceId, { hotelId } = {}) => {
   const invoice = await findInvoice(invoiceId, { hotelId });
+  // Mailing a cancelled receipt would read as a fresh charge.
+  if (invoice.voidedAt) throw new ApiError(409, "This invoice was voided, so it can't be sent");
   if (!invoice.buyer?.email) {
     throw new ApiError(400, "This invoice has no email address to send to");
   }
@@ -338,11 +340,41 @@ export const findInvoice = async (invoiceId, { hotelId, kinds } = {}) => {
   return invoice;
 };
 
+/**
+ * The banner a voided invoice is shown under. Added around the rendered
+ * template rather than through it, so it appears whatever HTML the admin's
+ * template holds — and it carries nothing but a date, so nothing needs
+ * escaping.
+ */
+const voidBanner = (voidedAt) =>
+  `<div style="margin:0 0 16px;padding:12px 16px;border:2px solid #b42318;border-radius:8px;background:#fef3f2;color:#b42318;font:600 14px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;text-align:center;letter-spacing:.02em;">VOID — this coin credit was reversed on ${new Date(
+    voidedAt
+  ).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}. This invoice is cancelled.</div>`;
+
 /** One invoice, rendered. What the preview popup and the print view show. */
 export const getInvoiceHtml = async (invoiceId, { hotelId, kinds } = {}) => {
   const invoice = await findInvoice(invoiceId, { hotelId, kinds });
-  return { invoice, html: await renderInvoiceHtml(invoice) };
+  let html = await renderInvoiceHtml(invoice);
+  if (invoice.voidedAt) {
+    const banner = voidBanner(invoice.voidedAt);
+    html = /<body[^>]*>/i.test(html)
+      ? html.replace(/<body[^>]*>/i, (open) => `${open}${banner}`)
+      : `${banner}${html}`;
+  }
+  return { invoice, html };
 };
+
+/**
+ * Marks a coin purchase's invoice void. Runs inside the reversal's
+ * transaction (pass its session) so the two can never disagree; a purchase
+ * whose invoice failed to issue simply matches nothing.
+ */
+export const voidInvoiceForPurchase = async (purchaseId, { voidedAt, reason, session } = {}) =>
+  Invoice.updateOne(
+    { purchaseId, voidedAt: null },
+    { $set: { voidedAt: voidedAt || new Date(), voidReason: reason || undefined } },
+    { session }
+  );
 
 /**
  * Invoices for a list view.
